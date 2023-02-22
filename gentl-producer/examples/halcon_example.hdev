@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="21.11.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>*******************************************************************************</c>
+<c>* Copyright (c) 2020 Nerian Vision GmbH</c>
+<c>*</c>
+<c>* Permission is hereby granted, free of charge, to any person obtaining a copy</c>
+<c>* of this software and associated documentation files (the "Software"), to deal</c>
+<c>* in the Software without restriction, including without limitation the rights</c>
+<c>* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell</c>
+<c>* copies of the Software, and to permit persons to whom the Software is</c>
+<c>* furnished to do so, subject to the following conditions:</c>
+<c>*</c>
+<c>* The above copyright notice and this permission notice shall be included in</c>
+<c>* all copies or substantial portions of the Software.</c>
+<c>*******************************************************************************</c>
+<c></c>
+<c></c>
+<c>* Example application for interfacing Nerian devices with HALCON. The</c>
+<c>* application connects to a device and acquires the configured data</c>
+<c>* (defaults are the rectified left camera image, the disparity map and</c>
+<c>* the projected 3D point cloud). It displays these in separate windows.</c>
+<c></c>
+<c>*******************************************************************************</c>
+<c>* Initialize image acquisition </c>
+<c>*******************************************************************************</c>
+<c></c>
+<c>* Receive the rectified left image, disparity map and 3D point cloud</c>
+<l>open_framegrabber('GenICamTL', 0, 0, 0, 0, 0, 0, 'progressive',\
+                  -1, 'default', -1, 'false', 'default', \
+                  'udp://192.168.10.10/', 0, -1, AcqHandle)</l>
+<c></c>
+<c>* We already capture one image just to get the image size</c>
+<l>grab_image(LeftImage, AcqHandle)</l>
+<l>get_image_size(LeftImage, Width, Height)</l>
+<c></c>
+<c>*******************************************************************************</c>
+<c>* Open and initialize all display windows</c>
+<c>*******************************************************************************</c>
+<c></c>
+<l>dev_close_window()</l>
+<l>dev_open_window(0, 0, 320, 240 + 20, 'black', LeftWindow)</l>
+<l>dev_set_part(0, 0, Height-1 + 40, Width-1)</l>
+<l>dev_open_window(240 + 72, 0, 320, 240 + 20, 'black', DisparityWindow)</l>
+<l>dev_set_part(0, 0, Height-1 + 40, Width-1)</l>
+<l>dev_open_window(480 + 144, 0, 320, 240 + 20, 'black', RightWindow)</l>
+<l>dev_set_part(0, 0, Height-1 + 40, Width-1)</l>
+<l>dev_open_window(0, 320 + 6, 900, 700 + 20, 'black', PointCloudWindow)</l>
+<c></c>
+<l>dev_update_window ('off')</l>
+<l>dev_set_window(DisparityWindow)</l>
+<l>dev_set_lut('temperature')</l>
+<c></c>
+<c>* Also place some labels</c>
+<l>disp_message(LeftWindow, 'Left', 'image', Height-4, 0, 'black', 'true')</l>
+<l>disp_message(DisparityWindow, 'Disparity', 'image', Height-4, 0, 'black', 'true')</l>
+<l>disp_message(RightWindow, 'Right', 'image', Height-4, 0, 'black', 'true')</l>
+<c></c>
+<c>*******************************************************************************</c>
+<c>* Image capture loop</c>
+<c>*******************************************************************************</c>
+<c></c>
+<c>* Start image acquisition: not necessary here since software trigger causes that</c>
+<l>* grab_image_start(AcqHandle, -1)</l>
+<c></c>
+<c>* Choose a 3D pose for viewing the 3D point cloud</c>
+<l>create_pose (-0.5, 0.25, 20, 5, 10, 0, 'Rp+T', 'gba', 'point', Pose)</l>
+<c></c>
+<l as_id="image_acquisition" as_name="Image Acquisition 01" as_grp="[2,2]" as_ord="1">while(true)</l>
+<c>    * Grab an image set, usually composed of left image, disparity map and 3d point cloud</c>
+<l>    try</l>
+<l>        grab_data_async (Images, Regions, Contours, AcqHandle, -1.0, Data)</l>
+<l>    catch (Exception)</l>
+<l>        if (Exception[0] = 5322)</l>
+<c>            * Timeout - in Software Trigger mode, this can just mean</c>
+<c>            * that no trigger was sent for some time; OK to retry.</c>
+<l>            continue</l>
+<l>        else</l>
+<l>            throw ([Exception,'Unhandled exception'])</l>
+<l>        endif</l>
+<l>    endtry</l>
+<c></c>
+<c>    * We determine the actual number of enabled camera images in</c>
+<c>    *  the stream, and whether a disparity map is enabled at this time.</c>
+<l>    NumImages := 0</l>
+<l>    HasDisparity := false</l>
+<l>    count_obj(Images, NumImageAndDispChannels)</l>
+<c>    * Number of images is minus the X, Y, Z 3D maps</c>
+<l>    NumImageAndDispChannels := NumImageAndDispChannels - 3</l>
+<l>    for i := 1 to NumImageAndDispChannels by 1</l>
+<l>        select_obj(Images, Img, i)</l>
+<l>        get_image_type(Img, ImgType)</l>
+<c>        * Assign the images to the variables used below</c>
+<l>        if (ImgType = 'uint2')</l>
+<l>            HasDisparity := true</l>
+<l>            DisparityMap := Img</l>
+<l>        else</l>
+<l>            if (NumImages = 0)</l>
+<l>                LeftImage := Img</l>
+<l>            else</l>
+<l>                RightImage := Img</l>
+<l>            endif</l>
+<l>            NumImages := NumImages + 1</l>
+<l>        endif</l>
+<l>    endfor</l>
+<c></c>
+<c>    * Left image (if present)</c>
+<l>    if(NumImages &gt;= 1)</l>
+<l>        select_obj(Images, LeftImage, 1)</l>
+<l>        disp_obj(LeftImage, LeftWindow)</l>
+<l>    endif</l>
+<c></c>
+<c>    * Right image (if present as well)</c>
+<l>    if(NumImages &gt;= 2)</l>
+<c>        * Right camera image is always last in the sequence of images proper</c>
+<l>        select_obj(Images, RightImage, 2 + HasDisparity)</l>
+<l>        disp_obj(RightImage, RightWindow)</l>
+<l>    endif</l>
+<c></c>
+<c>    * This block is skipped if the device is not in Stereo Matching mode.</c>
+<l>    if (HasDisparity)</l>
+<c>        * Disparity is the second item, unless camera images are disabled</c>
+<l>        select_obj(Images, DisparityMap, 1 + (NumImages &gt; 0))</l>
+<c>        * 3D data maps always come after all enabled images</c>
+<l>        select_obj(Images, XMap, NumImageAndDispChannels + 1)</l>
+<l>        select_obj(Images, YMap, NumImageAndDispChannels + 2)</l>
+<l>        select_obj(Images, ZMap, NumImageAndDispChannels + 3)</l>
+<c>        </c>
+<c>        * Set all invalid disparities to black in visible image</c>
+<l>        threshold(DisparityMap, InvalidDisparities, 0xFFF, 0xFFF)</l>
+<l>        paint_region(InvalidDisparities, DisparityMap, DisparityMap, 0, 'fill')  </l>
+<c>        </c>
+<c>        * Convert disparity map to 8 bit for visualization</c>
+<l>        scale_image(DisparityMap, DispMapScaled, 1.0/16.0, 0) </l>
+<l>        convert_image_type(DispMapScaled, DispMap8Bit, 'byte')</l>
+<c>        </c>
+<c>        * Display disparity map</c>
+<l>        disp_image(DispMap8Bit, DisparityWindow)</l>
+<c>        </c>
+<c>        * Select all points closer than 3m in the 3D point cloud</c>
+<l>        threshold (ZMap, Region, 0.0, 3)</l>
+<l>        reduce_domain(XMap, Region, XReduced)</l>
+<c>        </c>
+<c>        * Create 3D model from 3D point cloud and display</c>
+<l>        xyz_to_object_model_3d(XReduced, YMap, ZMap, ObjectModel3D)</l>
+<c>        </c>
+<c>        * Display the 3D pointcloud</c>
+<l>        disp_object_model_3d(PointCloudWindow, ObjectModel3D, [], Pose, \
+                             ['color_attrib','lut','point_size'], ['coord_z','rainbow',1]) </l>
+<c>    </c>
+<c>        * Uncomment this line for an interactive view of the 3D point cloud</c>
+<l>        *visualize_object_model_3d (PointCloudWindow, ObjectModel3D, [], Pose, \
+                                   ['color_attrib','lut','point_size'], ['coord_z','rainbow',3], '3D Pointcloud', [], [], PoseOut)</l>
+<c>        </c>
+<l>        clear_object_model_3d(ObjectModel3D)</l>
+<l>    endif</l>
+<l as_id="image_acquisition" as_name="Image Acquisition 01" as_grp="[3,1]" as_ord="1">endwhile</l>
+<c></c>
+<c>* Close cameras</c>
+<l>close_framegrabber(AcqHandle)</l>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

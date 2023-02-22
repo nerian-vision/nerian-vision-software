@@ -1,0 +1,72 @@
+EXPORTS
+
+GCInitLib                   = GCInitLib
+GCCloseLib                  = GCCloseLib
+GCGetInfo                   = GCGetInfo
+GCGetLastError              = GCGetLastError
+
+TLOpen                      = TLOpen
+TLClose                     = TLClose
+TLUpdateInterfaceList       = TLUpdateInterfaceList
+TLGetNumInterfaces          = TLGetNumInterfaces
+TLGetInterfaceID            = TLGetInterfaceID
+TLGetInterfaceInfo          = TLGetInterfaceInfo
+TLOpenInterface             = TLOpenInterface
+TLGetInfo                   = TLGetInfo
+
+IFClose                     = IFClose
+IFUpdateDeviceList          = IFUpdateDeviceList
+IFGetNumDevices             = IFGetNumDevices
+IFGetDeviceID               = IFGetDeviceID
+IFGetDeviceInfo             = IFGetDeviceInfo
+IFGetParentTL               = IFGetParentTL
+IFGetInfo                   = IFGetInfo
+IFOpenDevice                = IFOpenDevice
+
+DevClose                    = DevClose
+DevGetParentIF              = DevGetParentIF
+DevGetInfo                  = DevGetInfo
+DevGetNumDataStreams        = DevGetNumDataStreams
+DevGetPort                  = DevGetPort
+DevGetDataStreamID          = DevGetDataStreamID
+DevOpenDataStream           = DevOpenDataStream
+
+DSAnnounceBuffer            = DSAnnounceBuffer
+DSAllocAndAnnounceBuffer    = DSAllocAndAnnounceBuffer
+DSClose                     = DSClose
+DSRevokeBuffer              = DSRevokeBuffer
+DSQueueBuffer               = DSQueueBuffer
+DSGetParentDev              = DSGetParentDev
+DSStartAcquisition          = DSStartAcquisition
+DSStopAcquisition           = DSStopAcquisition
+DSFlushQueue                = DSFlushQueue
+DSGetBufferChunkData        = DSGetBufferChunkData
+DSGetBufferID               = DSGetBufferID
+DSGetBufferInfo             = DSGetBufferInfo
+DSGetInfo                   = DSGetInfo
+DSGetNumBufferParts         = DSGetNumBufferParts
+DSGetBufferPartInfo         = DSGetBufferPartInfo
+
+GCGetPortInfo               = GCGetPortInfo
+GCGetPortURL                = GCGetPortURL
+GCGetNumPortURLs            = GCGetNumPortURLs
+GCGetPortURLInfo            = GCGetPortURLInfo
+GCReadPort                  = GCReadPort
+GCWritePort                 = GCWritePort
+GCWritePortStacked          = GCWritePortStacked
+GCReadPortStacked           = GCReadPortStacked
+EventFlush                  = EventFlush
+EventGetData                = EventGetData
+EventGetDataInfo            = EventGetDataInfo
+EventGetInfo                = EventGetInfo
+EventKill                   = EventKill
+GCRegisterEvent             = GCRegisterEvent
+GCUnregisterEvent           = GCUnregisterEvent
+
+DSAnnounceCompositeBuffer   = DSAnnounceCompositeBuffer
+DSGetBufferInfoStacked      = DSGetBufferInfoStacked
+DSGetBufferPartInfoStacked  = DSGetBufferPartInfoStacked
+DSGetNumFlows               = DSGetNumFlows
+DSGetFlowInfo               = DSGetFlowInfo
+DSGetNumBufferSegments      = DSGetNumBufferSegments
+DSGetBufferSegmentInfo      = DSGetBufferSegmentInfo

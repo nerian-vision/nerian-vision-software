@@ -1,0 +1,13 @@
+*.cpp
+*~
+.*.sw?
+*.so
+build
+*.png
+__pycache__
+nerian_stereo/*
+nerian_src/*autogen*
+*.egg-info
+channel*.png
+pointcloud*.csv
+

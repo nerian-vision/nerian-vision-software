@@ -1,0 +1,60 @@
+
+*** These modified files were found in JOE when it aborted on Mon Jun 20 17:15:38 2022
+*** JOE was aborted because the terminal closed
+
+*** File '(Unnamed)'
+make -C build
+
+*** File '(Unnamed)'
+g++ test.c -o test
+g++ atoi.cpp -o atoi
+g++ atio.cpp -o atoi
+g++ atoi.cpp -o atoi
+./makeall.sh
+make -C build/
+make -C build/v
+make -C build/
+
+*** File '(Unnamed)'
+"/var/www
+0
+0
+\n0
+\n00
+0000\n
+0\n
+0\n
+0\n
+IMREAD_
+
+*** File '(Unnamed)'
+Backg
+ssl
+c6
+OBJDIR
+OBJDIR
+FILE
+vdma
+rtc
+rtc
+SCARL
+
+*** File '(Unnamed)'
+CHANGELOG.md
+CHANGELOG.md
+CHANGELOG.md
+/tmp/hg-editor-zUN2aF.commit.hg.txt
+/tmp/hg-editor-4YUPvj.commit.hg.txt
+/tmp/hg-editor-6k_mDR.commit.hg.txt
+/tmp/hg-editor-8nQBt4.commit.hg.txt
+/tmp/hg-editor-ynv1Nx.commit.hg.txt
+/tmp/hg-editor-jqi_xp.commit.hg.txt
+/tmp/hg-editor-2R3cyV.commit.hg.txt
+example_pointcloud.py
+
+*** File '* Startup Log *'
+Warning: /etc/joe/joerc is newer than your /home/ks/.joerc.
+Processing '/home/ks/.joerc'...
+Processing '/etc/joe/ftyperc'...
+Finished processing /etc/joe/ftyperc
+Finished processing /home/ks/.joerc

@@ -1,0 +1,245 @@
+ ###############################################################################/
+ # Copyright (c) 2022 Nerian Vision GmbH
+ #
+ # Permission is hereby granted, free of charge, to any person obtaining a copy
+ # of this software and associated documentation files (the "Software"), to deal
+ # in the Software without restriction, including without limitation the rights
+ # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ # copies of the Software, and to permit persons to whom the Software is
+ # furnished to do so, subject to the following conditions:
+ #
+ # The above copyright notice and this permission notice shall be included in
+ # all copies or substantial portions of the Software.
+ ###############################################################################/
+
+from libcpp.vector cimport vector
+from libcpp.string cimport string
+from libcpp.map cimport map as cpp_map
+from libcpp cimport bool
+from libcpp.memory cimport make_shared, shared_ptr
+
+cdef extern from "visiontransfer/deviceinfo.h" namespace "visiontransfer::DeviceInfo::DeviceModel":
+    cdef enum DeviceModel "visiontransfer::DeviceInfo::DeviceModel":
+        SCENESCAN
+        SCENESCAN_PRO
+        SCARLET
+        RUBY
+
+cdef extern from "visiontransfer/deviceinfo.h" namespace "visiontransfer::DeviceInfo::NetworkProtocol":
+    cdef enum NetworkProtocol "visiontransfer::DeviceInfo::NetworkProtocol":
+        PROTOCOL_TCP
+        PROTOCOL_UDP
+
+cdef extern from "visiontransfer/imageprotocol.h" namespace "visiontransfer::ImageProtocol::ProtocolType":
+    cdef enum ProtocolType "visiontransfer::ImageProtocol::ProtocolType":
+        PROTOCOL_TCP
+        PROTOCOL_UDP
+
+cdef extern from "visiontransfer/imageset.h" namespace "visiontransfer::ImageSet::ImageFormat":
+    cdef enum ImageFormat "visiontransfer::ImageSet::ImageFormat":
+        FORMAT_8_BIT_MONO
+        FORMAT_8_BIT_RGB
+        FORMAT_12_BIT_MONO
+
+cdef extern from "visiontransfer/imageset.h" namespace "visiontransfer::ImageSet::ImageType":
+    cdef enum ImageType "visiontransfer::ImageSet::ImageType":
+        IMAGE_UNDEFINED
+        IMAGE_LEFT
+        IMAGE_DISPARITY
+        IMAGE_RIGHT
+        IMAGE_COLOR
+
+cdef extern from "visiontransfer/deviceparameters.h" namespace "visiontransfer::DeviceParameters::AutoMode":
+    cdef enum AutoMode "visiontransfer::DeviceParameters::AutoMode":
+        AUTO_EXPOSURE_AND_GAIN
+        AUTO_EXPOSURE_MANUAL_GAIN
+        MANUAL_EXPOSURE_AUTO_GAIN
+        MANUAL_EXPOSURE_MANUAL_GAIN
+
+cdef extern from "visiontransfer/deviceparameters.h" namespace "visiontransfer::DeviceParameters::OperationMode":
+    cdef enum OperationMode "visiontransfer::DeviceParameters::OperationMode":
+        PASS_THROUGH
+        RECTIFY
+        STEREO_MATCHING
+
+cdef extern from "visiontransfer/deviceparameters.h" namespace "visiontransfer::DeviceParameters::TargetFrame":
+    cdef enum TargetFrame "visiontransfer::DeviceParameters::TargetFrame":
+        LEFT_FRAME
+        RIGHT_FRAME
+        BOTH_FRAMES
+
+cdef extern from "visiontransfer/reconstruct3d.h" namespace "visiontransfer::Reconstruct3D::ColorSource":
+    cdef enum ColorSource "visiontransfer::Reconstruct3D::ColorSource":
+        COLOR_NONE
+        COLOR_AUTO
+        COLOR_LEFT
+        COLOR_THIRD_COLOR
+
+cdef extern from "visiontransfer/deviceinfo.h" namespace "visiontransfer":
+    cdef cppclass DeviceStatus:
+        DeviceStatus() except +
+        bool isValid() except +
+        double getLastFps() except +
+        unsigned int getJumboMtu() except +
+        unsigned int getJumboFramesEnabled() except +
+        string getCurrentCaptureSource() except +
+
+cdef extern from "visiontransfer/deviceinfo.h" namespace "visiontransfer":
+    cdef cppclass DeviceInfo:
+        DeviceInfo() except +
+        string getIpAddress() except +
+        NetworkProtocol getNetworkProtocol() except +
+        string getFirmwareVersion() except +
+        DeviceModel getModel() except +
+        DeviceStatus getStatus() except +
+        bool isCompatible() except +
+        string toString() except +
+
+cdef extern from "visiontransfer/deviceenumeration.h" namespace "visiontransfer":
+    cdef cppclass DeviceEnumeration:
+        DeviceEnumeration() except +
+        vector[DeviceInfo] discoverDevices() except +
+
+cdef extern from "visiontransfer/imageset.h" namespace "visiontransfer":
+    cdef cppclass ImageSet:
+        ImageSet() except +
+        int getWidth() except +
+        int getHeight() except +
+        int getRowStride(int imageNumber) except +
+        ImageFormat getPixelFormat(int imageNumber) except +
+        ImageFormat getPixelFormat(ImageType what) except +
+        unsigned char* getPixelData(int imageNumber) except +
+        const float* getQMatrix() except +
+        int getSequenceNumber() except +
+        void getTimestamp(int& seconds, int& microsec) except +
+        void getDisparityRange(int& minimum, int& maximum) except +
+        int getSubpixelFactor() except +
+        bool isImageDisparityPair() except +
+        int getBytesPerPixel(int imageNumber) except +
+        int getBitsPerPixel(int imageNumber) except +
+        int getNumberOfImages() except +
+        int getIndexOf(ImageType what, bool throwIfNotFound) except +
+        bool hasImageType(ImageType what) except +
+        int getExposureTime() except +
+        void getLastSyncPulse(int& seconds, int& microsec) except +
+        # Setters, primarily for deserialization
+        void setWidth(int width) except +
+        void setHeight(int height) except +
+        void setRowStride(int imageNumber, int rowStride) except +
+        void setPixelFormat(int imageNumber, ImageFormat imageFormat) except +
+        void setPixelData(int imageNumber, unsigned char* pixelData) except +
+        void setQMatrix(const float* q) except +
+        void setSequenceNumber(unsigned int num) except +
+        void setTimestamp(int seconds, int microseconds) except +
+        void setDisparityRange(int minimum, int maximum) except +
+        void setSubpixelFactor(int subpixFact) except +
+        void setNumberOfImages(int number) except +
+        void setIndexOf(ImageType what, int idx) except +
+        void setExposureTime(int timeMicrosec) except +
+        void setLastSyncPulse(int seconds, int microsec) except +
+        # Utility functions
+        void writePgmFile(int imageNumber, const char* fileName) except +
+
+cdef extern from "visiontransfer/imagetransfer.h" namespace "visiontransfer":
+    cdef cppclass ImageTransfer:
+        ImageTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize) except +
+        ImageTransfer(const char* address, const char* service, ProtocolType protType, bool server, int bufferSize, int maxUdpPacketSize) except +
+        bool receiveImageSet(ImageSet& imageSet) except +
+        int getNumDroppedFrames() except +
+        bool isConnected() except +
+        void disconnect() except +
+        string getRemoteAddress() except +
+
+cdef extern from "visiontransfer/asynctransfer.h" namespace "visiontransfer":
+    cdef cppclass AsyncTransfer:
+        AsyncTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize) except +
+        AsyncTransfer(const char* address, const char* service, ProtocolType protType, bool server, int bufferSize, int maxUdpPacketSize) except +
+        bool collectReceivedImageSet(ImageSet& imageSet, double timeout) except +
+        int getNumDroppedFrames() except +
+        bool isConnected() except +
+        void disconnect() except +
+        string getRemoteAddress() except +
+
+cdef extern from "visiontransfer/reconstruct3d.h" namespace "visiontransfer":
+    cdef cppclass Reconstruct3D:
+        Reconstruct3D() except +
+        float* createPointMap(const unsigned short* dispMap, int width, int height, int rowStride, const float* q, unsigned short minDisparity, int subpixelFactor, unsigned short maxDisparity) except +
+        void projectSinglePoint(int imageX, int imageY, unsigned short disparity, const float* q, float& pointX, float& pointY, float& pointZ, int subpixFactor) except +
+        float* createPointMap(const ImageSet& imageSet, unsigned short minDisparity) except +
+        void writePlyFile(const char* file, const ImageSet& imageSet, double maxZ, bool binary) except +
+        float* createZMap(const ImageSet& imageSet, unsigned short minDisparity, unsigned short maxDisparity) except +
+
+#
+#  Related to parameter system
+#
+
+ctypedef fused nvparam_variant_scalar:
+    int
+    double
+    bool
+    string
+
+cdef extern from "visiontransfer/parametervalue.h" namespace "visiontransfer::param":
+    cdef enum ParameterType "visiontransfer::param::ParameterValue::ParameterType":
+        TYPE_INT
+        TYPE_DOUBLE
+        TYPE_BOOL
+        TYPE_STRING
+        TYPE_SAFESTRING
+        TYPE_TENSOR
+        TYPE_COMMAND
+        TYPE_UNDEFINED
+
+cdef extern from "visiontransfer/parameter.h" namespace "visiontransfer::param":
+    cdef enum ParameterAccessMode "visiontransfer::param::Parameter::ParameterAccessMode":
+        ACCESS_NONE
+        ACCESS_READONLY
+        ACCESS_READWRITE
+
+cdef extern from "visiontransfer/parameter.h" namespace "visiontransfer::param":
+    cdef cppclass Parameter:
+        Parameter() except +
+        string getUid() except +
+        string getName() except +
+        string getModuleName() except +
+        string getCategoryName() except +
+        string getDescription() except +
+        string getUnit() except +
+        ParameterType getType() except +
+        ParameterAccessMode getAccessForConfig() except +
+        ParameterAccessMode getAccessForApi() except +
+        bool isScalar() except +
+        bool isTensor() except +
+        bool isCommand() except +
+        bool getIsModified() except +
+        bool hasOptions() except +
+        vector[T] getOptions[T]() except +
+        vector[string] getOptionDescriptions() except +
+        bool hasCurrent() except +
+        T getCurrent[T]() except +
+        bool hasDefault() except +
+        T getDefault[T]() except +
+        bool hasRange() except +
+        T getMin[T]() except +
+        T getMax[T]() except +
+        bool hasIncrement() except +
+        T getIncrement[T]() except +
+        unsigned int getTensorDimension() except +
+        vector[unsigned int] getTensorShape() except +
+        unsigned int getTensorNumElements() except +
+        vector[double] getTensorData() except +
+        vector[double] getTensorDefaultData() except +
+
+cdef extern from "visiontransfer/parameterset.h" namespace "visiontransfer::param":
+    cdef cppclass ParameterSet:
+        ParameterSet() except +
+        Parameter& get(string uid) except +
+        cpp_map[string, Parameter].iterator begin() except +
+        cpp_map[string, Parameter].iterator end() except +
+        size_t count(const string& uid) except +
+        size_t size() except +
+
+# Also include auto-generated parameter glue code
+include "visiontransfer_parameters_cpp_autogen.pxd"
+
+

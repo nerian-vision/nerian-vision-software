@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RegisterDescription
+    ModelName="NerianGentTLDataStream"
+    VendorName="Nerian_Vision_GmbH"
+    ToolTip="TL Data Stream"
+    StandardNameSpace="None"
+    SchemaMajorVersion="1"
+    SchemaMinorVersion="1"
+    SchemaSubMinorVersion="0"
+    MajorVersion="$major"
+    MinorVersion="$minor"
+    SubMinorVersion="$subminor"
+    ProductGuid="7042183a-8006-48b3-9dc4-c1129a5c74ab"
+    VersionGuid="$guid"
+    xmlns="http://www.genicam.org/GenApi/Version_1_1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.genicam.org/GenApi/Version_1_1 http://www.genicam.org/GenApi/GenApiSchema_Version_1_1.xsd">
+
+    <!-- Categories -->
+
+    <Category Name="Root" NameSpace="Standard">
+        <pFeature>StreamInformation</pFeature>
+        <pFeature>BufferHandlingControl</pFeature>
+    </Category>
+
+    <Category Name="StreamInformation" NameSpace="Standard">
+        <pFeature>StreamID</pFeature>
+        <pFeature>StreamType</pFeature>
+    </Category>
+
+    <Category Name="BufferHandlingControl" NameSpace="Standard">
+        <pFeature>StreamAnnouncedBufferCount</pFeature>
+        <pFeature>StreamBufferHandlingMode</pFeature>
+        <pFeature>StreamAnnounceBufferMinimum</pFeature>
+    </Category>
+
+    <!-- Stream information -->
+
+    <StringReg Name="StreamID" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <Address>0xE0000000</Address>
+        <Length>128</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>StreamPort</pPort>
+    </StringReg>
+
+    <Enumeration Name="StreamType" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <EnumEntry Name="Ethernet" NameSpace="Standard">
+            <Value>0</Value>
+        </EnumEntry>
+        <Value>0</Value>
+    </Enumeration>
+
+    <!-- Buffer handling control -->
+
+    <Integer Name="StreamAnnouncedBufferCount" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <pValue>StreamAnnouncedBufferCountReg</pValue>
+        <pMin>StreamAnnouncedBufferCountReg</pMin>
+        <pMax>StreamAnnouncedBufferCountReg</pMax>
+    </Integer>
+    <IntReg Name="StreamAnnouncedBufferCountReg" NameSpace="Custom">
+        <Address>0xE0003000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>StreamPort</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Enumeration Name="StreamBufferHandlingMode" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <EnumEntry Name="OldestFirst" NameSpace="Standard">
+            <Value>0</Value>
+        </EnumEntry>
+        <Value>0</Value>
+    </Enumeration>
+
+    <Integer Name="StreamAnnounceBufferMinimum" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <pValue>StreamAnnounceBufferMinimumReg</pValue>
+        <pMin>StreamAnnounceBufferMinimumReg</pMin>
+        <pMax>StreamAnnounceBufferMinimumReg</pMax>
+    </Integer>
+    <IntReg Name="StreamAnnounceBufferMinimumReg" NameSpace="Custom">
+        <Address>0xE000C000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>StreamPort</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Port Name="StreamPort" NameSpace="Standard">
+    </Port>
+</RegisterDescription>
+

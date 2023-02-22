@@ -1,0 +1,19 @@
+<RCC>
+    <qresource prefix="/nvcom">
+        <file>icons/camera.png</file>
+        <file>icons/color_grey.png</file>
+        <file>icons/color_rainbow.png</file>
+        <file>icons/color_red_blue.png</file>
+        <file>icons/media-record.png</file>
+        <file>icons/3d.png</file>
+        <file>icons/applications-system.png</file>
+        <file>icons/transmit-folder.png</file>
+        <file>icons/add.png</file>
+        <file>icons/remove.png</file>
+        <file>icons/cross-hair.png</file>
+        <file>icons/program-icon.ico</file>
+        <file>icons/warning.png</file>
+        <file>icons/preferences-system.png</file>
+        <file>icons/2d.png</file>
+    </qresource>
+</RCC>

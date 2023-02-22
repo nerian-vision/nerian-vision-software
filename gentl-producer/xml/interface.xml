@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RegisterDescription
+    ModelName="NerianGentTLInterface"
+    VendorName="Nerian_Vision_GmbH"
+    ToolTip="TL Interface"
+    StandardNameSpace="None"
+    SchemaMajorVersion="1"
+    SchemaMinorVersion="1"
+    SchemaSubMinorVersion="0"
+    MajorVersion="$major"
+    MinorVersion="$minor"
+    SubMinorVersion="$subminor"
+    ProductGuid="87b91f8e-906c-4077-b77f-d134107956de"
+    VersionGuid="$guid"
+    xmlns="http://www.genicam.org/GenApi/Version_1_1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.genicam.org/GenApi/Version_1_1 http://www.genicam.org/GenApi/GenApiSchema_Version_1_1.xsd">
+
+    <!-- Categories -->
+
+    <Category Name="Root" NameSpace="Standard">
+        <pFeature>InterfaceInformation</pFeature>
+        <pFeature>DeviceEnumeration</pFeature>
+    </Category>
+
+    <Category Name="InterfaceInformation" NameSpace="Standard">
+        <pFeature>InterfaceID</pFeature>
+        <pFeature>InterfaceType</pFeature>
+        <pFeature>InterfaceTLVersionMajor</pFeature>
+        <pFeature>InterfaceTLVersionMinor</pFeature>
+    </Category>
+
+    <Category Name="DeviceEnumeration" NameSpace="Standard">
+        <pFeature>DeviceUpdateList</pFeature>
+        <pFeature>DeviceSelector</pFeature>
+        <pFeature>DeviceID</pFeature>
+        <pFeature>DeviceVendorName</pFeature>
+        <pFeature>DeviceModelName</pFeature>
+        <pFeature>DeviceAccessStatus</pFeature>
+        <pFeature>DeviceTLVersionMajor</pFeature>
+        <pFeature>DeviceTLVersionMinor</pFeature>
+    </Category>
+
+    <!-- Interface information -->
+
+    <StringReg Name="InterfaceID" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <Address>0xE0000000</Address>
+        <Length>128</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>InterfacePort</pPort>
+    </StringReg>
+
+    <Enumeration Name="InterfaceType" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <EnumEntry Name="Ethernet" NameSpace="Standard">
+            <Value>0</Value>
+        </EnumEntry>
+        <Value>0</Value>
+    </Enumeration>
+
+    <Integer Name="InterfaceTLVersionMajor" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <Value>1</Value>
+        <Min>1</Min>
+        <Max>1</Max>
+    </Integer>
+
+    <Integer Name="InterfaceTLVersionMinor" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <Value>5</Value>
+        <Min>5</Min>
+        <Max>5</Max>
+    </Integer>
+
+    <!-- Device enumeration -->
+
+    <Command Name="DeviceUpdateList" NameSpace="Standard">
+        <!-- This command has no effect -->
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>WO</ImposedAccessMode>
+        <Value>0</Value>
+        <CommandValue>0</CommandValue>
+    </Command>
+
+    <Integer Name="DeviceSelector" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>DeviceSelectorReg</pValue>
+        <Min>0</Min>
+        <pMax>DeviceSelectorMaxReg</pMax>
+
+        <pSelected>DeviceID</pSelected>
+        <pSelected>DeviceVendorName</pSelected>
+        <pSelected>DeviceModelName</pSelected>
+        <pSelected>DeviceAccessStatus</pSelected>
+        <pSelected>DeviceTLVersionMajor</pSelected>
+        <pSelected>DeviceTLVersionMinor</pSelected>
+    </Integer>
+    <IntReg Name="DeviceSelectorReg" NameSpace="Custom">
+        <Address>0xD0000000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>InterfacePort</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="DeviceSelectorMaxReg" NameSpace="Custom">
+        <Address>0xE03E8000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>InterfacePort</pPort>
+        <Sign>Signed</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <StringReg Name="DeviceID" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <Address>0xC0000000</Address>
+        <Length>128</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>InterfacePort</pPort>
+    </StringReg>
+
+    <StringReg Name="DeviceVendorName" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <Address>0xC0001000</Address>
+        <Length>128</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>InterfacePort</pPort>
+    </StringReg>
+
+    <StringReg Name="DeviceModelName" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <Address>0xC0002000</Address>
+        <Length>128</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>InterfacePort</pPort>
+    </StringReg>
+
+    <Enumeration Name="DeviceAccessStatus" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <EnumEntry Name="ReadWrite">
+            <Value>1</Value>
+        </EnumEntry>
+        <EnumEntry Name="Busy">
+            <Value>4</Value>
+        </EnumEntry>
+        <pValue>DeviceAccessStatusReg</pValue>
+    </Enumeration>
+
+    <IntReg Name="DeviceAccessStatusReg" NameSpace="Custom">
+        <Address>0xC0005000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>InterfacePort</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="DeviceTLVersionMajor" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <Value>1</Value>
+        <Min>1</Min>
+        <Max>1</Max>
+    </Integer>
+
+    <Integer Name="DeviceTLVersionMinor" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <Value>5</Value>
+        <Min>5</Min>
+        <Max>5</Max>
+    </Integer>
+
+    <Port Name="InterfacePort" NameSpace="Standard">
+    </Port>
+</RegisterDescription>
+

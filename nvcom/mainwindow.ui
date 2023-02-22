@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1280</width>
+    <height>567</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>NVCom</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="resources.qrc">
+    <normaloff>:/nvcom/icons/program-icon.ico</normaloff>:/nvcom/icons/program-icon.ico</iconset>
+  </property>
+  <widget class="QWidget" name="clientWidget">
+   <property name="layoutDirection">
+    <enum>Qt::LeftToRight</enum>
+   </property>
+   <property name="autoFillBackground">
+    <bool>false</bool>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1280</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuCapture">
+    <property name="title">
+     <string>Capture</string>
+    </property>
+    <addaction name="actionCapture_single_frame"/>
+    <addaction name="actionCapture_sequence"/>
+   </widget>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionConnect"/>
+    <addaction name="actionSettings"/>
+    <addaction name="actionSend_images"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>View</string>
+    </property>
+    <addaction name="action2D_View"/>
+    <addaction name="action3D_View"/>
+    <addaction name="separator"/>
+    <addaction name="actionZoom_in"/>
+    <addaction name="actionZoom_out"/>
+    <addaction name="separator"/>
+    <addaction name="actionDisplayCoord"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuCapture"/>
+   <addaction name="menuView"/>
+  </widget>
+  <widget class="QToolBar" name="toolBar">
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionConnect"/>
+   <addaction name="separator"/>
+   <addaction name="action2D_View"/>
+   <addaction name="action3D_View"/>
+   <addaction name="separator"/>
+   <addaction name="actionZoom_in"/>
+   <addaction name="actionZoom_out"/>
+   <addaction name="separator"/>
+   <addaction name="actionDisplayCoord"/>
+   <addaction name="separator"/>
+   <addaction name="actionSettings"/>
+   <addaction name="actionCapture_single_frame"/>
+   <addaction name="actionCapture_sequence"/>
+   <addaction name="separator"/>
+   <addaction name="actionSend_images"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar"/>
+  <action name="actionCapture_single_frame">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/camera.png</normaloff>:/nvcom/icons/camera.png</iconset>
+   </property>
+   <property name="text">
+    <string>Capture single frame</string>
+   </property>
+   <property name="toolTip">
+    <string>Capture single frame (RETURN)</string>
+   </property>
+   <property name="shortcut">
+    <string>Return</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionCapture_sequence">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/media-record.png</normaloff>:/nvcom/icons/media-record.png</iconset>
+   </property>
+   <property name="text">
+    <string>Capture sequence</string>
+   </property>
+   <property name="toolTip">
+    <string>Capture sequence (SPACE)</string>
+   </property>
+   <property name="shortcut">
+    <string>Space</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="action3D_View">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/3d.png</normaloff>:/nvcom/icons/3d.png</iconset>
+   </property>
+   <property name="text">
+    <string>3D View</string>
+   </property>
+   <property name="toolTip">
+    <string>3D View</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionConnect">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/applications-system.png</normaloff>:/nvcom/icons/applications-system.png</iconset>
+   </property>
+   <property name="text">
+    <string>Establish connection</string>
+   </property>
+   <property name="iconText">
+    <string>Connect to device</string>
+   </property>
+   <property name="toolTip">
+    <string>Connect to device</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionSend_images">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/transmit-folder.png</normaloff>:/nvcom/icons/transmit-folder.png</iconset>
+   </property>
+   <property name="text">
+    <string>Send images from folder</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionZoom_in">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/add.png</normaloff>:/nvcom/icons/add.png</iconset>
+   </property>
+   <property name="text">
+    <string>Zoom in</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionZoom_out">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/remove.png</normaloff>:/nvcom/icons/remove.png</iconset>
+   </property>
+   <property name="text">
+    <string>Zoom out</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionDisplayCoord">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/cross-hair.png</normaloff>:/nvcom/icons/cross-hair.png</iconset>
+   </property>
+   <property name="text">
+    <string>Display depth at mouse cursor</string>
+   </property>
+   <property name="toolTip">
+    <string>Display 3D coordinate at mouse cursor</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="action2D_View">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/2d.png</normaloff>:/nvcom/icons/2d.png</iconset>
+   </property>
+   <property name="text">
+    <string>2D View</string>
+   </property>
+   <property name="toolTip">
+    <string>2D View</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+  <action name="actionSettings">
+   <property name="icon">
+    <iconset resource="resources.qrc">
+     <normaloff>:/nvcom/icons/preferences-system.png</normaloff>:/nvcom/icons/preferences-system.png</iconset>
+   </property>
+   <property name="text">
+    <string>Capture and display settings</string>
+   </property>
+   <property name="toolTip">
+    <string>Capture and display settings</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>false</bool>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>
