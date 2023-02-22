@@ -14,6 +14,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 if(NOT CMAKE_SUBMODULE)
     if(NOT WIN32)
+        message("#### BBBBBB")
         include(CheckCXXCompilerFlag)
 
         # Some useful flags
@@ -34,6 +35,7 @@ if(NOT CMAKE_SUBMODULE)
             message(WARNING "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
         endif()
     else()
+        message("#### AAAAAA")
         # Visual studio settings
         foreach(flag
                 CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO
