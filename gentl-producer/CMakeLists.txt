@@ -12,13 +12,7 @@ enable_testing()
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-string(REGEX REPLACE "[^/\\]+[/\\]*$" "common.cmake" COMMON_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-message(ERROR ${COMMON_PATH})
-if(EXISTS ${COMMON_PATH})
-    # Compiling with global build system
-    include(${COMMON_PATH})
-    gentl_settings()
-else()
+if(NOT CMAKE_SUBMODULE)
     if(NOT WIN32)
         include(CheckCXXCompilerFlag)
 
