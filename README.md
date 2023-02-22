@@ -1,4 +1,4 @@
-Vision Software Release [VERSION]
+Vision Software Release
 ==============================
 
 Overview
