@@ -62,19 +62,20 @@ If Open3D is not installed in the default search paths, the internal
 3D point cloud display mode in NVCom is disabled.
 For Open3D >=0.15 you must include the following options in its CMake
 config to build a working library (either shared or static) for NVCom:
- -DGLIBCXX_USE_CXX11_ABI=ON -DBUILD_GUI=OFF
- -DBUILD_WEBRTC=OFF -DENABLE_HEADLESS_RENDERING=ON
+
+    -DGLIBCXX_USE_CXX11_ABI=ON -DBUILD_GUI=OFF
+    -DBUILD_WEBRTC=OFF -DENABLE_HEADLESS_RENDERING=ON
 
 Contact
 -------
 
 For further information please contact Nerian Vision GmbH at:
 
-Email: service (at) nerian.com
+Email: service (at) nerian.com  
 Website: http://nerian.com
 
-Address:
-Nerian Vision GmbH
-Zettachring 2
-70567 Stuttgart
+Address:  
+Nerian Vision GmbH  
+Zettachring 2  
+70567 Stuttgart  
 Germany
