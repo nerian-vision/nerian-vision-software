@@ -1,1 +1,7 @@
+*.orig
+*.bak
 build
+lib
+bin
+
+libvisiontransfer/doc

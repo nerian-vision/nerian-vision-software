@@ -72,7 +72,7 @@ Contact
 For further information please contact Nerian Vision GmbH at:
 
 Email: service (at) nerian.com  
-Website: http://nerian.com
+Website: https://nerian.com
 
 Address:  
 Nerian Vision GmbH  

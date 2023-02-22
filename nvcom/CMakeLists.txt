@@ -19,10 +19,11 @@ set(HELPER_FILES
 # Also add the helpers directory to the include path
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/helpers)
 
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../common.cmake)
+string(REGEX REPLACE "[^/\\]+[/\\]*$" "common.cmake" COMMON_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+if(EXISTS ${COMMON_PATH})
     # Compiling with global build system
-    include(${CMAKE_CURRENT_SOURCE_DIR}/../common.cmake)
-    nvcom_settings(${HELPER_FILES})
+    include(${COMMON_PATH})
+    nvcom_settings()
 else()
     if(NOT WIN32 OR MINGW)
         include(CheckCXXCompilerFlag)
