@@ -1,6 +1,8 @@
 *.orig
 *.bak
 .\#*
+DEADJOE
+.*.sw?
 build
 lib
 bin
