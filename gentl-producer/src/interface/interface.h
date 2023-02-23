@@ -23,6 +23,7 @@
 #include <genicam/gentl.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <visiontransfer/deviceenumeration.h>
 
 namespace GenTL {
@@ -61,10 +62,13 @@ private:
     Port port;
     std::vector<visiontransfer::DeviceInfo> deviceList;
     std::vector<std::string> deviceSuffixes;
+    std::map<std::string, std::string> deviceIDToModelName;
 
     bool parseDeviceUrl(const char* sDeviceID, bool& udp, std::string& host,
         std::string& stream);
     bool checkDeviceInUse(const char* sDeviceID);
+
+    void updateDeviceMetadataCache();
 };
 
 }

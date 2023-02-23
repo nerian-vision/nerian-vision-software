@@ -17,33 +17,80 @@
 #include "misc/xmlfiles.h"
 #include "misc/portimplementation.h"
 
+#include "event/eventqueue.h" // for FeatureStringType
+
 #include <genicam/gentl.h>
 #include <cstring>
 #include <algorithm>
 
 #include <fstream>
+#include <iostream>
+
 using namespace std;
 
 namespace GenTL {
 
 using namespace std::placeholders;
 
-Port::Port(const char* id, const char* fileName, const char* portName, const char* module,
+#ifdef ENABLE_DEBUGGING
+#ifdef _WIN32
+    std::fstream debugStreamPort("C:\\debug\\gentl-debug-port-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
+#else
+    std::ostream& debugStreamPort = std::cout;
+#endif
+#define DEBUG_PORT(x) debugStreamPort << x << std::endl;
+#else
+#define DEBUG_PORT(x) ;
+#endif
+
+Port::Port(const char* id, const char* fileName, const char* portName, const char* moduleName,
         PortImplementation* implementation)
-    :Handle(TYPE_PORT), id(id), fileName(fileName), portName(portName), module(module),
-        selector(0), implementation(implementation) {
+    :Handle(TYPE_PORT), id(id), fileName(fileName), portName(portName), moduleName(moduleName),
+        selector(0), implementation(implementation), featureInvalidateEvent(nullptr) {
+}
+Port::~Port() {
+    freeFeatureInvalidateEvent();
 }
 
+Event* Port::allocFeatureInvalidateEvent() {
+    if(featureInvalidateEvent != nullptr) {
+        return nullptr;
+    } else {
+        featureInvalidateEvent = new Event(EVENT_FEATURE_INVALIDATE, sizeof(EventQueue::FeatureStringType), nullptr);
+        return featureInvalidateEvent;
+    }
+}
+
+void Port::freeFeatureInvalidateEvent() {
+    if(featureInvalidateEvent != nullptr) {
+        delete featureInvalidateEvent;
+        featureInvalidateEvent = nullptr;
+    }
+}
+
+void Port::emitFeatureInvalidateEvent(const std::string& featureName) {
+    if(featureInvalidateEvent != nullptr) {
+        EventQueue::FeatureStringType buf; //MAX_LEN_FEATURE_NAME
+        int len = featureName.length();
+        if (len >= sizeof(buf)) len = sizeof(buf)-1;
+        std::strncpy(buf.str, featureName.c_str(), len+1);
+        buf.str[sizeof(buf)-1] = 0;
+        DEBUG_PORT("Emitting (to queue) FEATURE_INVALIDATE for " << featureName << " -> DATA_ID=\"" << buf.str << "\"");
+        featureInvalidateEvent->emitEvent(buf);
+    }
+}
+
+
 GC_ERROR Port::setSelector(int value) {
-	if(implementation != nullptr) {
-		GC_ERROR err = implementation->writeSelector(value);
-		if(err == GC_ERR_SUCCESS) {
-			selector = value;
-		}
-		return err;
-	} else {
-		return GC_ERR_INVALID_ADDRESS;
-	}
+    if(implementation != nullptr) {
+        GC_ERROR err = implementation->writeSelector(value);
+        if(err == GC_ERR_SUCCESS) {
+            selector = value;
+        }
+        return err;
+    } else {
+        return GC_ERR_INVALID_ADDRESS;
+    }
 }
 
 GC_ERROR Port::getPortInfo(PORT_INFO_CMD iInfoCmd, INFO_DATATYPE* piType,
@@ -63,7 +110,7 @@ GC_ERROR Port::getPortInfo(PORT_INFO_CMD iInfoCmd, INFO_DATATYPE* piType,
             info.setString("Ethernet");
             break;
         case PORT_INFO_MODULE:
-            info.setString(module);
+            info.setString(moduleName);
             break;
         case PORT_INFO_LITTLE_ENDIAN:
             info.setBool(true);
@@ -178,7 +225,6 @@ GC_ERROR Port::getPortURLInfo(uint32_t iURLIndex, URL_INFO_CMD iInfoCmd,
     return info.query();
 }
 
-static fstream strm("c:/debug/temp2.txt", ios::out);
 GC_ERROR Port::readPort(uint64_t iAddress, void* pBuffer, size_t* piSize) {
     if(pBuffer == nullptr || piSize == nullptr) {
         return GC_ERR_INVALID_PARAMETER;
@@ -190,10 +236,6 @@ GC_ERROR Port::readPort(uint64_t iAddress, void* pBuffer, size_t* piSize) {
         return readFromFeature(FEATURE_ADDRESS, iAddress, pBuffer, piSize,
             std::bind(&PortImplementation::readFeature, implementation, _1, _2, _3));
     } else if(iAddress == SELECTOR_ADDRESS) {
-		
-		
-		strm << id << ": " << selector << endl;
-		
         InfoQuery info(nullptr, pBuffer, piSize);
         info.setUInt(selector);
         return info.query();
@@ -236,6 +278,28 @@ GC_ERROR Port::readFromFeature(uint64_t baseAddress, uint64_t iAddress, void* pB
     }
 }
 
+GC_ERROR Port::writeToFeature(uint64_t baseAddress, uint64_t iAddress, const void* pBuffer, size_t* piSize,
+        std::function<GC_ERROR(int32_t command, const void* pBuffer, size_t* piSize)> writeFunc) {
+    uint32_t featureId = static_cast<uint32_t>((iAddress - baseAddress) / 0x1000);
+    uint32_t offset = static_cast<uint32_t>(iAddress % 0x1000);
+    size_t writeSize = *piSize;
+
+    if(implementation != nullptr) {
+        GC_ERROR err;
+        if(offset == 0) {
+            // Relay to implementation
+            err = writeFunc(featureId, pBuffer, &writeSize);
+            return err; //return GC_ERR_SUCCESS;
+        } else {
+            // Partial write (would this even be needed for our purely register-like features?)
+            DEBUG_PORT("Partial feature write not implemented (port.c)");
+            return GC_ERR_INVALID_ADDRESS;
+        }
+    } else {
+        return GC_ERR_INVALID_ADDRESS;
+    }
+}
+
 GC_ERROR Port::readXmlFromPort(uint64_t iAddress, void* pBuffer, size_t* piSize) {
     int offset = static_cast<int>(iAddress - FILE_ADDRESS);
     int fileSize = static_cast<int>(XmlFiles::getFileContent(fileName).length());
@@ -258,9 +322,12 @@ GC_ERROR Port::writePort(uint64_t iAddress, const void* pBuffer, size_t* piSize)
             return GC_ERR_INVALID_PARAMETER;
         } else {
             unsigned int newSelector = *reinterpret_cast<const unsigned int*>(pBuffer);
-			strm << id << ": => " << selector << endl;
+            DEBUG_PORT("Write selector, ID " << id << ": " << newSelector);
             return setSelector(newSelector);
         }
+    } else if(iAddress >= CHILD_FEATURE_ADDRESS && iAddress < SELECTOR_ADDRESS) {
+        return writeToFeature(CHILD_FEATURE_ADDRESS, iAddress, pBuffer, piSize,
+            std::bind(&PortImplementation::writeChildFeature, implementation, selector, _1, _2, _3));
     } else {
         return GC_ERR_INVALID_ADDRESS;
     }

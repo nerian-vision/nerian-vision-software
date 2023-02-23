@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<hdevelop file_version="1.2" halcon_version="21.11.0.0">
+<hdevelop file_version="1.2" halcon_version="22.11.0.0">
 <procedure name="main">
 <interface/>
 <body>
@@ -87,24 +87,29 @@
 <l>    NumImages := 0</l>
 <l>    HasDisparity := false</l>
 <l>    count_obj(Images, NumImageAndDispChannels)</l>
-<c>    * Number of images is minus the X, Y, Z 3D maps</c>
-<l>    NumImageAndDispChannels := NumImageAndDispChannels - 3</l>
 <l>    for i := 1 to NumImageAndDispChannels by 1</l>
 <l>        select_obj(Images, Img, i)</l>
 <l>        get_image_type(Img, ImgType)</l>
 <c>        * Assign the images to the variables used below</c>
+<c>        * (The X, Y, Z components are of type 'real' and skipped here)</c>
 <l>        if (ImgType = 'uint2')</l>
 <l>            HasDisparity := true</l>
 <l>            DisparityMap := Img</l>
-<l>        else</l>
-<l>            if (NumImages = 0)</l>
-<l>                LeftImage := Img</l>
-<l>            else</l>
-<l>                RightImage := Img</l>
+<l>        elseif (ImgType = 'byte')</l>
+<l>            if (NumImages &lt; 2)</l>
+<c>                * (Only two images supported in this example)</c>
+<l>                if (NumImages = 0)</l>
+<l>                    LeftImage := Img</l>
+<l>                else</l>
+<l>                    RightImage := Img</l>
+<l>                endif</l>
+<l>                NumImages := NumImages + 1</l>
 <l>            endif</l>
-<l>            NumImages := NumImages + 1</l>
 <l>        endif</l>
 <l>    endfor</l>
+<c>    * Extra trailing images (if enabled in the device settings)</c>
+<c>    * are not handled in this example; they are not counted here</c>
+<l>    NumImageAndDispChannels := NumImages + HasDisparity</l>
 <c></c>
 <c>    * Left image (if present)</c>
 <l>    if(NumImages &gt;= 1)</l>

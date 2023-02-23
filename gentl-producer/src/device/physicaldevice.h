@@ -40,12 +40,22 @@ class Event;
  */
 class PhysicalDevice {
 public:
+
+    static const int NUM_LOGICAL_DEVICES = 6;
+
     enum LogicalDeviceIDs {
         ID_MULTIPART,
         ID_IMAGE_LEFT,
         ID_IMAGE_RIGHT,
+        ID_IMAGE_THIRD_COLOR,
         ID_DISPARITY,
         ID_POINTCLOUD
+    };
+
+    enum IntensitySource {
+        INTENSITY_SOURCE_AUTO,
+        INTENSITY_SOURCE_LEFT,
+        INTENSITY_SOURCE_MIDDLE
     };
 
     PhysicalDevice(Interface* interface);
@@ -76,6 +86,31 @@ public:
 
     void sendSoftwareTriggerRequest();
 
+    visiontransfer::param::Parameter getParameter(const std::string& uid);
+
+    bool hasParameter(const std::string& uid) {
+        if (!deviceParameters) throw std::runtime_error("Attempted device parameter access without an active DeviceParameters connection");
+        return deviceParameters->hasParameter(uid);
+    }
+
+    template<typename T>
+    void setParameter(const std::string& uid, T value) {
+        if (!deviceParameters) throw std::runtime_error("Attempted device parameter access without an active DeviceParameters connection");
+        deviceParameters->setParameter(uid, value);
+    }
+
+    // Get / set whether 3D reconstruction is active and Range component is available
+    inline bool getComponentEnabledRange() const {
+        return componentEnabledRange;
+    }
+    inline void setComponentEnabledRange(bool enabled) {
+        componentEnabledRange = enabled;
+    }
+
+    // Get / set the preferred source camera for Intensity channel of new multipart streams (for three-camera devices)
+    IntensitySource getIntensitySource() const { return intensitySource; }
+    void setIntensitySource(IntensitySource src);
+
 private:
     Interface* interface; // Associated system object
     std::unique_ptr<visiontransfer::ImageTransfer> imageTf; // Object for receiving image data
@@ -89,7 +124,7 @@ private:
     std::mutex receiveMutex; // Mutex for the image reception
 
     visiontransfer::ImageSet latestMetaData; // Image set object with meta data for the latest frame
-    std::unique_ptr<LogicalDevice> logicalDevices[5]; // The data streams associated with this device
+    std::unique_ptr<LogicalDevice> logicalDevices[NUM_LOGICAL_DEVICES]; // The data streams associated with this device
 
     std::condition_variable_any initializedCondition; // Condition for signaling completed initialization
     Event* errorEvent; // Event object for reporting error events
@@ -97,6 +132,9 @@ private:
 
     double disparityOffset;
     unsigned short maxDisparity;
+
+    bool componentEnabledRange;
+    IntensitySource intensitySource;
 
     void deviceReceiveThread();
     void copyRawDataToBuffer(const visiontransfer::ImageSet& receivedSet);
@@ -107,6 +145,9 @@ private:
     void setTestData(visiontransfer::ImageSet& receivedSet);
     int copyImageToBufferMemory(const visiontransfer::ImageSet& receivedSet, int id, unsigned char* dst, int dstSize);
     int copy3dDataToBufferMemory(const visiontransfer::ImageSet& receivedSet, unsigned char* dst, int dstSize);
+
+    void remoteParameterChangeCallback(const std::string& uid);
+    void invalidateFeatureFromAsyncEvent(const std::string& featureName);
 };
 
 }

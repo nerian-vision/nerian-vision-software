@@ -22,7 +22,7 @@ namespace GenTL {
 
 /*
  * Implements the read and write functions of a port. This abstract class is
- * neccessary to keep virtual inheritence out of the handle types
+ * necessary to keep virtual inheritance out of the handle types
  */
 class PortImplementation {
 public:
@@ -30,6 +30,8 @@ public:
     virtual GC_ERROR writeSelector(unsigned int selector) = 0;
     virtual GC_ERROR readChildFeature(unsigned int selector, unsigned int featureId,
         void* pBuffer, size_t* piSize) = 0;
+    virtual GC_ERROR writeChildFeature(unsigned int selector, unsigned int featureId,
+        const void* pBuffer, size_t* piSize) = 0;
 };
 
 }

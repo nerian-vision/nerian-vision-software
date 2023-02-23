@@ -48,4 +48,10 @@ GC_ERROR SystemPortImpl::readChildFeature(unsigned int selector, unsigned int fe
     return system->getInterfaceInfo(id, featureId, &type, pBuffer, piSize);
 }
 
+GC_ERROR SystemPortImpl::writeChildFeature(unsigned int selector, unsigned int featureId,
+        const void* pBuffer, size_t* piSize) {
+    return GC_ERR_INVALID_ADDRESS; // Not supported
+}
+
+
 }

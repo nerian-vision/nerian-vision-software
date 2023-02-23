@@ -27,6 +27,7 @@ namespace GenTL {
 
 class DataStream;
 class PhysicalDevice;
+class Port;
 
 /*
  * Represents an EVENT_HANDLE and encapsulates all event related
@@ -67,7 +68,7 @@ private:
     std::mutex mutex;
     std::condition_variable_any condition;
 
-    static GC_ERROR allocEventObject(PhysicalDevice* device, DataStream* stream,
+    static GC_ERROR allocEventObject(PhysicalDevice* device, DataStream* stream, Port* port,
         EVENT_TYPE iEventID, Event** event);
 };
 

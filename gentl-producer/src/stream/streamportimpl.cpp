@@ -35,4 +35,9 @@ GC_ERROR StreamPortImpl::readChildFeature(unsigned int selector, unsigned int fe
     return GC_ERR_INVALID_ADDRESS; // Not supported
 }
 
+GC_ERROR StreamPortImpl::writeChildFeature(unsigned int selector, unsigned int featureId,
+        const void* pBuffer, size_t* piSize) {
+    return GC_ERR_INVALID_ADDRESS; // Not supported
+}
+
 }

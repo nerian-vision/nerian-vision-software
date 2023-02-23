@@ -16,13 +16,17 @@
 #include "device/logicaldevice.h"
 #include "interface/interface.h"
 #include "stream/buffer.h"
+#include "stream/buffermapping.h"
 #include "misc/testdata.h"
 #include "event/event.h"
+#include "misc/common.h"
 
 #include <cmath>
 #include <cstdlib>
+#include <algorithm>
 
-#include <iostream> // DEBUG
+#include <iostream>
+#include <fstream>
 
 // SIMD Headers
 #ifdef __SSE2__
@@ -33,17 +37,32 @@ using namespace visiontransfer;
 
 namespace GenTL {
 
+using namespace std::placeholders;
+
+#ifdef ENABLE_DEBUGGING
+#ifdef _WIN32
+    std::fstream debugStreamPhys("C:\\debug\\gentl-debug-phys-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
+#else
+    std::ostream& debugStreamPhys = std::cout;
+#endif
+#define DEBUG_PHYS(x) debugStreamPhys << x << std::endl;
+#else
+#define DEBUG_PHYS(x) ;
+#endif
 
 PhysicalDevice::PhysicalDevice(Interface* interface): interface(interface), udp(true), threadRunning(false),
-    errorEvent(nullptr), disparityOffset(0.0), maxDisparity(0xFFF) {
+    errorEvent(nullptr), disparityOffset(0.0), maxDisparity(0xFFF), componentEnabledRange(true),
+    intensitySource(INTENSITY_SOURCE_AUTO) {
 
     const char* offsetEnv = getenv("NERIAN_DISPARITY_OFFSET");
     if(offsetEnv != nullptr) {
         disparityOffset = atof(offsetEnv);
     }
+    DEBUG_PHYS("Created a PhysicalDevice");
 }
 
 PhysicalDevice::~PhysicalDevice() {
+    DEBUG_PHYS("Destroying a PhysicalDevice");
     close();
     freeErrorEvent();
 }
@@ -76,8 +95,9 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         imageTf.reset(new ImageTransfer(host, "7681",
             udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
         // Initialize parameter server connection
+        DEBUG_PHYS("Creating DeviceParameters");
         deviceParameters.reset(new DeviceParameters(host));
-        std::cout << "Connected ImageTransfer and DeviceParameters" << std::endl;
+        deviceParameters->setParameterUpdateCallback(std::bind(&PhysicalDevice::remoteParameterChangeCallback, this, _1));
 #endif
 
         // Initialize data streams
@@ -85,6 +105,7 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         logicalDevices[ID_MULTIPART].reset(new LogicalDevice(this, baseURL + "/", DataStream::MULTIPART_STREAM));
         logicalDevices[ID_IMAGE_LEFT].reset(new LogicalDevice(this, baseURL + "/left", DataStream::IMAGE_LEFT_STREAM));
         logicalDevices[ID_IMAGE_RIGHT].reset(new LogicalDevice(this, baseURL + "/right", DataStream::IMAGE_RIGHT_STREAM));
+        logicalDevices[ID_IMAGE_THIRD_COLOR].reset(new LogicalDevice(this, baseURL + "/third_color", DataStream::IMAGE_THIRD_COLOR_STREAM));
         logicalDevices[ID_DISPARITY].reset(new LogicalDevice(this, baseURL + "/disparity", DataStream::DISPARITY_STREAM));
         logicalDevices[ID_POINTCLOUD].reset(new LogicalDevice(this, baseURL + "/pointcloud", DataStream::POINTCLOUD_STREAM));
 
@@ -128,6 +149,7 @@ void PhysicalDevice::setTestData(ImageSet& receivedSet) {
     receivedSet.setIndexOf(ImageSet::IMAGE_LEFT, 0);
     receivedSet.setIndexOf(ImageSet::IMAGE_DISPARITY, 1);
     receivedSet.setIndexOf(ImageSet::IMAGE_RIGHT, -1);
+    receivedSet.setIndexOf(ImageSet::IMAGE_COLOR, -1);
     receivedSet.setWidth(640);
     receivedSet.setHeight(480);
     receivedSet.setRowStride(0, 640);
@@ -186,7 +208,9 @@ void PhysicalDevice::deviceReceiveThread() {
 
                 // Copy raw and 3D data to buffer
                 copyRawDataToBuffer(receivedSet);
-                copy3dDataToBuffer(receivedSet);
+                if (getComponentEnabledRange() && receivedSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
+                    copy3dDataToBuffer(receivedSet);
+                }
                 copyMultipartDataToBuffer(receivedSet);
 
                 if(!initialized) {
@@ -213,6 +237,8 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
             id = ID_IMAGE_LEFT;
         } else if(i == receivedSet.getIndexOf(ImageSet::IMAGE_DISPARITY)) {
             id = ID_DISPARITY;
+        } else if(i == receivedSet.getIndexOf(ImageSet::IMAGE_COLOR)) {
+            id = ID_IMAGE_THIRD_COLOR;
         } else {
             id = ID_IMAGE_RIGHT;
         }
@@ -311,36 +337,54 @@ int PhysicalDevice::copy3dDataToBufferMemory(const ImageSet& receivedSet, unsign
 }
 
 void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
-    Buffer* buffer = logicalDevices[ID_MULTIPART]->getStream()->requestBuffer();
+    auto stream = logicalDevices[ID_MULTIPART]->getStream();
+    Buffer* buffer = stream->requestBuffer();
     if(buffer == nullptr) {
         // No buffer available
         return;
     }
+    auto& bufferMapping = stream->getBufferMapping();
+    if (bufferMapping.getNumBufferParts() == 0) {
+        // Metadata was not available, no buffer layout planned yet
+        return;
+    }
 
     buffer->setIncomplete(false);
-    int offset = 0;
     int copiedBytes = -1;
 
-    // Concatenate image channels
-    for (int idx=0; idx<receivedSet.getNumberOfImages(); ++idx) {
-        copiedBytes = copyImageToBufferMemory(receivedSet, idx, &buffer->getData()[offset],
-            static_cast<int>(buffer->getSize()) - offset);
-        if (copiedBytes < 0) {
-            buffer->setIncomplete(true);
-            break;
+    for (int i=0; i<bufferMapping.getNumBufferParts(); ++i) {
+        auto func = bufferMapping.getBufferPartImageSetFunction(i);
+        auto offset = bufferMapping.getBufferPartOffset(i);
+        auto sz = bufferMapping.getBufferPartSize(i);
+        if (func != ImageSet::IMAGE_UNDEFINED) { // not the point cloud channel
+            auto idx = receivedSet.getIndexOf(func);
+            if (idx != -1) {
+                copiedBytes = copyImageToBufferMemory(receivedSet, idx, &buffer->getData()[offset],
+                    static_cast<int>(buffer->getSize()) - offset);
+                if (copiedBytes < 0) {
+                    DEBUG_PHYS("Buffer incomplete at ImageSet index " << idx);
+                    buffer->setIncomplete(true);
+                    break;
+                }
+            } else {
+                // Channel disabled since stream was initialized; deliver zeroed-out frame
+                std::memset(&buffer->getData()[offset], 0, std::min(sz, static_cast<int>(buffer->getSize()) - offset));
+            }
+        } else {
+            // Special case: point cloud
+            if (getComponentEnabledRange() && receivedSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
+                copiedBytes = copy3dDataToBufferMemory(receivedSet, &buffer->getData()[offset],
+                    static_cast<int>(buffer->getSize()) - offset);
+                if(copiedBytes < 0) {
+                    DEBUG_PHYS("Buffer incomplete at point cloud");
+                    buffer->setIncomplete(true);
+                }
+            } else {
+                // Disparity or enabled flag disabled since stream was initialized; deliver zeroed-out buffer
+                std::memset(&buffer->getData()[offset], 0, std::min(sz, static_cast<int>(buffer->getSize()) - offset));
+            }
         }
-        offset += copiedBytes;
     }
-
-    // Append 3D data only if everything above succeeded
-    if (!buffer->isIncomplete()) {
-        copiedBytes = copy3dDataToBufferMemory(receivedSet, &buffer->getData()[offset],
-            static_cast<int>(buffer->getSize() - offset));
-        if(copiedBytes < 0) {
-            buffer->setIncomplete(true);
-        }
-    }
-
     buffer->setMetaData(receivedSet);
     logicalDevices[ID_MULTIPART]->getStream()->queueOutputBuffer();
 
@@ -413,7 +457,7 @@ void PhysicalDevice::copyPointsSSE(float* dst, float* src, int numPoints) {
 #endif
 
 bool PhysicalDevice::inUse() {
-    for(int i=0; i<5; i++) {
+    for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
         if(logicalDevices[i]->isOpen()) {
             return true;
         }
@@ -421,6 +465,7 @@ bool PhysicalDevice::inUse() {
 
     return false;
 }
+
 
 int PhysicalDevice::logicalIdToIndex(const char* id) {
     std::string idStr(id);
@@ -430,6 +475,8 @@ int PhysicalDevice::logicalIdToIndex(const char* id) {
         return ID_IMAGE_LEFT;
     } else if(idStr == "right") {
         return ID_IMAGE_RIGHT;
+    } else if(idStr == "third_color") {
+        return ID_IMAGE_THIRD_COLOR;
     } else if(idStr == "disparity") {
         return ID_DISPARITY;
     } else if(idStr == "pointcloud") {
@@ -446,6 +493,8 @@ std::string PhysicalDevice::logicalIndexToId(int index) {
         return "left";
     } else if(index == ID_IMAGE_RIGHT) {
         return "right";
+    } else if(index == ID_IMAGE_THIRD_COLOR) {
+        return "third_color";
     } else if(index == ID_DISPARITY) {
         return "disparity";
     } else if(index == ID_POINTCLOUD) {
@@ -459,11 +508,55 @@ void PhysicalDevice::sendSoftwareTriggerRequest() {
     if (deviceParameters) {
         try {
             deviceParameters->setParameter("trigger_now", 1);
-            std::cout << "[DEBUG] Sent software trigger request" << std::endl;
         } catch (visiontransfer::TransferException& e) {
-            std::cerr << "Failed to send software trigger request (possible connection loss); Exception: " << e.what() << std::endl;
+            DEBUG_PHYS("Failed to send software trigger request (possible connection loss); Exception: " << e.what());
         }
     }
 }
+
+visiontransfer::param::Parameter PhysicalDevice::getParameter(const std::string& uid) {
+    if (!deviceParameters) throw std::runtime_error("Attempted device parameter access without an active DeviceParameters connection");
+    return deviceParameters->getParameter(uid);
+}
+
+void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
+    DEBUG_PHYS("Got remote update for " << uid);
+    std::string featureName = "";
+    if (uid == "manual_exposure_time" || uid == "manual_exposure_time_color") {
+        invalidateFeatureFromAsyncEvent("ExposureTimeReg");
+        invalidateFeatureFromAsyncEvent("ExposureTimeMinReg");
+        invalidateFeatureFromAsyncEvent("ExposureTimeMaxReg");
+        invalidateFeatureFromAsyncEvent("ExposureTime");
+    } else if (uid == "manual_gain" || uid == "manual_gain_color") {
+        invalidateFeatureFromAsyncEvent("GainReg");
+        invalidateFeatureFromAsyncEvent("GainMinReg");
+        invalidateFeatureFromAsyncEvent("GainMaxReg");
+        invalidateFeatureFromAsyncEvent("Gain");
+    } else if (uid == "auto_exposure_mode") {
+        invalidateFeatureFromAsyncEvent("ExposureAutoReg");
+        invalidateFeatureFromAsyncEvent("GainAutoReg");
+        invalidateFeatureFromAsyncEvent("ExposureAuto");
+        invalidateFeatureFromAsyncEvent("GainAuto");
+    } else {
+        return; // Unmapped feature - ignore parameter change
+    }
+}
+
+void PhysicalDevice::invalidateFeatureFromAsyncEvent(const std::string& featureName) {
+    for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
+        if(logicalDevices[i]->isOpen()) {
+            DEBUG_PHYS(" Dispatching FEATURE_INVALIDATE (if registered) for " << featureName);
+            PORT_HANDLE myPort;
+            logicalDevices[i]->getPort(&myPort);
+            reinterpret_cast<Port*>(myPort)->emitFeatureInvalidateEvent(featureName);
+        }
+    }
+}
+
+void PhysicalDevice::setIntensitySource(PhysicalDevice::IntensitySource src) {
+    DEBUG_PHYS("Phys: set intensity source to " << (int) src);
+    intensitySource = src;
+}
+
 
 }

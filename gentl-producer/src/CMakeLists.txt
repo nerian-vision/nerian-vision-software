@@ -28,6 +28,8 @@ add_library(nerian-gentl SHARED
     device/physicaldevice.cpp
     device/deviceportimpl.h
     device/deviceportimpl.cpp
+    stream/buffermapping.h
+    stream/buffermapping.cpp
     stream/datastream.h
     stream/datastream.cpp
     stream/buffer.h

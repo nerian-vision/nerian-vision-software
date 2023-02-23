@@ -21,15 +21,32 @@
 #include "device/physicaldevice.h"
 #include <algorithm>
 
+#include <iostream> // DEBUG
+
 using namespace visiontransfer;
 
 namespace GenTL {
+
+#ifdef ENABLE_DEBUGGING
+#ifdef _WIN32
+    std::fstream debugStreamDataStream("C:\\debug\\gentl-debug-datastream-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
+#else
+    std::ostream& debugStreamDataStream = std::cout;
+#endif
+#define DEBUG_DSTREAM(x) debugStreamDataStream << x << std::endl;
+#else
+#define DEBUG_DSTREAM(x) ;
+#endif
 
 DataStream::DataStream(LogicalDevice * logicalDevice, StreamType streamType)
     :Handle(TYPE_STREAM), logicalDevice(logicalDevice), streamType(streamType), framesToAquire(0),
     numDelivered(0), numUnderrun(0), numCaptured(0), newBufferEvent(nullptr),
     errorEvent(nullptr), opened(false), portImpl(this),
     port("default", "datastream.xml", "StreamPort", "TLDataStream", &portImpl) {
+        // The selected intensity source (auto / left cam / middle cam), constant for this stream
+        //intensitySource = logicalDevice->getPhysicalDevice()->getIntensitySource();
+        //std::cout << "DEBUG - new data stream with intensity source selector " << intensitySource << std::endl;
+
 }
 
 DataStream::~DataStream() {
@@ -104,6 +121,7 @@ void DataStream::queueOutputBuffer() {
     eventData.pUserPointer = outputQueue.back()->getPrivateData();
 
     if(newBufferEvent != nullptr) {
+        DEBUG_DSTREAM("Emitting EVENT_NEW_BUFFER");
         newBufferEvent->emitEvent(eventData);
     }
 }
@@ -124,6 +142,9 @@ GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate,
     }
 
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
+
+    // Make sure consumers who opened the DataStream early get the effects of updated features
+    updateBufferMapping();
 
     std::shared_ptr<Buffer> buffer(new Buffer(this, pPrivate,
         reinterpret_cast<unsigned char*>(pBuffer), iSize));
@@ -147,10 +168,26 @@ GC_ERROR DataStream::allocAndAnnounceBuffer(size_t iBufferSize, void* pPrivate, 
     return GC_ERR_SUCCESS;
 }
 
+void DataStream::updateBufferMapping() {
+    const ImageSet& metaData = logicalDevice->getPhysicalDevice()->getLatestMetaData();
+    if(metaData.getWidth() == 0) {
+        DEBUG_DSTREAM("No valid metadata - skipping BufferMapping generation here");
+    } else {
+        DEBUG_DSTREAM("\033[34mGenerating BufferMapping\033[m");
+        PhysicalDevice::IntensitySource intensitySource = logicalDevice->getPhysicalDevice()->getIntensitySource();
+        bool rangeEnabled = logicalDevice->getPhysicalDevice()->getComponentEnabledRange();
+        bufferMapping = BufferMapping(metaData, (int) intensitySource, rangeEnabled);
+        //bufferMapping.dumpToStream(std::cout);
+    }
+}
+
 GC_ERROR DataStream::open() {
     if(opened) {
         return GC_ERR_RESOURCE_IN_USE;
     } else {
+        // Test of BufferMapping
+        updateBufferMapping();
+
         opened = true;
         framesToAquire = 0;
         numUnderrun = 0;
@@ -317,70 +354,62 @@ GC_ERROR DataStream::getBufferID(uint32_t iIndex, BUFFER_HANDLE* phBuffer) {
     return GC_ERR_SUCCESS;
 }
 
-size_t DataStream::getPayloadSizeForStreamIndex(int index) {
-    const ImageSet& metaData = logicalDevice->getPhysicalDevice()->getLatestMetaData();
-    if(metaData.getWidth() == 0) {
-        return 0;
+// Obtain payload size for specific single visiontransfer image type
+// (special case IMAGE_UNDEFINED for point cloud).
+// This is used for the single-part streams, the multipart stream uses
+// the bufferMapping directly and maps it in the specified order.
+size_t DataStream::getPayloadSizeForImageType(ImageSet::ImageType typ) {
+    for (int i=0; i<bufferMapping.getNumBufferParts(); ++i) {
+        if (typ == bufferMapping.getBufferPartImageSetFunction(i)) {
+            return bufferMapping.getBufferPartSize(i);
+        }
     }
-
-    if (index < 0) return 0;
-
-    int pixels = metaData.getWidth() * metaData.getHeight();
-    int bytesPixel[3] = {0};
-    int imageSize[3] = {0};
-    int disparitySize = 2 * pixels;
-    int pointCloudSize = pixels*3 * sizeof(float);
-
-    for (int i=0; i<metaData.getNumberOfImages(); ++i) {
-        bytesPixel[i] = metaData.getBytesPerPixel(i);
-        imageSize[i] = pixels * bytesPixel[i];
-    }
-
-    if (index == metaData.getNumberOfImages()) {
-        // point cloud stream at index one past the valid image set indices
-        return pointCloudSize;
-    } else if (index == metaData.getIndexOf(ImageSet::IMAGE_DISPARITY)) {
-        // disparity is 16 bit despite its format in the image set
-        return disparitySize;
-    } else {
-        // an image
-        return imageSize[index];
-    }
+    // Not present in the stream, cannot serve
+    return 0;
 }
 
 size_t DataStream::getPayloadSize() {
-    const ImageSet& metaData = logicalDevice->getPhysicalDevice()->getLatestMetaData();
     int totalSize = 0;
     switch(streamType) {
         case IMAGE_LEFT_STREAM:
-            totalSize = getPayloadSizeForStreamIndex(metaData.getIndexOf(ImageSet::IMAGE_LEFT));
+            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_LEFT);
             break;
         case IMAGE_RIGHT_STREAM:
-            totalSize = getPayloadSizeForStreamIndex(metaData.getIndexOf(ImageSet::IMAGE_RIGHT));
+            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_RIGHT);
+            break;
+        case IMAGE_THIRD_COLOR_STREAM:
+            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_COLOR);
             break;
         case DISPARITY_STREAM:
-            totalSize = getPayloadSizeForStreamIndex(metaData.getIndexOf(ImageSet::IMAGE_DISPARITY));
+            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_DISPARITY);
             break;
         case POINTCLOUD_STREAM:
-            totalSize = getPayloadSizeForStreamIndex(metaData.getNumberOfImages()); // one past the usual images
+            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_UNDEFINED); // special case: point cloud
             break;
         default:
-            // multipart: add all image/disparity sizes and finally the point cloud size
-            for (int i=0; i<metaData.getNumberOfImages() + 1; ++i) {
-                totalSize += getPayloadSizeForStreamIndex(i);
-            }
+            // multipart: add all image/disparity sizes and finally the point cloud size (if actually enabled)
+            totalSize = bufferMapping.getTotalBufferSize();
     }
     if (totalSize<=0) {
         // Fallback just in case: report size from first image
-        //std::cerr << "DataStream::getPayloadSize(): Fallback; queried but absent streamType " << (int) streamType << std::endl;
-        totalSize = getPayloadSizeForStreamIndex(0);
+        totalSize = getPayloadSizeForImageType(bufferMapping.getBufferPartImageSetFunction(0));
     }
+    DEBUG_DSTREAM("getPayloadSize() = " << totalSize);
     return totalSize;
 }
 
 uint64_t DataStream::getPixelFormatForStreamType(const ImageSet& metaData, StreamType streamType) {
-    if(streamType == IMAGE_LEFT_STREAM || streamType == IMAGE_RIGHT_STREAM) {
-        int index = metaData.getIndexOf((streamType == IMAGE_LEFT_STREAM) ? ImageSet::IMAGE_LEFT : ImageSet::IMAGE_RIGHT);
+    if(streamType == IMAGE_LEFT_STREAM || streamType == IMAGE_RIGHT_STREAM || streamType == IMAGE_THIRD_COLOR_STREAM) {
+        ImageSet::ImageType typ;
+        switch(streamType) {
+            case IMAGE_RIGHT_STREAM:
+                typ = ImageSet::IMAGE_RIGHT; break;
+            case IMAGE_THIRD_COLOR_STREAM:
+                typ = ImageSet::IMAGE_COLOR; break;
+            default:
+                typ = ImageSet::IMAGE_LEFT;
+        };
+        int index = metaData.getIndexOf(typ);
         if(index == -1) {
             // Fallback for failed ImageSet channel query
             return 0x01080001; //"Mono8"
@@ -397,7 +426,11 @@ uint64_t DataStream::getPixelFormatForStreamType(const ImageSet& metaData, Strea
     } else if(streamType == POINTCLOUD_STREAM) {
         return 0x026000C0; // "Coord3D_ABC32f"
     } else {
-        if(metaData.getPixelFormat(0) == ImageSet::FORMAT_8_BIT_RGB) {
+        // Multipart stream (shim; actual per-channel info obtained from buffer part info)
+        bool hasColorCamImage = metaData.hasImageType(ImageSet::IMAGE_COLOR);
+        PhysicalDevice::IntensitySource intensitySource = logicalDevice->getPhysicalDevice()->getIntensitySource();
+        bool colorImageSourceWanted = intensitySource != PhysicalDevice::INTENSITY_SOURCE_LEFT;
+        if(metaData.getPixelFormat(metaData.getIndexOf((hasColorCamImage && colorImageSourceWanted) ? ImageSet::IMAGE_COLOR : ImageSet::IMAGE_LEFT)) == ImageSet::FORMAT_8_BIT_RGB) {
             return 0x02180014; //"RGB8"
         } else {
             return 0x01080001; //"Mono8"
@@ -441,6 +474,7 @@ GC_ERROR DataStream::getBufferInfo(BUFFER_HANDLE hBuffer, BUFFER_INFO_CMD iInfoC
         info.setBool(false);
         break;
     case BUFFER_INFO_IS_INCOMPLETE:
+        DEBUG_DSTREAM("Buffer incomplete? " << buffer->isIncomplete());
         info.setBool(buffer->isIncomplete());
         break;
     case BUFFER_INFO_TLTYPE:
@@ -590,14 +624,11 @@ GC_ERROR DataStream::getInfo(STREAM_INFO_CMD iInfoCmd, INFO_DATATYPE* piType,
 }
 
 GC_ERROR DataStream::getNumBufferParts(BUFFER_HANDLE hBuffer, uint32_t *piNumParts) {
-    const ImageSet& metaData = logicalDevice->getPhysicalDevice()->getLatestMetaData();
     if(streamType == MULTIPART_STREAM) {
-        // Multipart stream: all active image channels plus point cloud
-        *piNumParts = (metaData.getNumberOfImages() + 1);
+        *piNumParts = bufferMapping.getNumBufferParts();
     } else {
         *piNumParts = 1;
     }
-
     return GC_ERR_SUCCESS;
 }
 
@@ -609,54 +640,34 @@ GC_ERROR DataStream::getBufferPartInfo(BUFFER_HANDLE hBuffer, uint32_t iPartInde
         return GC_ERR_NO_DATA;
     }
 
-    // Note: iPartIndex now reflects the indices configured in the ImageSets 1:1,
-    //  plus an extra one for the point cloud (at index = metaData.getNumberOfImages()).
-    int partIndex = static_cast<int>(iPartIndex); // for ImageSet index comparisons
+    DEBUG_DSTREAM("getBufferPartInfo idx=" << iPartIndex << " cmd=" << iInfoCmd);
 
+    int partIndex = static_cast<int>(iPartIndex);
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
-    int idxLeft = buffer->getMetaData().getIndexOf(ImageSet::IMAGE_LEFT);
-    int idxRight = buffer->getMetaData().getIndexOf(ImageSet::IMAGE_RIGHT);
-    int idxDisparity = buffer->getMetaData().getIndexOf(ImageSet::IMAGE_DISPARITY);
-
-    StreamType streamType;
-    if (partIndex == idxLeft) {
-        streamType = IMAGE_LEFT_STREAM;
-    } else if (partIndex == idxRight) {
-        streamType = IMAGE_RIGHT_STREAM;
-    } else if (partIndex == idxDisparity) {
-        streamType = DISPARITY_STREAM;
-    } else if (partIndex == buffer->getMetaData().getNumberOfImages()) {
-        streamType = POINTCLOUD_STREAM;
-    } else {
-        return GC_ERR_INVALID_INDEX;
-    }
 
     InfoQuery info(piType, pBuffer, piSize);
     switch(iInfoCmd) {
         case BUFFER_PART_INFO_BASE: {
-            // Get the sizes of all stream parts before this one
-            size_t offset = 0;
-
-            for (int idx=0; idx<buffer->getMetaData().getNumberOfImages(); ++idx) {
-                if (idx==partIndex) break;
-                offset += getPayloadSizeForStreamIndex(idx);
+                size_t offset = bufferMapping.getBufferPartOffset(partIndex);
+                DEBUG_DSTREAM("Part " << partIndex << " offset = " << offset);
+                info.setPtr(&buffer->getData()[offset]);
+                break;
             }
-
-            info.setPtr(&buffer->getData()[offset]);
-            break;
-        }
-        case BUFFER_PART_INFO_DATA_SIZE:
-            info.setSizeT(getPayloadSizeForStreamIndex(partIndex));
-            break;
+        case BUFFER_PART_INFO_DATA_SIZE: {
+                size_t sz = bufferMapping.getBufferPartSize(partIndex);
+                DEBUG_DSTREAM("Part " << partIndex << " size = " << sz);
+                info.setSizeT(sz);
+                break;
+            }
         case BUFFER_PART_INFO_DATA_TYPE:
-            if(streamType != POINTCLOUD_STREAM) {
-                info.setSizeT(PART_DATATYPE_2D_IMAGE);
-            } else {
+            if (bufferMapping.getBufferPartImageSetFunction(partIndex) == ImageSet::IMAGE_UNDEFINED) { // special case point cloud
                 info.setSizeT(PART_DATATYPE_3D_IMAGE);
+            } else {
+                info.setSizeT(PART_DATATYPE_2D_IMAGE);
             }
             break;
         case BUFFER_PART_INFO_DATA_FORMAT:
-            info.setUInt64(getPixelFormatForStreamType(buffer->getMetaData(), streamType));
+            info.setUInt64(bufferMapping.getBufferPartPixelFormat(partIndex));
             break;
         case BUFFER_PART_INFO_DATA_FORMAT_NAMESPACE:
             info.setUInt64(PIXELFORMAT_NAMESPACE_PFNC_32BIT);
@@ -685,13 +696,7 @@ GC_ERROR DataStream::getBufferPartInfo(BUFFER_HANDLE hBuffer, uint32_t iPartInde
         case BUFFER_PART_INFO_REGION_ID:
             return GC_ERR_NOT_AVAILABLE;
         case BUFFER_PART_INFO_DATA_PURPOSE_ID:
-            if (streamType == IMAGE_LEFT_STREAM || streamType == IMAGE_RIGHT_STREAM) {
-                info.setUInt64(1 /* intensity */);
-            } else if (streamType == DISPARITY_STREAM) {
-                info.setUInt64(8 /* disparity */);
-            } else if (streamType == POINTCLOUD_STREAM) {
-                info.setUInt64(4 /* range */);
-            }
+            info.setUInt64(bufferMapping.getBufferPartPurposeID(partIndex));
             break;
         default:
             return GC_ERR_NOT_IMPLEMENTED;

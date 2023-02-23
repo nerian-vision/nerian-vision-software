@@ -29,6 +29,10 @@
 #include <fstream>
 #include <exception>
 
+#ifdef ENABLE_DEBUGGING
+#include "misc/backward.hpp"
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -47,25 +51,29 @@ namespace GenTL {
 
 #ifdef _WIN32
     std::fstream debugStream("C:\\debug\\gentl-debug-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
+#define DEBUG_HIGHLIGHT_PREFIX ""
+#define DEBUG_HIGHLIGHT_SUFFIX ""
 #else
     std::ostream& debugStream = std::cout;
+#define DEBUG_HIGHLIGHT_PREFIX "\033[30;1m"
+#define DEBUG_HIGHLIGHT_SUFFIX "\033[m"
 #endif
 
 #define DEBUG_VAL(val)      #val << " = " << (std::string(#val) == "iAddress" ? std::hex : std::dec) << val
-#define DEBUG               {debugStream << __FUNCTION__ << std::endl;}
-#define DEBUG1(a)           {debugStream << __FUNCTION__ << ": " << DEBUG_VAL(a) << std::endl;}
-#define DEBUG2(a, b)        {debugStream << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) << std::endl;}
-#define DEBUG3(a, b, c)     {debugStream << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
-    << "; " << DEBUG_VAL(c) << std::endl;}
-#define DEBUG4(a, b, c, d)  {debugStream << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
-    << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << std::endl;}
-#define DEBUG5(a, b, c, d, e)  {debugStream << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
-    << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << "; " << DEBUG_VAL(e) << std::endl;}
-#define DEBUG6(a, b, c, d, e, f)  {debugStream << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
-    << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << "; " << DEBUG_VAL(e) << "; " << DEBUG_VAL(f) << std::endl;}
-#define DEBUG7(a, b, c, d, e, f, g)  {debugStream << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+#define DEBUG               {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG1(a)           {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG2(a, b)        {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG3(a, b, c)     {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+    << "; " << DEBUG_VAL(c) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG4(a, b, c, d)  {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+    << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG5(a, b, c, d, e)  {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+    << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << "; " << DEBUG_VAL(e) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG6(a, b, c, d, e, f)  {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+    << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << "; " << DEBUG_VAL(e) << "; " << DEBUG_VAL(f) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG7(a, b, c, d, e, f, g)  {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
     << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << "; " << DEBUG_VAL(e) << "; " << DEBUG_VAL(f) \
-    << "; " << DEBUG_VAL(g) << std::endl;}
+    << "; " << DEBUG_VAL(g) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
 
 
 #else
@@ -89,9 +97,29 @@ namespace GenTL {
 #define GENTL_TRY try {
 
 #ifdef _WIN32
+#ifdef ENABLE_DEBUGGING
+// Debugging mode also logs exception and backtrace to log file
 #define GENTL_CATCH } catch (const std::exception& ex) {\
-    std::string msgString = "Exception occured: " + std::string(ex.what()); \
+    std::string msgString = "Exception occurred: " + std::string(ex.what()); \
+    debugStream << msgString << std::endl; \
+    backward::StackTrace st; st.load_here(32); \
+    backward::Printer p; p.print(st, debugStream); \
     MessageBox(NULL, msgString.c_str(), "Nerian GenTL", MB_ICONERROR); \
+    return GC_ERR_ERROR;\
+}
+#else
+#define GENTL_CATCH } catch (const std::exception& ex) {\
+    std::string msgString = "Exception occurred: " + std::string(ex.what()); \
+    MessageBox(NULL, msgString.c_str(), "Nerian GenTL", MB_ICONERROR); \
+    return GC_ERR_ERROR;\
+}
+#endif
+#else
+#ifdef ENABLE_DEBUGGING
+#define GENTL_CATCH } catch (const std::exception& ex) {\
+    std::cout << "Exception: " << ex.what(); \
+    backward::StackTrace st; st.load_here(32); \
+    backward::Printer p; p.print(st, std::cout); \
     return GC_ERR_ERROR;\
 }
 #else
@@ -99,6 +127,7 @@ namespace GenTL {
     std::cout << "Exception: " << ex.what(); \
     return GC_ERR_ERROR;\
 }
+#endif
 #endif
 
 

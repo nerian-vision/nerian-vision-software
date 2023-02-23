@@ -24,27 +24,27 @@ LogicalDevice::LogicalDevice(PhysicalDevice* physicalDevice, const std::string& 
     :Handle(TYPE_DEVICE), physicalDevice(physicalDevice), id(id), stream(this, streamType), portImpl(this),
         remotePort(id.c_str(), "remote.xml", "Device", "Device" , &portImpl),
         localPort(id.c_str(), "device.xml", "DevicePort", "TLDevice", &portImpl), deviceOpen(false) {
-	
-	// Set a default value for the component selector
-	// that is also enabled by the XML
-	switch(streamType) {
-		case DataStream::IMAGE_LEFT_STREAM:
-			remotePort.setSelector(0);
-			break;
+
+    // Set a default value for the component selector
+    // that is also enabled by the XML
+    switch(streamType) {
+        case DataStream::IMAGE_LEFT_STREAM:
+            remotePort.setSelector(0);
+            break;
         case DataStream::IMAGE_RIGHT_STREAM:
-			// Not available in multipart stream
-			break;
+            // Not available in multipart stream
+            break;
         case DataStream::DISPARITY_STREAM:
-			remotePort.setSelector(1);
-			break;
+            remotePort.setSelector(1);
+            break;
         case DataStream::POINTCLOUD_STREAM:
-			remotePort.setSelector(2);
-			break;
+            remotePort.setSelector(2);
+            break;
         case DataStream::MULTIPART_STREAM:
-			// Default is first component in multipart streams
-			remotePort.setSelector(0);
-			break;
-	}
+            // Default is first component in multipart streams
+            remotePort.setSelector(0);
+            break;
+    }
 }
 
 LogicalDevice::~LogicalDevice() {

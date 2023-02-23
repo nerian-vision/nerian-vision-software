@@ -20,13 +20,15 @@
 #include <cstring>
 #include <cstdio>
 
+#include <iostream> // RYT debug
+
 using namespace visiontransfer;
 
 namespace GenTL {
 
 Interface::Interface(System* system): Handle(TYPE_INTERFACE), system(system),
     portImpl(this), port("eth", "interface.xml", "InterfacePort", "TLInterface", &portImpl),
-    deviceSuffixes{"/", "/left", "/right", "/disparity", "/pointcloud"} {
+    deviceSuffixes{"/", "/left", "/right", "/third_color", "/disparity", "/pointcloud"} {
 
     updateDeviceList(nullptr, 0);
 }
@@ -45,6 +47,7 @@ GC_ERROR Interface::updateDeviceList(bool8_t* pbChanged, uint64_t iTimeout) {
     DeviceEnumeration devEnum;
     deviceList = devEnum.discoverDevices();
 #endif
+    updateDeviceMetadataCache();
 
     if (pbChanged != nullptr) {
         if(oldList != deviceList) {
@@ -54,6 +57,44 @@ GC_ERROR Interface::updateDeviceList(bool8_t* pbChanged, uint64_t iTimeout) {
         }
     }
     return GC_ERR_SUCCESS;
+}
+
+// Updated device-related metadata like reported model name etc.,
+// for each enumerated device, and for all [pseudo]device suffixes
+void Interface::updateDeviceMetadataCache() {
+    char deviceID[1024];
+    size_t sz = 1024;
+    deviceIDToModelName.clear();
+    for (int iIndex=0; iIndex<(int) deviceList.size(); ++iIndex) {
+        DeviceInfo& devInfo = deviceList[iIndex / deviceSuffixes.size()];
+        // For querying hardware parameters by abstract name
+        DeviceInfo::DeviceModel model = devInfo.getModel();
+        std::string modelName;
+        switch(model) {
+            case DeviceInfo::DeviceModel::SCENESCAN_PRO:
+                modelName = "SceneScan Pro";
+                break;
+            case DeviceInfo::DeviceModel::SCARLET:
+                modelName = "Scarlet";
+                break;
+            case DeviceInfo::DeviceModel::RUBY:
+                modelName = "Ruby";
+                break;
+            default:
+                break;
+        }
+        for (int i=0; i<deviceSuffixes.size(); ++i) {
+            sz = 1024;
+            (void) getDeviceID(iIndex*deviceSuffixes.size() + i, deviceID, &sz);
+            std::string subName = modelName;
+            if (i != 0) {
+                // Not the multipart device: add channel description to disambiguate name
+                subName += std::string(" (") + deviceSuffixes[i].substr(1) + " only)";
+            }
+            deviceIDToModelName[deviceID] = subName;
+        }
+
+    }
 }
 
 GC_ERROR Interface::getNumDevices(uint32_t* piNumDevices) {
@@ -73,8 +114,9 @@ GC_ERROR Interface::getDeviceID(uint32_t iIndex, char* sDeviceID, size_t* piSize
     InfoQuery info(nullptr, sDeviceID, piSize);
     DeviceInfo& devInfo = deviceList[iIndex / deviceSuffixes.size()];
 
-    info.setString((devInfo.getNetworkProtocol() == DeviceInfo::PROTOCOL_TCP ? "tcp://" : "udp://")
-                + devInfo.getIpAddress() + deviceSuffixes[iIndex % deviceSuffixes.size()]);
+    std::string deviceID = (devInfo.getNetworkProtocol() == DeviceInfo::PROTOCOL_TCP ? "tcp://" : "udp://")
+                + devInfo.getIpAddress() + deviceSuffixes[iIndex % deviceSuffixes.size()];
+    info.setString(deviceID);
 
     return info.query();
 }
@@ -93,9 +135,15 @@ GC_ERROR Interface::getDeviceInfo(const char* sDeviceID, DEVICE_INFO_CMD iInfoCm
         case DEVICE_INFO_VENDOR:
             info.setString("Nerian Vision GmbH");
             break;
-        case DEVICE_INFO_MODEL:
-            info.setString("SceneScan / SceneScan Pro / Scarlet");
-            break;
+        case DEVICE_INFO_MODEL: {
+                std::map<std::string, std::string>::const_iterator it = deviceIDToModelName.find(sDeviceID);
+                if (it != deviceIDToModelName.end()) {
+                    info.setString(it->second);
+                } else {
+                    info.setString("Nerian device"); // should not happen
+                }
+                break;
+            }
         case DEVICE_INFO_TLTYPE:
             info.setString("Ethernet");
             break;
@@ -109,8 +157,10 @@ GC_ERROR Interface::getDeviceInfo(const char* sDeviceID, DEVICE_INFO_CMD iInfoCm
                 info.setInt(DEVICE_ACCESS_STATUS_BUSY);
             }
             break;
-        case DEVICE_INFO_USER_DEFINED_NAME:
         case DEVICE_INFO_SERIAL_NUMBER:
+            info.setString(sDeviceID);
+            break;
+        case DEVICE_INFO_USER_DEFINED_NAME:
         case DEVICE_INFO_VERSION:
             return GC_ERR_NOT_AVAILABLE;
         case DEVICE_INFO_TIMESTAMP_FREQUENCY:

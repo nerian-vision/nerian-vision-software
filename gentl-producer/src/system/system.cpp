@@ -18,9 +18,22 @@
 #include "device/logicaldevice.h"
 #include "stream/datastream.h"
 #include "misc/infoquery.h"
+#include "misc/common.h"
 #include <iostream>
+#include <fstream>
 
 namespace GenTL {
+
+#ifdef ENABLE_DEBUGGING
+#ifdef _WIN32
+    std::fstream debugStreamSyst("C:\\debug\\gentl-debug-sys-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
+#else
+    std::ostream& debugStreamSyst = std::cout;
+#endif
+#define DEBUG_SYST(x) debugStreamSyst << x << std::endl;
+#else
+#define DEBUG_SYST(x) ;
+#endif
 
 using namespace std::placeholders;
 
@@ -111,10 +124,12 @@ PhysicalDevice* System::findPhysicalDeviceByAddress(bool udp, const char* host) 
             return physicalDevices[i].get();
         }
     }
+    DEBUG_SYST("PhysicalDevice not found for " << host << " udp? " << (int) udp);
     return nullptr;
 }
 
 void System::addPhysicalDevice(std::shared_ptr<PhysicalDevice> device) {
+    DEBUG_SYST("Adding a PhysicalDevice");
     physicalDevices.push_back(device);
 }
 
@@ -122,6 +137,7 @@ void System::removePhysicalDevice(PhysicalDevice* device) {
     // Check if there are still more logicial devices for this device
     for(unsigned int i=0; i<physicalDevices.size(); i++) {
         if(physicalDevices[i].get() != device) {
+            DEBUG_SYST("Removing a PhysicalDevice");
             physicalDevices.erase(physicalDevices.begin() + i);
             break;
         }
@@ -131,6 +147,7 @@ void System::removePhysicalDevice(PhysicalDevice* device) {
 void System::freeUnusedDevices() {
     for(int i=0; i<static_cast<int>(physicalDevices.size()); i++) {
         if(!physicalDevices[i]->inUse()) {
+            DEBUG_SYST("Freeing an unused PhysicalDevice");
             physicalDevices.erase(physicalDevices.begin() + i);
             i--;
         }

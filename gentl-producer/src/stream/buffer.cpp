@@ -21,11 +21,12 @@ namespace GenTL {
 Buffer::Buffer(DataStream* stream, void* privateData, unsigned char* data, size_t size)
     :Handle(TYPE_BUFFER), stream(stream), consumerBuffer(true), privateData(privateData),
         data(data), size(size), incomplete(false) {
-	
+
     // Set default buffer components
     metaData.setIndexOf(ImageSet::IMAGE_LEFT, 0);
     metaData.setIndexOf(ImageSet::IMAGE_DISPARITY, 1);
     metaData.setIndexOf(ImageSet::IMAGE_RIGHT, -1);
+    metaData.setIndexOf(ImageSet::IMAGE_COLOR, -1);
 }
 
 

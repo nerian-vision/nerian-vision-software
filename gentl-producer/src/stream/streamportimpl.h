@@ -35,6 +35,8 @@ protected:
     virtual GC_ERROR writeSelector(unsigned int selector) override;
     virtual GC_ERROR readChildFeature(unsigned int selector, unsigned int featureId,
         void* pBuffer, size_t* piSize) override;
+    virtual GC_ERROR writeChildFeature(unsigned int selector, unsigned int featureId,
+        const void* pBuffer, size_t* piSize) override;
 
 private:
     DataStream* stream;

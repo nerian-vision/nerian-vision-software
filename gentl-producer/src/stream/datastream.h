@@ -19,6 +19,7 @@
 #include "misc/handle.h"
 #include "misc/port.h"
 #include "stream/streamportimpl.h"
+#include "stream/buffermapping.h"
 
 #include <genicam/gentl.h>
 #include <deque>
@@ -45,9 +46,10 @@ public:
     enum StreamType {
         IMAGE_LEFT_STREAM = 0,
         IMAGE_RIGHT_STREAM = 1,
-        DISPARITY_STREAM = 2,
-        POINTCLOUD_STREAM = 3,
-        MULTIPART_STREAM = 4
+        IMAGE_THIRD_COLOR_STREAM = 2,
+        DISPARITY_STREAM = 3,
+        POINTCLOUD_STREAM = 4,
+        MULTIPART_STREAM = 5
     };
 
     DataStream(LogicalDevice* device, StreamType type);
@@ -107,6 +109,8 @@ public:
     uint64_t getPixelFormat(const visiontransfer::ImageSet& metaData);
     StreamType getStreamType() {return streamType;}
 
+    const BufferMapping& getBufferMapping() const { return bufferMapping; }
+
 private:
     LogicalDevice* logicalDevice; // The physical device this stream is associated with
     StreamType streamType;
@@ -121,16 +125,24 @@ private:
     std::deque<std::shared_ptr<Buffer> > outputQueue; // Buffers in the output queue
 
     Event* newBufferEvent; // Event object for new buffer events
-    Event* errorEvent; // Event object for new buffer events
+    Event* errorEvent; // Event object for relaying errors
 
     bool opened;
 
     StreamPortImpl portImpl;
     Port port;
 
+    BufferMapping bufferMapping;
+
+    // Feature state at instantiation time (may be chosen differently for later streams)
+    //int intensitySource; // storage for PhysicalDevice::IntensitySource enum values
+
     template <class T> bool findBuffer(T queue, Buffer* buffer);
-    size_t getPayloadSizeForStreamIndex(int index);
+    size_t getPayloadSizeForImageType(visiontransfer::ImageSet::ImageType typ);
     uint64_t getPixelFormatForStreamType(const visiontransfer::ImageSet& metaData, StreamType streamType);
+
+    // Update the BufferMapping, i.e. mapping from ImageSet to buffer parts, given metadata and features
+    void updateBufferMapping();
 };
 
 }

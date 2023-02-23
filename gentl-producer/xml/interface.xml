@@ -37,6 +37,7 @@
         <pFeature>DeviceVendorName</pFeature>
         <pFeature>DeviceModelName</pFeature>
         <pFeature>DeviceAccessStatus</pFeature>
+        <pFeature>DeviceSerialNumber</pFeature>
         <pFeature>DeviceTLVersionMajor</pFeature>
         <pFeature>DeviceTLVersionMinor</pFeature>
     </Category>
@@ -176,6 +177,14 @@
         <Min>5</Min>
         <Max>5</Max>
     </Integer>
+
+    <StringReg Name="DeviceSerialNumber" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <Address>0xC0007000</Address>
+        <Length>128</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>InterfacePort</pPort>
+    </StringReg>
 
     <Port Name="InterfacePort" NameSpace="Standard">
     </Port>

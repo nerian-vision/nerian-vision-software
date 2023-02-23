@@ -24,6 +24,12 @@
  */
 class EventQueue {
 public:
+
+    // Storage for a single feature ID string
+    struct FeatureStringType {
+        char str[128]; // MAX_LEN_FEATURE_NAME
+    };
+
     static constexpr int MAX_EVENTS_QUEUED = 10;
 
     EventQueue(size_t objectSize): objectSize(objectSize), queueOffset(0),
