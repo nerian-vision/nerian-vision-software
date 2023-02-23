@@ -1003,6 +1003,12 @@ public:
     T getNamedParameter(const std::string& name);
 
 #if __cplusplus >= 201103L
+
+    /**
+     * \brief Tests whether a specific named parameter is available for this device.
+     */
+    bool hasParameter(const std::string& name);
+
     /**
      *  \brief Returns a Parameter object for the named device parameter. ParameterException for invalid or inaccessible parameter names.
      *

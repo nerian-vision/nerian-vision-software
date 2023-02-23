@@ -135,6 +135,11 @@ void ParameterTransfer::writeParameter(const char* id, const T& value) {
     if (result.first == false) {
         // There was a remote error, append its info to the exception
         throw ParameterException("Remote parameter error: " + result.second);
+    } else {
+        // Local preliminary value update - the (successful!) async remote update may need additional time.
+        // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
+        // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
+        paramSet[id].setCurrent<T>(value);
     }
 }
 
@@ -168,6 +173,11 @@ void ParameterTransfer::writeParameter(const char* id, const std::string& value)
     if (result.first == false) {
         // There was a remote error, append its info to the exception
         throw ParameterException("Remote parameter error: " + result.second);
+    } else {
+        // Local preliminary value update - the (successful!) async remote update may need additional time.
+        // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
+        // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
+        paramSet[id].setCurrent<std::string>(value);
     }
 }
 

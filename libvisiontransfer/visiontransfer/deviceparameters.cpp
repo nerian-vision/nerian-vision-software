@@ -45,6 +45,8 @@ public:
 
     std::map<std::string, ParameterInfo> getAllParameters();
 
+    bool hasParameter(const std::string& name);
+
     Parameter& getParameter(const std::string& name);
 
     ParameterSet& getParameterSet();
@@ -158,6 +160,10 @@ bool VT_EXPORT DeviceParameters::getNamedParameter(const std::string& name) {
 #endif
 
 #if __cplusplus >= 201103L
+bool DeviceParameters::hasParameter(const std::string& name) {
+    return pimpl->hasParameter(name);
+}
+
 Parameter DeviceParameters::getParameter(const std::string& name) {
     return pimpl->getParameter(name); // copied here
 }
@@ -208,6 +214,11 @@ void DeviceParameters::Pimpl::writeBoolParameter(const char* id, bool value) {
 std::map<std::string, ParameterInfo> DeviceParameters::Pimpl::getAllParameters() {
     serverSideEnumeration = paramTrans.getAllParameters();
     return serverSideEnumeration;
+}
+
+bool DeviceParameters::Pimpl::hasParameter(const std::string& name) {
+    auto& paramSet = paramTrans.getParameterSet();
+    return paramSet.count(name) != 0;
 }
 
 Parameter& DeviceParameters::Pimpl::getParameter(const std::string& name) {

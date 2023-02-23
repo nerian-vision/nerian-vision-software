@@ -41,6 +41,7 @@ cdef extern from "visiontransfer/deviceparameters.h" namespace "visiontransfer":
         DeviceParameters(const DeviceInfo &) except +
         DeviceParameters(const char* address, const char* service) except +
         ParameterSet getParameterSet() except +
+        bool hasParameter(const string& uid) except +
         Parameter getParameter(const string& uid) except +
         void setParameter(const string& uid, string value) except +'''.split('\n')
 
@@ -98,6 +99,12 @@ use set_parameter() exclusively.
         ps = ParameterSet()
         ps.c_obj = self.c_obj.getParameterSet()
         return ps
+
+    def has_parameter(self, uid):
+        \'\'\'
+        Tests whether a specific named parameter is available for this device.
+        \'\'\'
+        return self.c_obj.hasParameter(uid.encode('utf-8'))
 
     def get_parameter(self, uid):
         \'\'\'
