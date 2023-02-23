@@ -35,7 +35,6 @@ if(NOT CMAKE_SUBMODULE)
             message(WARNING "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
         endif()
     else()
-        message("#### AAAAAA")
         # Visual studio settings
         foreach(flag
                 CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO
@@ -55,10 +54,11 @@ if(NOT CMAKE_SUBMODULE)
     #set the default path for built libraries to the "lib" directory
     if(NOT WIN32 OR MINGW)
         set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-    else()
-        MATH(EXPR BITS ${CMAKE_SIZEOF_VOID_P}*8)
-        set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib${BITS})
     endif()
+endif()
+if(MSVC)
+    MATH(EXPR BITS ${CMAKE_SIZEOF_VOID_P}*8)
+    set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib${BITS})
 endif()
 
 set(BUILD_TESTS OFF CACHE BOOL "Builds the unit tests")

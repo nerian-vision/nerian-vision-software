@@ -1,4 +1,4 @@
-Vision Software Binary Release for Windows
+Vision Software Binary Release 1.0.0 for Windows
 =============================================
 
 Included components
