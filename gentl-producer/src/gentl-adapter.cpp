@@ -55,8 +55,9 @@ namespace GenTL {
 #define DEBUG_HIGHLIGHT_SUFFIX ""
 #else
     std::ostream& debugStream = std::cout;
-#define DEBUG_HIGHLIGHT_PREFIX "\033[30;1m"
-#define DEBUG_HIGHLIGHT_SUFFIX "\033[m"
+    // If desired, set escape sequence for highlighting
+#define DEBUG_HIGHLIGHT_PREFIX ""
+#define DEBUG_HIGHLIGHT_SUFFIX ""
 #endif
 
 #define DEBUG_VAL(val)      #val << " = " << (std::string(#val) == "iAddress" ? std::hex : std::dec) << val

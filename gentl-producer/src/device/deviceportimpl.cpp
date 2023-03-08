@@ -134,7 +134,7 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             }
             break;
 
-        case 6: // 3D: focal length
+        case 6: // Scan3dFocalLengthReg
             {
                 const ImageSet& metaData = device->getPhysicalDevice()->getLatestMetaData();
                 const float* q = metaData.getQMatrix();
@@ -142,27 +142,49 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             }
             break;
 
-        case 7: // 3D: baseline
+        case 7: // Scan3dBaselineReg
             {
                 const ImageSet& metaData = device->getPhysicalDevice()->getLatestMetaData();
                 const float* q = metaData.getQMatrix();
                 info.setDouble(1.0 / q[14]);
             }
             break;
-        case 8: // 3D: invalid data value
+        case 8: // Scan3dInvalidDataValueReg (now depends on stream type and current selector for multi-part stream)
             {
-                float inval = device->getPhysicalDevice()->getInvalidDepthValue();
-                info.setDouble(inval);
+                float inval_disp = 4095;
+                float inval_depth = device->getPhysicalDevice()->getInvalidDepthValue();
+                if (streamType == DataStream::DISPARITY_STREAM) {
+                    info.setDouble(inval_disp);
+                } else if (streamType == DataStream::POINTCLOUD_STREAM) {
+                    info.setDouble(inval_depth);
+                } else if (streamType == DataStream::MULTIPART_STREAM) {
+                    switch(selector) {
+                        case Intensity:
+                            info.setDouble(-1); // dummy
+                            break;
+                        case Disparity:
+                            info.setDouble(inval_disp);
+                            break;
+                        case Range:
+                            info.setDouble(inval_depth);
+                            break;
+                        default:
+                            info.setDouble(-1);
+                    }
+                } else {
+                    // One of the intensity streams: dummy value (flag (reg 0x1d) is always 0 here)
+                    info.setDouble(-1);
+                }
             }
             break;
-        case 9: // 3D: X offset ('PrincipalPointU')
+        case 9: // Scan3dPrincipalPointUReg (X offset)
             {
                 const ImageSet& metaData = device->getPhysicalDevice()->getLatestMetaData();
                 const float* q = metaData.getQMatrix();
                 info.setDouble(-q[3]);
             }
             break;
-        case 0xa: // 3D: Y offset ('PrincipalPointV')
+        case 0xa: // Scan3dPrincipalPointVReg (Y offset)
             {
                 const ImageSet& metaData = device->getPhysicalDevice()->getLatestMetaData();
                 const float* q = metaData.getQMatrix();
@@ -275,6 +297,32 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 const ImageSet& metaData = device->getPhysicalDevice()->getLatestMetaData();
                 const float* qMat = metaData.getQMatrix();
                 info.setDouble((double) qMat[currentIndexForQMatrix]);
+            }
+            break;
+        case 0x1d: // Scan3dInvalidDataFlagReg (whether a dedicated 'invalid' value is available)
+            {
+                if (streamType == DataStream::DISPARITY_STREAM) {
+                    info.setUInt(1); // available
+                } else if (streamType == DataStream::POINTCLOUD_STREAM) {
+                    info.setUInt(1);
+                } else if (streamType == DataStream::MULTIPART_STREAM) {
+                    switch(selector) {
+                        case Intensity:
+                            info.setUInt(0); // not available for intensity
+                            break;
+                        case Disparity:
+                            info.setUInt(1);
+                            break;
+                        case Range:
+                            info.setUInt(1);
+                            break;
+                        default:
+                            info.setUInt(0);
+                    }
+                } else {
+                    // One of the intensity streams: not available
+                    info.setUInt(0);
+                }
             }
             break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)

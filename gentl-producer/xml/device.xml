@@ -29,7 +29,7 @@
         <pFeature>DeviceModelName</pFeature>
         <pFeature>DeviceType</pFeature>
         <pFeature>DeviceAccessStatus</pFeature>
-        <pFeature>DeviceSerialNumber</pFeature>
+        <!--pFeature>DeviceSerialNumber</pFeature-->
     </Category>
 
     <Category Name="StreamEnumeration" NameSpace="Standard">
@@ -106,13 +106,13 @@
         <Value>default</Value>
     </String>
 
-    <StringReg Name="DeviceSerialNumber" NameSpace="Standard">
+    <!--StringReg Name="DeviceSerialNumber" NameSpace="Standard">
         <Visibility>Expert</Visibility>
         <Address>0xE0007000</Address>
         <Length>128</Length>
         <AccessMode>RO</AccessMode>
         <pPort>DevicePort</pPort>
-    </StringReg>
+    </StringReg-->
 
     <Port Name="DevicePort" NameSpace="Standard">
     </Port>

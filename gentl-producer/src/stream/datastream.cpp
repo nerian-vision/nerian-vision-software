@@ -43,10 +43,6 @@ DataStream::DataStream(LogicalDevice * logicalDevice, StreamType streamType)
     numDelivered(0), numUnderrun(0), numCaptured(0), newBufferEvent(nullptr),
     errorEvent(nullptr), opened(false), portImpl(this),
     port("default", "datastream.xml", "StreamPort", "TLDataStream", &portImpl) {
-        // The selected intensity source (auto / left cam / middle cam), constant for this stream
-        //intensitySource = logicalDevice->getPhysicalDevice()->getIntensitySource();
-        //std::cout << "DEBUG - new data stream with intensity source selector " << intensitySource << std::endl;
-
 }
 
 DataStream::~DataStream() {
@@ -173,7 +169,7 @@ void DataStream::updateBufferMapping() {
     if(metaData.getWidth() == 0) {
         DEBUG_DSTREAM("No valid metadata - skipping BufferMapping generation here");
     } else {
-        DEBUG_DSTREAM("\033[34mGenerating BufferMapping\033[m");
+        DEBUG_DSTREAM("Generating BufferMapping");
         PhysicalDevice::IntensitySource intensitySource = logicalDevice->getPhysicalDevice()->getIntensitySource();
         bool rangeEnabled = logicalDevice->getPhysicalDevice()->getComponentEnabledRange();
         bufferMapping = BufferMapping(metaData, (int) intensitySource, rangeEnabled);
@@ -185,7 +181,6 @@ GC_ERROR DataStream::open() {
     if(opened) {
         return GC_ERR_RESOURCE_IN_USE;
     } else {
-        // Test of BufferMapping
         updateBufferMapping();
 
         opened = true;
@@ -394,7 +389,6 @@ size_t DataStream::getPayloadSize() {
         // Fallback just in case: report size from first image
         totalSize = getPayloadSizeForImageType(bufferMapping.getBufferPartImageSetFunction(0));
     }
-    DEBUG_DSTREAM("getPayloadSize() = " << totalSize);
     return totalSize;
 }
 
@@ -474,7 +468,6 @@ GC_ERROR DataStream::getBufferInfo(BUFFER_HANDLE hBuffer, BUFFER_INFO_CMD iInfoC
         info.setBool(false);
         break;
     case BUFFER_INFO_IS_INCOMPLETE:
-        DEBUG_DSTREAM("Buffer incomplete? " << buffer->isIncomplete());
         info.setBool(buffer->isIncomplete());
         break;
     case BUFFER_INFO_TLTYPE:

@@ -20,8 +20,6 @@
 #include <cstring>
 #include <cstdio>
 
-#include <iostream> // RYT debug
-
 using namespace visiontransfer;
 
 namespace GenTL {
@@ -157,9 +155,9 @@ GC_ERROR Interface::getDeviceInfo(const char* sDeviceID, DEVICE_INFO_CMD iInfoCm
                 info.setInt(DEVICE_ACCESS_STATUS_BUSY);
             }
             break;
-        case DEVICE_INFO_SERIAL_NUMBER:
-            info.setString(sDeviceID);
-            break;
+        //case DEVICE_INFO_SERIAL_NUMBER:
+        //    info.setString(sDeviceID);
+        //    break;
         case DEVICE_INFO_USER_DEFINED_NAME:
         case DEVICE_INFO_VERSION:
             return GC_ERR_NOT_AVAILABLE;

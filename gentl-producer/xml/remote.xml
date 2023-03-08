@@ -33,7 +33,7 @@
         <pFeature>DeviceModelName</pFeature>
         <pFeature>DeviceManufacturerInfo</pFeature>
         <pFeature>DeviceID</pFeature>
-        <pFeature>DeviceSerialNumber</pFeature>
+        <!--pFeature>DeviceSerialNumber</pFeature-->
     </Category>
 
     <Category Name="AcquisitionControl" NameSpace="Standard">
@@ -131,12 +131,12 @@
         <pPort>Device</pPort>
     </StringReg>
 
-    <StringReg Name="DeviceSerialNumber" NameSpace="Standard">
+    <!--StringReg Name="DeviceSerialNumber" NameSpace="Standard">
         <Address>0xE0007000</Address>
         <Length>128</Length>
         <AccessMode>RO</AccessMode>
         <pPort>Device</pPort>
-    </StringReg>
+    </StringReg-->
 
     <IntReg Name="DeviceFeatureReg" NameSpace="Custom">
         <!-- Nerian device feature bit map. Used to mask/unmask features with pIsAvailable and IntSwissKnife -->
@@ -578,12 +578,8 @@
         <pSelected>PixelFormat</pSelected>
         <pSelected>ComponentEnable</pSelected>
         <pSelected>ComponentIDValue</pSelected>
-        <!-- Moving invalid data parameters into the component selector would be
-        preferred, but the SFNC says otherwise. -->
-        <!--
         <pSelected>Scan3dInvalidDataFlag</pSelected>
         <pSelected>Scan3dInvalidDataValue</pSelected>
-        -->
     </Enumeration>
     <IntReg Name="ComponentSelectorReg" NameSpace="Custom">
         <Address>0xD0000000</Address>
@@ -744,35 +740,34 @@
         <Formula>bitmask = 1 ? 0 : (bitmask = 2 ? 1 : 2)</Formula>
     </IntSwissKnife>
 
+    <!-- Invalid data values: values are set internally in code
+      based on stream type and current component selector -->
     <Boolean Name="Scan3dInvalidDataFlag" NameSpace="Standard">
         <ImposedAccessMode>RO</ImposedAccessMode>
-        <pValue>Scan3dInvalidDataFlagInt</pValue>
+        <pInvalidator>ComponentSelector</pInvalidator>
+        <pValue>Scan3dInvalidDataFlagReg</pValue>
     </Boolean>
-    <Integer Name="Scan3dInvalidDataFlagInt" NameSpace="Custom">
-        <Visibility>Expert</Visibility>
-        <ImposedAccessMode>RO</ImposedAccessMode>
-        <pIndex>InvalidIndex</pIndex>
-        <ValueIndexed Index="0">0</ValueIndexed> <!-- intensity is always valid -->
-        <ValueIndexed Index="1">1</ValueIndexed> <!-- disparity -->
-        <ValueIndexed Index="2">1</ValueIndexed> <!-- range -->
-        <ValueDefault>0</ValueDefault>
-    </Integer>
+    <IntReg Name="Scan3dInvalidDataFlagReg" NameSpace="Custom">
+        <Address>0xC001D000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <pInvalidator>ComponentSelector</pInvalidator>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
 
     <Float Name="Scan3dInvalidDataValue" NameSpace="Standard">
         <Visibility>Expert</Visibility>
         <ImposedAccessMode>RO</ImposedAccessMode>
-        <pIndex>InvalidIndex</pIndex>
-        <ValueIndexed Index="0">-1</ValueIndexed>   <!-- intensity (but always valid) -->
-        <ValueIndexed Index="1">4095</ValueIndexed>                    <!-- disparity -->
-        <pValueIndexed Index="2">Scan3dInvalidDataValueReg</pValueIndexed> <!-- range -->
-        <ValueDefault>-1</ValueDefault>
+        <pInvalidator>ComponentSelector</pInvalidator>
+        <pValue>Scan3dInvalidDataValueReg</pValue>
     </Float>
-
     <FloatReg Name="Scan3dInvalidDataValueReg" NameSpace="Custom">
         <Address>0xC0008000</Address>
         <Length>8</Length>
         <AccessMode>RO</AccessMode>
         <pPort>Device</pPort>
+        <pInvalidator>ComponentSelector</pInvalidator>
         <Endianess>LittleEndian</Endianess>
     </FloatReg>
 
