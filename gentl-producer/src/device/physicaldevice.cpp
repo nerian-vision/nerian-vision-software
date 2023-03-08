@@ -514,11 +514,6 @@ void PhysicalDevice::sendSoftwareTriggerRequest() {
     }
 }
 
-visiontransfer::param::Parameter PhysicalDevice::getParameter(const std::string& uid) {
-    if (!deviceParameters) throw std::runtime_error("Attempted device parameter access without an active DeviceParameters connection");
-    return deviceParameters->getParameter(uid);
-}
-
 void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
     DEBUG_PHYS("Got remote update for " << uid);
     std::string featureName = "";

@@ -86,17 +86,33 @@ public:
 
     void sendSoftwareTriggerRequest();
 
-    visiontransfer::param::Parameter getParameter(const std::string& uid);
+    visiontransfer::param::Parameter getParameter(const std::string& uid) {
+#ifdef DELIVER_TEST_DATA
+        return visiontransfer::param::Parameter(uid).setName("Test mode dummy").setType(visiontransfer::param::ParameterValue::TYPE_INT).setCurrent<int>(0);
+#else
+        if (!deviceParameters) throw std::runtime_error("Attempted device parameter access without an active DeviceParameters connection");
+        return deviceParameters->getParameter(uid);
+#endif
+    }
+
 
     bool hasParameter(const std::string& uid) {
+#ifdef DELIVER_TEST_DATA
+        return true;
+#else
         if (!deviceParameters) throw std::runtime_error("Attempted device parameter access without an active DeviceParameters connection");
         return deviceParameters->hasParameter(uid);
+#endif
     }
 
     template<typename T>
     void setParameter(const std::string& uid, T value) {
+#ifdef DELIVER_TEST_DATA
+        return;
+#else
         if (!deviceParameters) throw std::runtime_error("Attempted device parameter access without an active DeviceParameters connection");
         deviceParameters->setParameter(uid, value);
+#endif
     }
 
     // Get / set whether 3D reconstruction is active and Range component is available
