@@ -591,24 +591,6 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
 
-<!-- Does not work due to our partial read support (addr % 0x1000)
-    <Boolean Name="ComponentEnable" NameSpace="Standard">
-        <ImposedAccessMode>RW</ImposedAccessMode>
-        <pValue>ComponentEnableReg</pValue>
-    </Boolean>
-    <IntReg Name="ComponentEnableReg" NameSpace="Custom">
-        <IntSwissKnife Name="ComponentSelectorToComponentEnableIndex">
-            <pVariable Name="CompIdx">ComponentSelectorReg</pVariable>
-            <Formula>0xC0004000 + CompIdx</Formula>
-        </IntSwissKnife>
-        <Length>4</Length>
-        <AccessMode>RW</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-        </IntReg>
--->
-
     <Boolean Name="ComponentEnable" NameSpace="Standard">
         <pIsLocked>ComponentEnableWriteLocked</pIsLocked>
         <ImposedAccessMode>RW</ImposedAccessMode>

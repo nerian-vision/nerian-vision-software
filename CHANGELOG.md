@@ -1,6 +1,16 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
+10.x.x (2023-xx-xx)
+-------------------
+* GenTL producer
+    * Exposure, Gain and Balance (if applicable) modifiable via features
+    * Point cloud generation can be toggled via ComponentEnable[Range]
+    * New multi-part stream layout, capable of extra channel (Ruby)
+    * Custom IntensitySource feature to select primary camera (Ruby)
+    * FeatureInvalidate events for remotely changed features
+    * Stability fixes and updated Halcon example
+
 10.3.0 (2022-12-19)
 -------------------
 * Fixed parameter server reconnection (Windows clients)
