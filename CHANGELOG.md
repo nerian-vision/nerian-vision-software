@@ -1,7 +1,7 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
-10.x.x (2023-xx-xx)
+10.4.0 (2023-03-10)
 -------------------
 * GenTL producer
     * Exposure, Gain and Balance (if applicable) modifiable via features
