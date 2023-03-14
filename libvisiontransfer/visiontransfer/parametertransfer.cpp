@@ -38,7 +38,7 @@ namespace internal {
 constexpr int ParameterTransfer::SOCKET_TIMEOUT_MS;
 
 ParameterTransfer::ParameterTransfer(const char* address, const char* service)
-    : socket(INVALID_SOCKET), address(address), service(service) {
+    : socket(INVALID_SOCKET), address(address), service(service), networkReady(false) {
 
     tabTokenizer.collapse(false).separators({"\t"});
 
