@@ -1,6 +1,11 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
+10.4.1 (2023-03-15)
+-------------------
+
+* API: fixed issue obtaining remote parameter enumeration
+
 10.4.0 (2023-03-10)
 -------------------
 * GenTL producer
