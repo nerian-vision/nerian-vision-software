@@ -408,26 +408,31 @@ int ParameterTransfer::getThreadId() {
 }
 
 void ParameterTransfer::blockingCallThisThread(std::function<void()> fn, int waitMaxMilliseconds) {
+    bool timeout = false;
     auto tid = getThreadId();
-    std::unique_lock<std::mutex> globalLock(mapMutex);
-    // Populate maps
-    auto& localWaitCond = waitConds[tid];
-    auto& localWaitCondMutex = waitCondMutexes[tid];
-    std::unique_lock<std::mutex> localLock(localWaitCondMutex);
-    // First do the actual handshake setup, like emitting the network message
-    // (The current thread is protected against a reply race at this point)
-    fn();
-    // Allow receiver thread to access its checks (it is still blocked by our specific localLock)
-    globalLock.unlock();
-    // Wait for receiver thread to notify us with the reply
-    auto status = localWaitCond.wait_for(localLock, std::chrono::milliseconds(waitMaxMilliseconds));
+    {
+        std::unique_lock<std::mutex> globalLock(mapMutex);
+        // Populate maps
+        auto& localWaitCond = waitConds[tid];
+        auto& localWaitCondMutex = waitCondMutexes[tid];
+        std::unique_lock<std::mutex> localLock(localWaitCondMutex);
+        // First do the actual handshake setup, like emitting the network message
+        // (The current thread is protected against a reply race at this point)
+        fn();
+        // Allow receiver thread to access its checks (it is still blocked by our specific localLock)
+        globalLock.unlock();
+        // Wait for receiver thread to notify us with the reply
+        auto status = localWaitCond.wait_for(localLock, std::chrono::milliseconds(waitMaxMilliseconds));
+        timeout = (status == std::cv_status::timeout);
+    }
+    {
     // Cleanup, so that any spurious network replies can get detected and discarded
-    globalLock.lock();
-    waitConds.erase(tid);
-    waitCondMutexes.erase(tid);
-    globalLock.unlock();
+        std::unique_lock<std::mutex> globalLock(mapMutex);
+        waitConds.erase(tid);
+        waitCondMutexes.erase(tid);
+    }
     // Outcome
-    if (status == std::cv_status::timeout) {
+    if (timeout) {
         TransferException ex("Timeout waiting for request reply from parameter server");
         throw ex;
     }
