@@ -1,6 +1,11 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
+10.4.2 (2023-03-20)
+-------------------
+
+* API: fixed issue with remote parameter write lock
+
 10.4.1 (2023-03-16)
 -------------------
 
