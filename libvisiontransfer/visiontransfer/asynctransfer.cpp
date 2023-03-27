@@ -397,12 +397,12 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                 unique_lock<timed_mutex> lock(receiveMutex);
 
                 // Wait for previously received data to be processed
-                while(newDataReceived) {
+                /*while(newDataReceived) {
                     receiveWaitCond.wait_for(lock, std::chrono::milliseconds(100));
                     if(terminate) {
                         return;
                     }
-                }
+                }*/
 
                 // Notify that a new image set has been received
                 newDataReceived = true;
