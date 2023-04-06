@@ -386,7 +386,7 @@ public:
     /** Returns the maximum value for the Parameter (or the highest possible value for the inferred template type if unset). Not supported for tensors. */
     template<typename T>
     T getMax() const {
-        return maxValue.isDefined() ? (maxValue.getValue<T>()) : (std::numeric_limits<T>::max());
+        return maxValue.isDefined() ? (maxValue.getValue<T>()) : ((std::numeric_limits<T>::max)());
     }
     /** Returns the increment (granularity) for the Parameter (or the smallest possible value for the inferred template type if unset). Not supported for tensors. */
     template<typename T>

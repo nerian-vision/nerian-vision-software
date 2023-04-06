@@ -196,7 +196,7 @@ public:
     void writePlyFile(const char* file, const unsigned short* dispMap,
         const unsigned char* image,  int width, int height, ImageSet::ImageFormat format,
         int dispRowStride, int imageRowStride, const float* q,
-        double maxZ = std::numeric_limits<double>::max(),
+        double maxZ = (std::numeric_limits<double>::max)(),
         bool binary = false, int subpixelFactor = 16, unsigned short maxDisparity = 0xFFF);
 #endif
 
@@ -214,7 +214,7 @@ public:
      *
      */
     void writePlyFile(const char* file, const ImageSet& imageSet,
-        double maxZ = std::numeric_limits<double>::max(),
+        double maxZ = (std::numeric_limits<double>::max)(),
         bool binary = false,
         ColorSource colSource = COLOR_AUTO,
         unsigned short maxDisparity = 0xFFF);

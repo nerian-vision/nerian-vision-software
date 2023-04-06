@@ -81,7 +81,7 @@ public :
 
     // Size
     size_type max_size() const {
-        return std::numeric_limits<size_type>::max() / sizeof(T);
+        return (std::numeric_limits<size_type>::max)() / sizeof(T);
     }
 
     // Construction
