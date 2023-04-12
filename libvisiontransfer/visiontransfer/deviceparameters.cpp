@@ -32,7 +32,7 @@ public:
 
     template<typename T>
     void writeParameter(const char* id, const T& value) {
-        paramTrans.writeParameter(id, value);
+        paramTrans.writeParameterTransactionGuarded(id, value);
     }
 
     int readIntParameter(const char* id);
@@ -52,6 +52,9 @@ public:
     ParameterSet& getParameterSet();
 
     void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
+
+    void transactionStartQueue();
+    void transactionCommitQueue();
 
 private:
     std::map<std::string, ParameterInfo> serverSideEnumeration;
@@ -175,6 +178,20 @@ ParameterSet DeviceParameters::getParameterSet() {
 void DeviceParameters::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback) {
     pimpl->setParameterUpdateCallback(callback);
 }
+
+DeviceParameters::TransactionLock::TransactionLock(DeviceParameters::Pimpl* pimpl)
+: pimpl(pimpl) {
+    pimpl->transactionStartQueue();
+}
+
+DeviceParameters::TransactionLock::~TransactionLock() {
+    pimpl->transactionCommitQueue();
+}
+
+std::unique_ptr<DeviceParameters::TransactionLock> DeviceParameters::transactionLock() {
+    return std::make_unique<DeviceParameters::TransactionLock>(pimpl);
+}
+
 #endif
 
 /******************** Implementation in pimpl class *******************/
@@ -200,15 +217,15 @@ bool DeviceParameters::Pimpl::readBoolParameter(const char* id) {
 }
 
 void DeviceParameters::Pimpl::writeIntParameter(const char* id, int value) {
-    paramTrans.writeParameter(id, value);
+    paramTrans.writeParameterTransactionGuarded(id, value);
 }
 
 void DeviceParameters::Pimpl::writeDoubleParameter(const char* id, double value) {
-    paramTrans.writeParameter(id, value);
+    paramTrans.writeParameterTransactionGuarded(id, value);
 }
 
 void DeviceParameters::Pimpl::writeBoolParameter(const char* id, bool value) {
-    paramTrans.writeParameter(id, value);
+    paramTrans.writeParameterTransactionGuarded(id, value);
 }
 
 std::map<std::string, ParameterInfo> DeviceParameters::Pimpl::getAllParameters() {
@@ -236,6 +253,14 @@ ParameterSet& DeviceParameters::Pimpl::getParameterSet() {
 
 void DeviceParameters::Pimpl::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback) {
     paramTrans.setParameterUpdateCallback(callback);
+}
+
+void DeviceParameters::Pimpl::transactionStartQueue() {
+    paramTrans.transactionStartQueue();
+}
+
+void DeviceParameters::Pimpl::transactionCommitQueue() {
+    paramTrans.transactionCommitQueue();
 }
 
 } // namespace

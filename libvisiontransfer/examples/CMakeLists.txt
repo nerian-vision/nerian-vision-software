@@ -35,6 +35,7 @@ set(EXAMPLES
 	parameter_example
 	temperature_example
 	parameter_enumeration_example
+	parameter_set_batch_write_example
 	imu_data_channel_example
 	input_transfer_example
 )
@@ -53,6 +54,7 @@ if(NOT MSVC)
     # The new (full) parameter API defines C++11 or up as a requirement
     string(REPLACE "-std=c++98" "-std=c++11" COMPILE_FLAGS_CXX11 "${CMAKE_CXX_FLAGS}")
     set_target_properties(parameter_enumeration_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
+    set_target_properties(parameter_set_batch_write_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
     set_target_properties(temperature_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
 
     string(REPLACE "-std=c++98" "-std=c++14" COMPILE_FLAGS_CXX14 "${CMAKE_CXX_FLAGS}")

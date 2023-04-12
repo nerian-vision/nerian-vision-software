@@ -49,6 +49,12 @@ namespace visiontransfer {
  */
 
 class VT_EXPORT DeviceParameters {
+
+private:
+    // We (mostly) follow the pimpl idiom here
+    class Pimpl;
+    Pimpl* pimpl;
+
 public:
     /**
      * \brief Connects to parameter server of a Nerian stereo device by using the
@@ -1045,13 +1051,30 @@ public:
      */
     void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
 
+    /**
+     * \brief A (thread-local) parameter transaction lock for queued writes.
+     *
+     * Obtain a lock using transactionLock() if you want to set several, possibly dependent,
+     * parameters in one go. You can't go wrong by using this for any parameter setting operation.
+     * This ensures coordinated setting and uniform calculation of dependent parameters.
+     * All parameter write operations (setParameter etc.) are transparently queued until the
+     * TransactionLock object leaves scope, and then written as a batch in its destructor.
+     */
+    class VT_EXPORT TransactionLock {
+        private:
+            Pimpl* pimpl;
+        public:
+            TransactionLock(Pimpl* pimpl);
+            ~TransactionLock();
+    };
+    friend class TransactionLock;
+
+    /// Obtain a scoped TransactionLock for the current thread
+    std::unique_ptr<TransactionLock> transactionLock();
+
 #endif
 
 private:
-    // We (mostly) follow the pimpl idiom here
-    class Pimpl;
-    Pimpl* pimpl;
-
     // This class cannot be copied
     DeviceParameters(const DeviceParameters& other);
     DeviceParameters& operator=(const DeviceParameters& other);

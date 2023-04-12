@@ -42,10 +42,10 @@ std::string unescapeString(const std::string& str) {
     return s;
 }
 
-// String serialization of full parameter info (line header "I")
-void ParameterSerialization::serializeParameterFullUpdate(std::stringstream& ss, const Parameter& param) {
+// String serialization of full parameter info (line header "I") or metadata update (line header "M")
+void ParameterSerialization::serializeParameterFullUpdate(std::stringstream& ss, const Parameter& param, const std::string& leader) {
     // 1  Uid
-    ss << "I\t" << param.getUid() << "\t";
+    ss << leader << "\t" << param.getUid() << "\t";
     // 2, 3  Access mode RW vs RO (for WebIf, then API) -- NOTE: this function should never even be invoked for an ACCESS_NONE param for the respective receiver
     switch (param.getAccessForConfig()) {
         case Parameter::ACCESS_READWRITE: ss << "2\t"; break;
@@ -186,15 +186,15 @@ void ParameterSerialization::serializeParameterFullUpdate(std::stringstream& ss,
 }
 
 // expecting a tab-tokenization of a parameter info
-Parameter ParameterSerialization::deserializeParameterFullUpdate(const std::vector<std::string>& toks) {
+Parameter ParameterSerialization::deserializeParameterFullUpdate(const std::vector<std::string>& toks, const std::string& leader) {
     static visiontransfer::internal::Tokenizer tokr;
     static visiontransfer::internal::Tokenizer tokrSemi;
     tokrSemi.separators({";"});
     if (toks.size() < 19) {
         throw std::runtime_error("deserializeParameterFullUpdate: parameter info string tokens missing");
     }
-    // toks[0] should be "I", but double-check
-    if (toks[0] != "I") throw std::runtime_error("deserializeParameterFullUpdate: attempted deserialization of a non-parameter");
+    // toks[0] should be "I" for full updates and "M" for metadata-only updates, but double-check
+    if (toks[0] != std::string(leader)) throw std::runtime_error("deserializeParameterFullUpdate: attempted deserialization of a non-parameter");
 
     // 1  Param with UID (putting in place of reference)
     if (toks[1].size() < 1) throw std::runtime_error("deserializeParameterFullUpdate: malformed UID field");

@@ -37,6 +37,9 @@ namespace internal {
 
 constexpr int ParameterTransfer::SOCKET_TIMEOUT_MS;
 
+thread_local bool ParameterTransfer::transactionInProgress = false;
+thread_local std::vector<std::pair<std::string, std::string> > ParameterTransfer::transactionQueuedWrites = {};
+
 ParameterTransfer::ParameterTransfer(const char* address, const char* service)
     : socket(INVALID_SOCKET), address(address), service(service), networkReady(false) {
 
@@ -181,6 +184,50 @@ void ParameterTransfer::writeParameter(const char* id, const std::string& value)
     }
 }
 
+template<typename T>
+void ParameterTransfer::writeParameterTransactionGuardedImpl(const char* id, const T& value) {
+    if (transactionInProgress) {
+        if (!paramSet.count(id)) {
+            throw ParameterException("Invalid parameter: " + std::string(id));
+        }
+        // Queue is thread_local
+        transactionQueuedWrites.push_back({std::string(id), std::to_string(value)});
+    } else {
+        // No transaction, immediate dispatch
+        writeParameter(id, value);
+    }
+}
+
+// Explicit instantiation for std::string
+template<>
+void ParameterTransfer::writeParameterTransactionGuarded(const char* id, const std::string& value) {
+    if (transactionInProgress) {
+        if (!paramSet.count(id)) {
+            throw ParameterException("Invalid parameter: " + std::string(id));
+        }
+        // Queue is thread_local
+        transactionQueuedWrites.push_back({std::string(id), value});
+    } else {
+        // No transaction, immediate dispatch
+        writeParameter(id, value);
+    }
+}
+
+template<>
+void ParameterTransfer::writeParameterTransactionGuarded(const char* id, const double& value) {
+    writeParameterTransactionGuardedImpl<double>(id, value);
+}
+
+template<>
+void ParameterTransfer::writeParameterTransactionGuarded(const char* id, const int& value) {
+    writeParameterTransactionGuardedImpl<int>(id, value);
+}
+
+template<>
+void ParameterTransfer::writeParameterTransactionGuarded(const char* id, const bool& value) {
+    writeParameterTransactionGuardedImpl<bool>(id, value);
+}
+
 int ParameterTransfer::readIntParameter(const char* id) {
     waitNetworkReady();
     if (!paramSet.count(id)) {
@@ -285,7 +332,6 @@ void ParameterTransfer::receiverRoutine() {
             if (bytesReceived < 0) {
                 auto err = Networking::getErrno();
                 if(err == EAGAIN || err == EWOULDBLOCK || err == ETIMEDOUT) {
-                    //std::cout << err << std::endl;
                     // No event or reply - no problem
                     //std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     continue;
@@ -335,7 +381,7 @@ void ParameterTransfer::receiverRoutine() {
                                 break;
                             }
                         } else if (cmd=="I") {
-                            // Add or overwrite local parameter
+                            // Full parameter info (value and metadata): add or overwrite local parameter
                             Parameter param = ParameterSerialization::deserializeParameterFullUpdate(toks);
                             auto uid = param.getUid();
                             bool alreadyPresent = paramSet.count(uid);
@@ -344,7 +390,21 @@ void ParameterTransfer::receiverRoutine() {
                                 // Only call the user callback for metadata updates, but not for the initial enumeration
                                 parameterUpdateCallback(uid);
                             }
+                        } else if (cmd=="M") {
+                            // Metadata-only update: overwrite an existing local parameter, but preserve its previous value.
+                            if (paramSet.count(toks[1])) {
+                                Parameter param = ParameterSerialization::deserializeParameterFullUpdate(toks, "M");
+                                auto uid = param.getUid();
+                                param.setCurrentFrom(paramSet[uid]);
+                                paramSet[uid] = param;
+                                if (parameterUpdateCallback) {
+                                    parameterUpdateCallback(uid);
+                                }
+                            } else {
+                                std::cerr << "Parameter not received yet - not updating metadata of: " << toks[1] << std::endl;;
+                            }
                         } else if (cmd=="V") {
+                            // Current-value-only update
                             if (toks.size() < 3) {
                                 throw TransferException("Received malformed parameter value update");
                             }
@@ -358,6 +418,7 @@ void ParameterTransfer::receiverRoutine() {
                                 std::cerr << "Parameter not received yet - not updating value of: " << toks[1] << std::endl;;
                             }
                         } else if (cmd=="R") {
+                            // Reply with asynchronous result of a request to set parameter[s]
                             if (toks.size() < 4) {
                                 throw TransferException("Received malformed reply for parameter set request");
                             }
@@ -445,6 +506,77 @@ ParameterSet& ParameterTransfer::getParameterSet() {
 
 void ParameterTransfer::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback) {
     parameterUpdateCallback = callback;
+}
+
+void ParameterTransfer::transactionStartQueue() {
+    // N.B. the flag is thread_local static
+    if (transactionInProgress) throw TransferException("Simultaneous and/or nested parameter transactions are not supported");
+    transactionInProgress = true;
+    // We are now in batch-write mode
+}
+
+void ParameterTransfer::transactionCommitQueue() {
+    // Send queued parameter transactions
+    waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
+    // Collect affected UIDs for transaction
+    std::set<std::string> affectedUids;
+    for (auto& kv: transactionQueuedWrites) {
+        affectedUids.insert(kv.first);
+    }
+    // Start transaction on server, incorporating all affected UIDs
+    std::string transactionId = std::to_string(getThreadId());
+    // (Note: could use a one-time UUID instead of getThreadId(), but it is amended on the remote side)
+    {
+        std::stringstream ss;
+        ss << "TS" << "\t" << transactionId << "\t";
+        bool first = true;
+        for (auto& uid: affectedUids) {
+            if (first) first=false; else ss << ",";
+            ss << uid;
+        }
+        ss << "\n";
+        {
+            std::unique_lock<std::mutex> localLock(socketModificationMutex);
+            if (socket == INVALID_SOCKET) {
+                throw TransferException("Connection has been closed and not reconnected so far");
+            }
+            size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
+            if(written != ss.str().size()) {
+                throw TransferException("Error sending transaction start request: " + Networking::getLastErrorString());
+            }
+        }
+    }
+
+    // Play back queued writes
+    for (auto& kv: transactionQueuedWrites) {
+        auto [uid, value] = kv;
+        writeParameter(uid.c_str(), value);
+    }
+
+    // Finish transaction on server - automatic updates are then applied (and resumed)
+    {
+        std::stringstream ss;
+        ss << "TE" << "\t" << transactionId << "\n";
+        {
+            std::unique_lock<std::mutex> localLock(socketModificationMutex);
+            if (socket == INVALID_SOCKET) {
+                throw TransferException("Connection has been closed and not reconnected so far");
+            }
+            size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
+            if(written != ss.str().size()) {
+                throw TransferException("Error sending transaction end request: " + Networking::getLastErrorString());
+            }
+            // The transaction will be finalized anyway on the server, but only after its timeout
+        }
+    }
+
+    // Cleanup
+    transactionQueuedWrites.clear();
+    transactionInProgress = false;
 }
 
 }} // namespace

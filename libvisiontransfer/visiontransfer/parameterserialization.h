@@ -29,8 +29,9 @@ namespace internal {
 /// This is the common [de]serialization filter for all of nvparam's external network protocols.
 class ParameterSerialization {
     public:
-        static void serializeParameterFullUpdate(std::stringstream& ss, const param::Parameter& param);
-        static param::Parameter deserializeParameterFullUpdate(const std::vector<std::string>& toks);
+        // Note: the [de]serialization of metadata-only updates uses the same format as the full update (and just ignores the value part)
+        static void serializeParameterFullUpdate(std::stringstream& ss, const param::Parameter& param, const std::string& leader="I");
+        static param::Parameter deserializeParameterFullUpdate(const std::vector<std::string>& toks, const std::string& leader="I");
         static void serializeParameterValueChange(std::stringstream& ss, const param::Parameter& param);
         static void deserializeParameterValueChange(const std::vector<std::string>& toks, param::Parameter& param);
         static void serializeAsyncResult(std::stringstream& ss, const std::string& requestId, bool success, const std::string& message);

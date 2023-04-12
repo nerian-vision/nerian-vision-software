@@ -21,6 +21,7 @@
 #include "visiontransfer/parameterset.h"
 
 #include <map>
+#include <set>
 #include <memory>
 #include <thread>
 #include <condition_variable>
@@ -141,6 +142,19 @@ public:
     void writeParameter(const char* id, const T& value);
 
     /**
+     * \brief Writes a scalar value to a parameter of the parameter server,
+     * transparently deferring for a batch update if a transaction has been started.
+     *
+     * \param id    Unique ID of the parameter to be written.
+     * \param value Value that should be written to the parameter.
+     *
+     * If writing the parameter fails, then an exception of type
+     * TransferException or ParameterException is thrown.
+     */
+    template<typename T>
+    void writeParameterTransactionGuarded(const char* id, const T& value);
+
+    /**
      * \brief Enumerates all parameters as reported by the device.
      */
     std::map<std::string, ParameterInfo> getAllParameters();
@@ -151,6 +165,19 @@ public:
     param::ParameterSet& getParameterSet();
 
     void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
+
+    /**
+     * \brief Start batch parameter transaction.
+     *
+     * Queues all remote set operations for writing in one batch; used for robust dependent parameter recalculation.
+     */
+    void transactionStartQueue();
+
+    /** \brief Complete the started parameter transaction.
+     *
+     * Bundles all queued writes into a single locked request and sends them.
+     */
+    void transactionCommitQueue();
 
 private:
     static constexpr int SOCKET_TIMEOUT_MS = 500;
@@ -203,6 +230,9 @@ private:
     /// User-supplied callback function that is invoked for parameter updates (but not the initial enumeration)
     std::function<void(const std::string&)> parameterUpdateCallback;
 
+    thread_local static bool transactionInProgress;
+    thread_local static std::vector<std::pair<std::string, std::string> > transactionQueuedWrites;
+
     /// Attempt to connect to configured server (or reconnect in case of dropped connection)
     void attemptConnection();
 
@@ -222,6 +252,9 @@ private:
     void recvData(unsigned char* dest, int length);
 
     std::map<std::string, ParameterInfo> recvEnumeration();
+
+    template<typename T>
+    void writeParameterTransactionGuardedImpl(const char* id, const T& value);
 };
 
 }} // namespace
