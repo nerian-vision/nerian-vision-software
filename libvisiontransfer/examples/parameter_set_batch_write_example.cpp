@@ -62,7 +62,7 @@ int main(int argc, const char** argv) {
         {
             auto transactionLock = parameters.transactionLock();
             parameters.setParameter("uniqueness_check_enabled", !uni);
-            parameters.setParameter("texture_filter_enabled", !uni);
+            parameters.setParameter("texture_filter_enabled", !tex);
         } // -> transaction will be automatically committed at scope exit
         std::cout << "Transaction complete" << std::endl;
 
