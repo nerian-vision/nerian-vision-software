@@ -41,7 +41,7 @@ thread_local bool ParameterTransfer::transactionInProgress = false;
 thread_local std::vector<std::pair<std::string, std::string> > ParameterTransfer::transactionQueuedWrites = {};
 
 ParameterTransfer::ParameterTransfer(const char* address, const char* service)
-    : socket(INVALID_SOCKET), address(address), service(service), networkReady(false) {
+    : socket(INVALID_SOCKET), address(address), service(service), networkReady(false), featureDisabledTransactions(false) {
 
     tabTokenizer.collapse(false).separators({"\t"});
 
@@ -368,11 +368,19 @@ void ParameterTransfer::receiverRoutine() {
                         if (cmd=="P") {
                             if (toks.size()>1) {
                                 // Check of protocol version - old firmwares do not send newline-terminated version, which will just time out waitNetworkReady()
-                                if(atol(toks[1].c_str()) != static_cast<unsigned int>(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION)) {
-                                    networkError = true;
-                                    networkErrorString = std::string("Protocol version mismatch, expected ") + std::to_string(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION) + " but got " + toks[1];
-                                    threadRunning = false;
-                                    break;
+                                long reportedVersion = atol(toks[1].c_str());
+                                if(reportedVersion != static_cast<unsigned int>(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION)) {
+                                    if (reportedVersion == 0x07) {
+                                        // Batch transactions added in protocol 0x8 --> fallback: write parameters one-by-one
+                                        std::cerr << "Warning: remote firmware is out of date - parameter batch transaction support disabled." << std::endl;
+                                        featureDisabledTransactions = true;
+                                    } else {
+                                        // Unhandled / incompatible version
+                                        networkError = true;
+                                        networkErrorString = std::string("Protocol version mismatch, expected ") + std::to_string(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION) + " but got " + toks[1];
+                                        threadRunning = false;
+                                        break;
+                                    }
                                 }
                             } else {
                                 networkError = true;
@@ -510,6 +518,10 @@ void ParameterTransfer::setParameterUpdateCallback(std::function<void(const std:
 
 void ParameterTransfer::transactionStartQueue() {
     // N.B. the flag is thread_local static
+    if (featureDisabledTransactions) {
+        // Fallback mode for outdated firmware versions -> ignore transaction batching
+        return;
+    }
     if (transactionInProgress) throw TransferException("Simultaneous and/or nested parameter transactions are not supported");
     transactionInProgress = true;
     // We are now in batch-write mode

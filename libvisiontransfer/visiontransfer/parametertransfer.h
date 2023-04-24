@@ -205,6 +205,9 @@ private:
     std::string networkErrorString;
     bool networkReady; // after protocol check and initial update
 
+    // Fallback handling for connecting to out-of-date firmware versions
+    bool featureDisabledTransactions;
+
     bool threadRunning;
     std::shared_ptr<std::thread> receiverThread;
 
