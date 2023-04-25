@@ -565,7 +565,8 @@ void ParameterTransfer::transactionCommitQueue() {
 
     // Play back queued writes
     for (auto& kv: transactionQueuedWrites) {
-        auto [uid, value] = kv;
+        auto& uid = kv.first;
+        auto& value = kv.second;
         writeParameter(uid.c_str(), value);
     }
 
