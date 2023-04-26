@@ -230,6 +230,10 @@ void ParameterTransfer::writeParameterTransactionGuarded(const char* id, const b
 
 int ParameterTransfer::readIntParameter(const char* id) {
     waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
     if (!paramSet.count(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
@@ -238,6 +242,10 @@ int ParameterTransfer::readIntParameter(const char* id) {
 
 double ParameterTransfer::readDoubleParameter(const char* id) {
     waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
     if (!paramSet.count(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
@@ -246,6 +254,10 @@ double ParameterTransfer::readDoubleParameter(const char* id) {
 
 bool ParameterTransfer::readBoolParameter(const char* id) {
     waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
     if (!paramSet.count(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
@@ -266,6 +278,10 @@ void ParameterTransfer::writeBoolParameter(const char* id, bool value) {
 
 std::map<std::string, ParameterInfo> ParameterTransfer::getAllParameters() {
     waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
     std::map<std::string, ParameterInfo> compatMap;
     {
         std::unique_lock<std::mutex> globalLock(mapMutex);
@@ -367,19 +383,49 @@ void ParameterTransfer::receiverRoutine() {
                         const std::string& cmd = toks[0];
                         if (cmd=="P") {
                             if (toks.size()>1) {
-                                // Check of protocol version - old firmwares do not send newline-terminated version, which will just time out waitNetworkReady()
-                                long reportedVersion = atol(toks[1].c_str());
-                                if(reportedVersion != static_cast<unsigned int>(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION)) {
-                                    if (reportedVersion == 0x07) {
-                                        // Batch transactions added in protocol 0x8 --> fallback: write parameters one-by-one
-                                        std::cerr << "Warning: remote firmware is out of date - parameter batch transaction support disabled." << std::endl;
-                                        featureDisabledTransactions = true;
-                                    } else {
-                                        // Unhandled / incompatible version
-                                        networkError = true;
-                                        networkErrorString = std::string("Protocol version mismatch, expected ") + std::to_string(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION) + " but got " + toks[1];
-                                        threadRunning = false;
-                                        break;
+                                // Check of protocol version - old (non-nvparam) firmwares do not send a newline-terminated version, which will just time out waitNetworkReady()
+                                long reportedVersionMajor = atol(toks[1].c_str());
+                                if(reportedVersionMajor != static_cast<unsigned int>(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION_MAJOR)) {
+                                    // Unhandled / incompatible version
+                                    networkError = true;
+                                    networkErrorString = std::string("Protocol major version mismatch, expected ") + std::to_string(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION_MAJOR) + " but got " + toks[1];
+                                    threadRunning = false;
+                                    // Wake up the network wait (to propagate error quickly)
+                                    std::lock_guard<std::mutex> readyLock(readyMutex);
+                                    readyCond.notify_all();
+                                    break;
+                                }
+                                long reportedVersionMinor = -1; // = unreported, legacy version
+                                if (toks.size()>2) {
+                                    // Minor version reported
+                                    reportedVersionMinor = atol(toks[2].c_str());
+                                    if (reportedVersionMinor > static_cast<unsigned int>(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION_MINOR)) {
+                                        std::cerr << "Caution: remote parameter protocol version " << reportedVersionMajor << "." << reportedVersionMinor
+                                            << " is newer than our version " <<static_cast<unsigned int>(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION_MAJOR)
+                                            << "." << static_cast<unsigned int>(InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION_MINOR) << std::endl;
+                                        std::cerr << "Consider a library upgrade for maximum compatibility." << std::endl;
+                                    }
+                                    // Further toks fields are reserved for future extensions
+                                }
+                                if (reportedVersionMinor == -1) {
+                                    // Device is protocol 7.0, batch transactions added in 7.1 --> fallback: write parameters one-by-one
+                                    std::cerr << "Warning: remote firmware is out of date - parameter batch transaction support disabled." << std::endl;
+                                    featureDisabledTransactions = true;
+                                } else {
+                                    // Device accepts full version description handshake, report ours
+                                    std::cout << "Sending our version info" << std::endl;
+                                    std::stringstream ss;
+                                    ss << "P" << "\t" << (unsigned int) visiontransfer::internal::InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION_MAJOR
+                                        << "\t" << (unsigned int) visiontransfer::internal::InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION_MINOR << "\n";
+                                    {
+                                        std::unique_lock<std::mutex> localLock(socketModificationMutex);
+                                        if (socket == INVALID_SOCKET) {
+                                            throw TransferException("Connection has been closed and not reconnected so far");
+                                        }
+                                        size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
+                                        if(written != ss.str().size()) {
+                                            throw TransferException("Error sending protocol version handshake reply: " + Networking::getLastErrorString());
+                                        }
                                     }
                                 }
                             } else {
@@ -447,7 +493,9 @@ void ParameterTransfer::receiverRoutine() {
                             std::lock_guard<std::mutex> readyLock(readyMutex);
                             readyCond.notify_all();
                         } else if (cmd=="HB") {
-                            // heartbeat - ignore
+                            // Heartbeat
+                        } else if (cmd=="X") {
+                            // Reserved extension
                         } else {
                             networkError = true;
                             networkErrorString = std::string("Unknown update command received: ") + cmd;
@@ -509,6 +557,10 @@ void ParameterTransfer::blockingCallThisThread(std::function<void()> fn, int wai
 
 ParameterSet& ParameterTransfer::getParameterSet() {
     waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
     return paramSet;
 }
 

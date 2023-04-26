@@ -48,7 +48,9 @@ struct InternalInformation {
     static constexpr int PARAMETER_WEBSOCKET_PORT = 7685;
 
     static constexpr unsigned char CURRENT_PROTOCOL_VERSION = 0x06;
-    static constexpr unsigned char CURRENT_PARAMETER_PROTOCOL_VERSION = 0x08;
+    static constexpr unsigned char CURRENT_PARAMETER_PROTOCOL_VERSION_MAJOR = 0x07;
+    static constexpr unsigned char CURRENT_PARAMETER_PROTOCOL_VERSION_MINOR = 0x01;
+
 };
 
 }} // namespace
