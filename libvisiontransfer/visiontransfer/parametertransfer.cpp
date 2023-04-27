@@ -413,7 +413,6 @@ void ParameterTransfer::receiverRoutine() {
                                     featureDisabledTransactions = true;
                                 } else {
                                     // Device accepts full version description handshake, report ours
-                                    std::cout << "Sending our version info" << std::endl;
                                     std::stringstream ss;
                                     ss << "P" << "\t" << (unsigned int) visiontransfer::internal::InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION_MAJOR
                                         << "\t" << (unsigned int) visiontransfer::internal::InternalInformation::CURRENT_PARAMETER_PROTOCOL_VERSION_MINOR << "\n";
