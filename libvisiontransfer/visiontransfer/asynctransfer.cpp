@@ -77,11 +77,11 @@ private:
     std::thread receiveThread;
     std::timed_mutex receiveMutex;
     std::condition_variable_any receiveCond;
-    std::condition_variable_any receiveWaitCond;
 
     // Objects for exchanging images with the send and receive threads
     ImageSet receivedSet;
     std::vector<unsigned char, AlignedAllocator<unsigned char> > receivedData[NUM_BUFFERS];
+    volatile int receiveBufferIndex;
     volatile bool newDataReceived;
 
     ImageSet sendImageSet;
@@ -94,6 +94,10 @@ private:
 
     bool sendThreadCreated;
     bool receiveThreadCreated;
+
+    // Count of additional locally dropped frames (due to not being collected in time)
+    // Only starts counting with the first call of collectReceivedImagePair()
+    int uncollectedDroppedFrames;
 
     // Main loop for sending thread
     void sendLoop();
@@ -155,9 +159,9 @@ AsyncTransfer::Pimpl::Pimpl(const char* address, const char* service,
         ImageProtocol::ProtocolType protType, bool server,
         int bufferSize, int maxUdpPacketSize)
     : imgTrans(address, service, protType, server, bufferSize, maxUdpPacketSize),
-    terminate(false), newDataReceived(false), sendSetValid(false),
+    terminate(false), receiveBufferIndex(0), newDataReceived(false), sendSetValid(false),
     deleteSendData(false), sendThreadCreated(false),
-    receiveThreadCreated(false) {
+    receiveThreadCreated(false), uncollectedDroppedFrames(-1) {
 
     if(server) {
         createSendThread();
@@ -170,7 +174,6 @@ AsyncTransfer::Pimpl::~Pimpl() {
     sendCond.notify_all();
     receiveCond.notify_all();
     sendWaitCond.notify_all();
-    receiveWaitCond.notify_all();
 
     if(sendThreadCreated && sendThread.joinable()) {
         sendThread.join();
@@ -279,7 +282,12 @@ bool AsyncTransfer::Pimpl::collectReceivedImageSet(ImageSet& imageSet, double ti
         imageSet = receivedSet;
 
         newDataReceived = false;
-        receiveWaitCond.notify_one();
+
+        // Increment index for data buffers
+        receiveBufferIndex = (receiveBufferIndex + receivedSet.getNumberOfImages()) % NUM_BUFFERS;
+        
+        // Start counting uncollected frames at the time of first collection
+        if (uncollectedDroppedFrames < 0) uncollectedDroppedFrames = 0;
 
         return true;
     } else {
@@ -361,48 +369,40 @@ void AsyncTransfer::Pimpl::receiveLoop() {
 
     try {
         ImageSet currentSet;
-        int bufferIndex = 0;
 
         while(!terminate) {
-            // Receive new image
-            if(!imgTrans.receiveImageSet(currentSet)) {
-                // No image available
-                continue;
-            }
-
-            // Copy the pixel data
-            for(int i=0;i<currentSet.getNumberOfImages();i++) {
-                int bytesPerPixel = currentSet.getBytesPerPixel(i);
-                int newStride = currentSet.getWidth() * bytesPerPixel;
-                int totalSize = currentSet.getHeight() * newStride;
-                int bufIdxHere = (i + bufferIndex) % NUM_BUFFERS;
-                if(static_cast<int>(receivedData[bufIdxHere].size()) < totalSize) {
-                    receivedData[bufIdxHere].resize(totalSize);
-                }
-                if(newStride == currentSet.getRowStride(i)) {
-                    memcpy(&receivedData[bufIdxHere][0], currentSet.getPixelData(i),
-                        newStride*currentSet.getHeight());
-                } else {
-                    for(int y = 0; y<currentSet.getHeight(); y++) {
-                        memcpy(&receivedData[bufIdxHere][y*newStride],
-                            &currentSet.getPixelData(i)[y*currentSet.getRowStride(i)],
-                            newStride);
-                    }
-                    currentSet.setRowStride(i, newStride);
-                }
-                currentSet.setPixelData(i, &receivedData[bufIdxHere][0]);
-            }
-
-            {
+            // Receive new image (blocks internally)
+            bool newImageSetArrived = imgTrans.receiveImageSet(currentSet);
+            
+            if (newImageSetArrived) {
                 unique_lock<timed_mutex> lock(receiveMutex);
-
-                // Wait for previously received data to be processed
-                while(newDataReceived) {
-                    receiveWaitCond.wait_for(lock, std::chrono::milliseconds(100));
-                    if(terminate) {
-                        return;
-                    }
+                if (newDataReceived) {
+                    // collectReceivedImageSet() frequency was too low; previous frame lost
+                    if (uncollectedDroppedFrames > -1) uncollectedDroppedFrames++;
                 }
+                // Copy the pixel data
+                for(int i=0;i<currentSet.getNumberOfImages();i++) {
+                    int bytesPerPixel = currentSet.getBytesPerPixel(i);
+                    int newStride = currentSet.getWidth() * bytesPerPixel;
+                    int totalSize = currentSet.getHeight() * newStride;
+                    int bufIdxHere = (i + receiveBufferIndex) % NUM_BUFFERS;
+                    if(static_cast<int>(receivedData[bufIdxHere].size()) < totalSize) {
+                        receivedData[bufIdxHere].resize(totalSize);
+                    }
+                    if(newStride == currentSet.getRowStride(i)) {
+                        memcpy(&receivedData[bufIdxHere][0], currentSet.getPixelData(i),
+                            newStride*currentSet.getHeight());
+                    } else {
+                        for(int y = 0; y<currentSet.getHeight(); y++) {
+                            memcpy(&receivedData[bufIdxHere][y*newStride],
+                                &currentSet.getPixelData(i)[y*currentSet.getRowStride(i)],
+                                newStride);
+                        }
+                        currentSet.setRowStride(i, newStride);
+                    }
+                    currentSet.setPixelData(i, &receivedData[bufIdxHere][0]);
+                }
+                // N.B. receiveBufferIndex is only increased at collection time
 
                 // Notify that a new image set has been received
                 newDataReceived = true;
@@ -410,8 +410,6 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                 receiveCond.notify_one();
             }
 
-            // Increment index for data buffers
-            bufferIndex = (bufferIndex + currentSet.getNumberOfImages()) % NUM_BUFFERS;
         }
     } catch(...) {
         // Store the exception for later
@@ -435,7 +433,7 @@ std::string AsyncTransfer::Pimpl::getRemoteAddress() const {
 }
 
 int AsyncTransfer::Pimpl::getNumDroppedFrames() const {
-    return imgTrans.getNumDroppedFrames();
+    return imgTrans.getNumDroppedFrames() + uncollectedDroppedFrames;
 }
 
 bool AsyncTransfer::Pimpl::tryAccept() {
