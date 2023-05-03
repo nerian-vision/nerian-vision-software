@@ -1,7 +1,7 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
-10.5.0 (2023-05-??)
+10.5.0 (2023-05-03)
 -------------------
 * Added support for parameter transactions
 
