@@ -579,67 +579,76 @@ void ParameterTransfer::transactionStartQueue() {
 }
 
 void ParameterTransfer::transactionCommitQueue() {
+    if (featureDisabledTransactions) {
+        // Fallback mode for outdated firmware versions -> ignore transaction batching
+        return;
+    }
     // Send queued parameter transactions
     waitNetworkReady();
     if (networkError) {
         // collecting deferred error from background thread
         throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
     }
-    // Collect affected UIDs for transaction
-    std::set<std::string> affectedUids;
-    for (auto& kv: transactionQueuedWrites) {
-        affectedUids.insert(kv.first);
-    }
-    // Start transaction on server, incorporating all affected UIDs
-    std::string transactionId = std::to_string(getThreadId());
-    // (Note: could use a one-time UUID instead of getThreadId(), but it is amended on the remote side)
-    {
-        std::stringstream ss;
-        ss << "TS" << "\t" << transactionId << "\t";
-        bool first = true;
-        for (auto& uid: affectedUids) {
-            if (first) first=false; else ss << ",";
-            ss << uid;
+
+    // If there are no actual changes, do not send anything
+    if (transactionQueuedWrites.size() > 0) {
+        // Collect affected UIDs for transaction
+        std::set<std::string> affectedUids;
+        for (auto& kv: transactionQueuedWrites) {
+            affectedUids.insert(kv.first);
         }
-        ss << "\n";
+        // Start transaction on server, incorporating all affected UIDs
+        std::string transactionId = std::to_string(getThreadId());
+        // (Note: could use a one-time UUID instead of getThreadId(), but it is amended on the remote side)
         {
-            std::unique_lock<std::mutex> localLock(socketModificationMutex);
-            if (socket == INVALID_SOCKET) {
-                throw TransferException("Connection has been closed and not reconnected so far");
+            std::stringstream ss;
+            ss << "TS" << "\t" << transactionId << "\t";
+            bool first = true;
+            for (auto& uid: affectedUids) {
+                if (first) first=false; else ss << ",";
+                ss << uid;
             }
-            size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
-            if(written != ss.str().size()) {
-                throw TransferException("Error sending transaction start request: " + Networking::getLastErrorString());
+            ss << "\n";
+            {
+                std::unique_lock<std::mutex> localLock(socketModificationMutex);
+                if (socket == INVALID_SOCKET) {
+                    throw TransferException("Connection has been closed and not reconnected so far");
+                }
+                size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
+                if(written != ss.str().size()) {
+                    throw TransferException("Error sending transaction start request: " + Networking::getLastErrorString());
+                }
             }
         }
-    }
 
-    // Play back queued writes
-    for (auto& kv: transactionQueuedWrites) {
-        auto& uid = kv.first;
-        auto& value = kv.second;
-        writeParameter(uid.c_str(), value);
-    }
+        // Play back queued writes
+        for (auto& kv: transactionQueuedWrites) {
+            auto& uid = kv.first;
+            auto& value = kv.second;
+            writeParameter(uid.c_str(), value);
+        }
 
-    // Finish transaction on server - automatic updates are then applied (and resumed)
-    {
-        std::stringstream ss;
-        ss << "TE" << "\t" << transactionId << "\n";
+        // Finish transaction on server - automatic updates are then applied (and resumed)
         {
-            std::unique_lock<std::mutex> localLock(socketModificationMutex);
-            if (socket == INVALID_SOCKET) {
-                throw TransferException("Connection has been closed and not reconnected so far");
+            std::stringstream ss;
+            ss << "TE" << "\t" << transactionId << "\n";
+            {
+                std::unique_lock<std::mutex> localLock(socketModificationMutex);
+                if (socket == INVALID_SOCKET) {
+                    throw TransferException("Connection has been closed and not reconnected so far");
+                }
+                size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
+                if(written != ss.str().size()) {
+                    throw TransferException("Error sending transaction end request: " + Networking::getLastErrorString());
+                }
+                // The transaction will be finalized anyway on the server, but only after its timeout
             }
-            size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
-            if(written != ss.str().size()) {
-                throw TransferException("Error sending transaction end request: " + Networking::getLastErrorString());
-            }
-            // The transaction will be finalized anyway on the server, but only after its timeout
         }
+
+        // Cleanup
+        transactionQueuedWrites.clear();
     }
 
-    // Cleanup
-    transactionQueuedWrites.clear();
     transactionInProgress = false;
 }
 
