@@ -51,4 +51,11 @@
 #endif
 #endif
 
+// C++ version; special case for VS instead of demanding /Z:__cplusplus
+#if defined(_MSVC_LANG)
+#define VISIONTRANSFER_CPLUSPLUS_VERSION _MSVC_LANG
+#else
+#define VISIONTRANSFER_CPLUSPLUS_VERSION __cplusplus
+#endif
+
 #endif

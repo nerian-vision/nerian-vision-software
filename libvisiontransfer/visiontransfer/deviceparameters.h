@@ -19,7 +19,7 @@
 #include "visiontransfer/deviceinfo.h"
 #include "visiontransfer/standardparameterids.h"
 #include "visiontransfer/parameterinfo.h"
-#if __cplusplus >= 201103L
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include "visiontransfer/parameter.h"
 #include "visiontransfer/parameterset.h"
 #include <functional>

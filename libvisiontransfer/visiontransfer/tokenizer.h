@@ -29,7 +29,7 @@ public:
     Tokenizer& strip_chars(const std::string& chars) { _strip_chars = chars; return *this; }
     Tokenizer& collapse(bool coll) { _collapse = coll; return *this; }
     Tokenizer& quoting(bool quot) { _quoting = quot; return *this; }
-#if __cplusplus >= 201703L
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201703L
     std::vector<std::string> tokenize(const std::string_view& inp) {
 #else
     std::vector<std::string> tokenize(const std::string& inp) {
