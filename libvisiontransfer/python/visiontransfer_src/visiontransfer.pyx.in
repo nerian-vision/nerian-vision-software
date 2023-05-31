@@ -214,7 +214,7 @@ def create_image_set_from_reduced_data(width, height, nimg, indices, strides, fo
     imset.set_width(width)
     imset.set_height(height)
     imset.set_number_of_images(nimg)
-    for i, what in enumerate([ImageType.IMAGE_LEFT, ImageType.IMAGE_DISPARITY, ImageType.IMAGE_RIGHT]):
+    for i, what in enumerate([ImageType.IMAGE_LEFT, ImageType.IMAGE_DISPARITY, ImageType.IMAGE_RIGHT, ImageType.IMAGE_COLOR]):
         imset.set_index_of(what, indices[i])
     for i in range(nimg):
         imset.set_row_stride(i, strides[i])
@@ -246,7 +246,7 @@ cdef class ImageSet:
         #  (e.g. unpickled data) -- bear in mind the C++ API purely
         #  operates on unmanaged raw data pointers into numpy arrays.
         self._numpy_q = None
-        self._numpy_pixels = [None]*3 # MAX_SUPPORTED_IMAGES
+        self._numpy_pixels = [None] * 4 # MAX_SUPPORTED_IMAGES
         # Successfully setting pixel data from Python flags this
         #  object, whitelisting later overwriting (which is prevented
         #  a priori for all C++-/ImageTransfer-managed objects).
@@ -258,7 +258,7 @@ cdef class ImageSet:
                 self.get_width(),
                 self.get_height(),
                 nimg,
-                [self.get_index_of(i) for i in [ImageType.IMAGE_LEFT, ImageType.IMAGE_DISPARITY, ImageType.IMAGE_RIGHT]],
+                [self.get_index_of(i) for i in [ImageType.IMAGE_LEFT, ImageType.IMAGE_DISPARITY, ImageType.IMAGE_RIGHT, ImageType.IMAGE_COLOR]],
                 [self.get_row_stride(i) for i in range(nimg)],
                 [self.get_pixel_format(i) for i in range(nimg)],
                 [self.get_pixel_data_raw(i) for i in range(nimg)],
@@ -288,7 +288,7 @@ no deallocation attempts by the C++ API will ever take place on this clone).
         cloned.set_height(self.get_height())
         cloned.set_width(self.get_width())
         cloned.set_number_of_images(nimg)
-        for i in [ImageType.IMAGE_LEFT, ImageType.IMAGE_DISPARITY, ImageType.IMAGE_RIGHT]:
+        for i in [ImageType.IMAGE_LEFT, ImageType.IMAGE_DISPARITY, ImageType.IMAGE_RIGHT, ImageType.IMAGE_COLOR]:
             cloned.set_index_of(i, self.get_index_of(i))
         for i in range(nimg):
             cloned.set_row_stride(i, self.get_row_stride(i))
@@ -967,13 +967,21 @@ cdef class Reconstruct3D:
             Contains color information unless the ImageSet was disparity-only.
         '''
         import open3d
-        pointmap, colors = self.create_point_map_and_color_map(image_set, min_disparity=min_disparity, max_z=max_z, color_source=color_source)
-        pcd = open3d.geometry.PointCloud(open3d.utility.Vector3dVector(pointmap))
-        if colors is not None:
-            pcd.colors = open3d.utility.Vector3dVector(colors)
+        rgbd = self.create_open3d_rgbd_image(image_set,
+                min_disparity=min_disparity,
+                depth_trunc=max_z if max_z>0 else 10e12,
+                depth_scale=1.0,
+                color_source=color_source,
+                convert_rgb_to_intensity=False,
+                convert_intensity_to_rgb=True)
+        q = image_set.get_qmatrix()
+        cam_params = open3d.pybind.camera.PinholeCameraIntrinsic(
+                image_set.get_width(), image_set.get_height(),
+                q[2,3], q[2,3], -q[0,3], -q[1,3])
+        pcd = open3d.geometry.PointCloud.create_from_rgbd_image(rgbd, cam_params)
         return pcd
 
-    def create_open3d_rgbd_image(self, ImageSet image_set, min_disparity=1, depth_trunc=3.0, depth_scale=1.0, color_source=ColorSource.COLOR_AUTO):
+    def create_open3d_rgbd_image(self, ImageSet image_set, min_disparity=1, depth_trunc=3.0, depth_scale=1.0, color_source=ColorSource.COLOR_AUTO, convert_rgb_to_intensity=True, convert_intensity_to_rgb=False):
         '''
         Convenience wrapper to directly return an Open3D RGBD image for an ImageSet.
         Raises a RuntimeError when called with a disparity-only image set.
@@ -983,8 +991,13 @@ cdef class Reconstruct3D:
             min_disparity: The minimum disparity with 4-bit subpixel resolution.
             depth_trunc: (Open3D argument, relayed) Filter the depth channel to
                 zero-clamp points more distant than the specified value (default 3.0).
+            depth_scale: (Open3D argument, relayed) Scaling, before trunc (our default 1.0)
             color_source: The source of color information for the RGBD image
                 (see ColorSource; default ColorSource.COLOR_AUTO).
+            convert_rgb_to_intensity: (Open3D argument, relayed) Whether to convert
+                RGB image to intensity image.
+            convert_intensity_to_rgb: Expand grayscale images to RGB (e.g. for point
+                cloud color data)
 
         Returns:
             An open3d.geometry.RGBDImage for the image set.
@@ -1006,6 +1019,9 @@ cdef class Reconstruct3D:
             raise RuntimeError('Cannot create RGBD image - specified ColorSource source did not correspond to color data in the ImageSet')
 
         color = image_set.get_pixel_data(source_channel, force8bit=True)
+        if convert_intensity_to_rgb and (image_set.get_pixel_format(source_channel) != ImageFormat.FORMAT_8_BIT_RGB):
+            # Grayscale image - expand to RGB as directed
+            color = np.stack((color,)*3, axis=-1)
 
         cdef int w = image_set.c_obj.getWidth()
         cdef int h = image_set.c_obj.getHeight()
@@ -1017,7 +1033,8 @@ cdef class Reconstruct3D:
         img = open3d.geometry.RGBDImage.create_from_color_and_depth(
                 open3d.pybind.geometry.Image(color),
                 open3d.pybind.geometry.Image(depth),
-                depth_scale=depth_scale, depth_trunc=depth_trunc)
+                depth_scale=depth_scale, depth_trunc=depth_trunc,
+                convert_rgb_to_intensity=convert_rgb_to_intensity)
         return img
 
     def project_single_point(self, point_x, point_y, disparity, q, subpix_factor):
