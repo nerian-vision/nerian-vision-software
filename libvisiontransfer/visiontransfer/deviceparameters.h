@@ -1008,7 +1008,7 @@ public:
     DEPRECATED("Use getParameter() instead")
     T getNamedParameter(const std::string& name);
 
-#if __cplusplus >= 201103L
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 
     /**
      * \brief Tests whether a specific named parameter is available for this device.
