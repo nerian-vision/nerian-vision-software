@@ -967,6 +967,13 @@ cdef class Reconstruct3D:
             Contains color information unless the ImageSet was disparity-only.
         '''
         import open3d
+        ### For future reference: this block leverages our fast createPointMap and
+        ###  would be a good alternative - once Vector3dVector is fast for float32
+        #pointmap, colors = self.create_point_map_and_color_map(image_set, min_disparity=min_disparity, max_z=max_z, color_source=color_source)
+        #pcd = open3d.geometry.PointCloud(open3d.utility.Vector3dVector(pointmap))
+        #if colors is not None:
+        #    pcd.colors = open3d.utility.Vector3dVector(colors)
+        #return pcd
         rgbd = self.create_open3d_rgbd_image(image_set,
                 min_disparity=min_disparity,
                 depth_trunc=max_z if max_z>0 else 10e12,
