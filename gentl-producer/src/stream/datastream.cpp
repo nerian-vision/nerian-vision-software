@@ -260,8 +260,6 @@ GC_ERROR DataStream::getParentDev(DEV_HANDLE* phDevice) {
 }
 
 GC_ERROR DataStream::startAcquisition(ACQ_START_FLAGS iStartFlags, uint64_t iNumToAcquire) {
-    std::unique_lock<std::mutex> deviceLock(logicalDevice->getPhysicalDevice()->lock());
-    logicalDevice->getPhysicalDevice()->sendSoftwareTriggerRequest();
     framesToAquire = iNumToAcquire;
     numDelivered = 0;
     return GC_ERR_SUCCESS;
