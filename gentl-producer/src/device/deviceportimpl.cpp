@@ -488,6 +488,14 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 return GC_ERR_SUCCESS;
             }
             break;
+        case 0x1e: // TriggerSoftwareReg: force emission of software trigger
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                DEBUG_DEVPORT("=== Sending software trigger request ===");
+                device->getPhysicalDevice()->sendSoftwareTriggerRequest(); // value is actually a dummy
+                return GC_ERR_SUCCESS;
+            }
+            break;
         // (0x1c QMatrixData is read-only)
         default:
             DEBUG_DEVPORT("TODO - implement me (DevPortImpl::writeChildFeature)");

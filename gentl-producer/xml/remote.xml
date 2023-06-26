@@ -201,9 +201,21 @@
 
     <Command Name="TriggerSoftware" NameSpace="Standard">
         <ImposedAccessMode>WO</ImposedAccessMode>
-        <Value>0</Value>
-        <CommandValue>0</CommandValue>
+        <pValue>TriggerSoftwareBool</pValue>
+        <CommandValue>1</CommandValue>
     </Command>
+
+    <Boolean Name="TriggerSoftwareBool" NameSpace="Custom">
+        <pValue>TriggerSoftwareReg</pValue>
+    </Boolean>
+
+    <IntReg Name="TriggerSoftwareReg" NameSpace="Custom">
+        <Address>0xC001E000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
 
     <!-- Exposure control (inside category Acquisition) -->
     <Enumeration Name="ExposureTimeSelector" NameSpace="Standard">

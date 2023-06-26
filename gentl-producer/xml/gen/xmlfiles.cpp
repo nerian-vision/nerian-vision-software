@@ -112,7 +112,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 )},
 
 
-{"device.xml", FileData(23, 67, 37931, 
+{"device.xml", FileData(23, 68, 31980, 
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<RegisterDescription\n"
 "    ModelName=\"NerianGentTLDevice\"\n"
@@ -123,8 +123,8 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 "    SchemaMinorVersion=\"1\"\n"
 "    SchemaSubMinorVersion=\"0\"\n"
 "    MajorVersion=\"23\"\n"
-"    MinorVersion=\"67\"\n"
-"    SubMinorVersion=\"37931\"\n"
+"    MinorVersion=\"68\"\n"
+"    SubMinorVersion=\"31980\"\n"
 "    ProductGuid=\"8b6582b0-b379-4a38-86aa-a76d91930382\"\n"
 "    VersionGuid=\"eceec182-dc19-7467-aedd-5668b78719f5\"\n"
 "    xmlns=\"http://www.genicam.org/GenApi/Version_1_1\"\n"
@@ -236,7 +236,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 )},
 
 
-{"interface.xml", FileData(23, 67, 37705, 
+{"interface.xml", FileData(23, 68, 31980, 
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<RegisterDescription\n"
 "    ModelName=\"NerianGentTLInterface\"\n"
@@ -247,8 +247,8 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 "    SchemaMinorVersion=\"1\"\n"
 "    SchemaSubMinorVersion=\"0\"\n"
 "    MajorVersion=\"23\"\n"
-"    MinorVersion=\"67\"\n"
-"    SubMinorVersion=\"37705\"\n"
+"    MinorVersion=\"68\"\n"
+"    SubMinorVersion=\"31980\"\n"
 "    ProductGuid=\"87b91f8e-906c-4077-b77f-d134107956de\"\n"
 "    VersionGuid=\"c462f999-7a9f-1183-44fc-484eb6be4572\"\n"
 "    xmlns=\"http://www.genicam.org/GenApi/Version_1_1\"\n"
@@ -432,7 +432,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 )},
 
 
-{"remote.xml", FileData(23, 67, 37741, 
+{"remote.xml", FileData(23, 173, 54010, 
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<RegisterDescription\n"
 "    ModelName=\"SceneScan_SceneScanPro_Scarlet\"\n"
@@ -443,10 +443,10 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 "    SchemaMinorVersion=\"1\"\n"
 "    SchemaSubMinorVersion=\"0\"\n"
 "    MajorVersion=\"23\"\n"
-"    MinorVersion=\"67\"\n"
-"    SubMinorVersion=\"37741\"\n"
+"    MinorVersion=\"173\"\n"
+"    SubMinorVersion=\"54010\"\n"
 "    ProductGuid=\"ac1c6f72-b410-41b7-82e6-fa049db075a4\"\n"
-"    VersionGuid=\"6c8991db-7b54-8837-6006-199dfc69a07a\"\n"
+"    VersionGuid=\"da2bab53-cf7a-8897-4281-a83dccfe7f91\"\n"
 "    xmlns=\"http://www.genicam.org/GenApi/Version_1_1\"\n"
 "    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
 "    xsi:schemaLocation=\"http://www.genicam.org/GenApi/Version_1_1 http://www.genicam.org/GenApi/GenApiSchema_Version_1_1.xsd\">\n"
@@ -636,9 +636,21 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 "\n"
 "    <Command Name=\"TriggerSoftware\" NameSpace=\"Standard\">\n"
 "        <ImposedAccessMode>WO</ImposedAccessMode>\n"
-"        <Value>0</Value>\n"
-"        <CommandValue>0</CommandValue>\n"
+"        <pValue>TriggerSoftwareBool</pValue>\n"
+"        <CommandValue>1</CommandValue>\n"
 "    </Command>\n"
+"\n"
+"    <Boolean Name=\"TriggerSoftwareBool\" NameSpace=\"Custom\">\n"
+"        <pValue>TriggerSoftwareReg</pValue>\n"
+"    </Boolean>\n"
+"\n"
+"    <IntReg Name=\"TriggerSoftwareReg\" NameSpace=\"Custom\">\n"
+"        <Address>0xC001E000</Address>\n"
+"        <Length>4</Length>\n"
+"        <AccessMode>RW</AccessMode>\n"
+"        <pPort>Device</pPort>\n"
+"        <Endianess>LittleEndian</Endianess>\n"
+"    </IntReg>\n"
 "\n"
 "    <!-- Exposure control (inside category Acquisition) -->\n"
 "    <Enumeration Name=\"ExposureTimeSelector\" NameSpace=\"Standard\">\n"
@@ -1025,24 +1037,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 "        <Sign>Unsigned</Sign>\n"
 "        <Endianess>LittleEndian</Endianess>\n"
 "    </IntReg>\n"
-"\n"
-"<!-- Does not work due to our partial read support (addr % 0x1000)\n"
-"    <Boolean Name=\"ComponentEnable\" NameSpace=\"Standard\">\n"
-"        <ImposedAccessMode>RW</ImposedAccessMode>\n"
-"        <pValue>ComponentEnableReg</pValue>\n"
-"    </Boolean>\n"
-"    <IntReg Name=\"ComponentEnableReg\" NameSpace=\"Custom\">\n"
-"        <IntSwissKnife Name=\"ComponentSelectorToComponentEnableIndex\">\n"
-"            <pVariable Name=\"CompIdx\">ComponentSelectorReg</pVariable>\n"
-"            <Formula>0xC0004000 + CompIdx</Formula>\n"
-"        </IntSwissKnife>\n"
-"        <Length>4</Length>\n"
-"        <AccessMode>RW</AccessMode>\n"
-"        <pPort>Device</pPort>\n"
-"        <Sign>Unsigned</Sign>\n"
-"        <Endianess>LittleEndian</Endianess>\n"
-"        </IntReg>\n"
-"-->\n"
 "\n"
 "    <Boolean Name=\"ComponentEnable\" NameSpace=\"Standard\">\n"
 "        <pIsLocked>ComponentEnableWriteLocked</pIsLocked>\n"

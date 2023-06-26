@@ -162,7 +162,7 @@ bool VT_EXPORT DeviceParameters::getNamedParameter(const std::string& name) {
 }
 #endif
 
-#if __cplusplus >= 201103L
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 bool DeviceParameters::hasParameter(const std::string& name) {
     return pimpl->hasParameter(name);
 }
