@@ -26,6 +26,7 @@
 
 using namespace std::chrono;
 
+// For front facing demo
 #define ROTATION_CENTER             1.5
 #define DEFAULT_POINT_SIZE          2
 
@@ -36,6 +37,18 @@ using namespace std::chrono;
 #define DEMO_ROTATION_Y_SPEED       0.31
 #define DEMO_ROTATION_X_AMPLITUDE   80
 #define DEMO_ROTATION_Y_AMPLITUDE   35
+
+// For Demonstrator:
+//#define ROTATION_CENTER             0.5
+//#define DEFAULT_POINT_SIZE          2
+
+//#define DEMO_ZOOM                   1.2
+//#define DEMO_FAR_LIMIT              1.5
+//#define DEMO_VIEWER_OFFST           0, -40, 0
+//#define DEMO_ROTATION_X_SPEED       0.41
+//#define DEMO_ROTATION_Y_SPEED       0.31
+//#define DEMO_ROTATION_X_AMPLITUDE   80
+//#define DEMO_ROTATION_Y_AMPLITUDE   35
 
 QtOpen3DVisualizer::QtOpen3DVisualizer(QWidget *parent)
     :QOpenGLWidget(parent) {

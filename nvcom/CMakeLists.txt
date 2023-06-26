@@ -130,7 +130,7 @@ endif()
 set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/lib)
 
 # Optional demo mode
-#add_definitions(-DDEMO_MODE)
+add_definitions(-DDEMO_MODE)
 
 add_executable(nvcom
     nvcom.h
