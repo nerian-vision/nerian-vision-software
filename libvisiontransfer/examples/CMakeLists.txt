@@ -38,6 +38,7 @@ set(EXAMPLES
 	parameter_set_batch_write_example
 	imu_data_channel_example
 	input_transfer_example
+	software_trigger_example
 )
 
 foreach(example IN LISTS EXAMPLES)

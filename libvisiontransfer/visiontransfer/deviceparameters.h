@@ -961,14 +961,14 @@ public:
      * \brief Remotely triggers a reboot of the device
      */
     void reboot() {
-        writeBoolParameter("reboot", true);
+        writeBoolParameterUnguarded("reboot", true);
     }
 
     /**
      * \brief Emit a software trigger event to perform a single acquisition. This only has effect when the External Trigger mode is set to Software.
      */
     void triggerNow() {
-        writeBoolParameter("trigger_now", true);
+        writeBoolParameterUnguarded("trigger_now", true);
     }
 
     /**
@@ -1088,6 +1088,8 @@ private:
     void writeIntParameter(const char* id, int value);
     void writeDoubleParameter(const char* id, double value);
     void writeBoolParameter(const char* id, bool value);
+    // Unguarded version used for sending real-time commands (omit reply handshake)
+    void writeBoolParameterUnguarded(const char* id, bool value);
 
 };
 

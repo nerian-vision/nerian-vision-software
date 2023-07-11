@@ -109,8 +109,19 @@ void ParameterTransfer::readParameter(unsigned char messageType, const char* id,
     for (int i=0; i<length; ++i) { dest[i] = '\0'; } // PLACEHOLDER
 }
 
+void ParameterTransfer::sendNetworkCommand(const std::string& cmdline) {
+    std::unique_lock<std::mutex> localLock(socketModificationMutex);
+    if (socket == INVALID_SOCKET) {
+        throw TransferException("Connection has been closed and not reconnected so far");
+    }
+    size_t written = send(socket, cmdline.c_str(), (int) cmdline.size(), 0);
+    if(written != cmdline.size()) {
+        throw TransferException("Error sending parameter set request: " + Networking::getLastErrorString());
+    }
+}
+
 template<typename T>
-void ParameterTransfer::writeParameter(const char* id, const T& value) {
+void ParameterTransfer::writeParameter(const char* id, const T& value, bool synchronous) {
     waitNetworkReady();
     if (networkError) {
         // collecting deferred error from background thread
@@ -119,36 +130,35 @@ void ParameterTransfer::writeParameter(const char* id, const T& value) {
     if (!paramSet.count(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
-    blockingCallThisThread([this, &id, &value](){
-        // Emit a set request with our thread id - the receiver thread will unblock us based on that ID
-        std::stringstream ss;
-        ss << "S" << "\t" << getThreadId() << "\t" << id << "\t" << value << "\n";
-        {
-            std::unique_lock<std::mutex> localLock(socketModificationMutex);
-            if (socket == INVALID_SOCKET) {
-                throw TransferException("Connection has been closed and not reconnected so far");
-            }
-            size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
-            if(written != ss.str().size()) {
-                throw TransferException("Error sending parameter set request: " + Networking::getLastErrorString());
-            }
+
+    // Assemble a set request with our thread id - the receiver thread can unblock us based on that ID
+    //  For 'fire-and-forget' commands without reply, we use -1
+    std::stringstream ss;
+    ss << "S" << "\t" << (synchronous ? getThreadId() : -1) << "\t" << id << "\t" << value << "\n";
+
+    if (synchronous) {
+        blockingCallThisThread([this, &id, &value, &ss](){
+            sendNetworkCommand(ss.str());
+        });
+        auto result = lastSetRequestResult[getThreadId()];
+        if (result.first == false) {
+            // There was a remote error, append its info to the exception
+            throw ParameterException("Remote parameter error: " + result.second);
+        } else {
+            // Local preliminary value update - the (successful!) async remote update may need additional time.
+            // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
+            // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
+            paramSet[id].setCurrent<T>(value);
         }
-    });
-    auto result = lastSetRequestResult[getThreadId()];
-    if (result.first == false) {
-        // There was a remote error, append its info to the exception
-        throw ParameterException("Remote parameter error: " + result.second);
     } else {
-        // Local preliminary value update - the (successful!) async remote update may need additional time.
-        // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
-        // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
-        paramSet[id].setCurrent<T>(value);
+        // 'Fire and forget' immediate-return mode, e.g. for sending a trigger
+        sendNetworkCommand(ss.str());
     }
 }
 
 // Explicit instantiation for std::string
 template<>
-void ParameterTransfer::writeParameter(const char* id, const std::string& value) {
+void ParameterTransfer::writeParameter(const char* id, const std::string& value, bool synchronous) {
     waitNetworkReady();
     if (networkError) {
         // collecting deferred error from background thread
@@ -157,30 +167,29 @@ void ParameterTransfer::writeParameter(const char* id, const std::string& value)
     if (!paramSet.count(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
-    blockingCallThisThread([this, &id, &value](){
-        // Emit a set request with our thread id - the receiver thread will unblock us based on that ID
-        std::stringstream ss;
-        ss << "S" << "\t" << getThreadId() << "\t" << id << "\t" << value << "\n";
-        {
-            std::unique_lock<std::mutex> localLock(socketModificationMutex);
-            if (socket == INVALID_SOCKET) {
-                throw TransferException("Connection has been closed and not reconnected so far");
-            }
-            size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
-            if(written != ss.str().size()) {
-                throw TransferException("Error sending parameter set request: " + Networking::getLastErrorString());
-            }
+
+    // Assemble a set request with our thread id - the receiver thread can unblock us based on that ID
+    //  For 'fire-and-forget' commands without reply, we use -1
+    std::stringstream ss;
+    ss << "S" << "\t" << (synchronous ? getThreadId() : -1) << "\t" << id << "\t" << value << "\n";
+
+    if (synchronous) {
+        blockingCallThisThread([this, &id, &value, &ss](){
+            sendNetworkCommand(ss.str());
+        });
+        auto result = lastSetRequestResult[getThreadId()];
+        if (result.first == false) {
+            // There was a remote error, append its info to the exception
+            throw ParameterException("Remote parameter error: " + result.second);
+        } else {
+            // Local preliminary value update - the (successful!) async remote update may need additional time.
+            // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
+            // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
+            paramSet[id].setCurrent<std::string>(value);
         }
-    });
-    auto result = lastSetRequestResult[getThreadId()];
-    if (result.first == false) {
-        // There was a remote error, append its info to the exception
-        throw ParameterException("Remote parameter error: " + result.second);
     } else {
-        // Local preliminary value update - the (successful!) async remote update may need additional time.
-        // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
-        // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
-        paramSet[id].setCurrent<std::string>(value);
+        // 'Fire and forget' immediate-return mode, e.g. for sending a trigger
+        sendNetworkCommand(ss.str());
     }
 }
 
@@ -196,6 +205,12 @@ void ParameterTransfer::writeParameterTransactionGuardedImpl(const char* id, con
         // No transaction, immediate dispatch
         writeParameter(id, value);
     }
+}
+
+template<typename T>
+void ParameterTransfer::writeParameterTransactionUnguardedImpl(const char* id, const T& value) {
+    // No transaction, immediate dispatch
+    writeParameter(id, value, false);
 }
 
 // Explicit instantiation for std::string
@@ -226,6 +241,11 @@ void ParameterTransfer::writeParameterTransactionGuarded(const char* id, const i
 template<>
 void ParameterTransfer::writeParameterTransactionGuarded(const char* id, const bool& value) {
     writeParameterTransactionGuardedImpl<bool>(id, value);
+}
+
+template<>
+void ParameterTransfer::writeParameterTransactionUnguarded(const char* id, const bool& value) {
+    writeParameterTransactionUnguardedImpl<bool>(id, value);
 }
 
 int ParameterTransfer::readIntParameter(const char* id) {
@@ -483,7 +503,9 @@ void ParameterTransfer::receiverRoutine() {
                                 lastSetRequestResult[replyThreadId] = {toks[2] == "1", toks[3]};
                                 waitConds[replyThreadId].notify_all();
                             } else {
-                                std::cerr << "Ignoring unexpected request result for thread " << replyThreadId << std::endl;
+                                if (replyThreadId != -1) { // dummy ID -1 for fire-and-forget command (no reply expected)
+                                    std::cerr << "Ignoring unexpected request result for thread " << replyThreadId << std::endl;
+                                }
                             }
                         } else if (cmd=="E") {
                             // 'End of Transmission' - at least one full enumeration has arrived - we are ready

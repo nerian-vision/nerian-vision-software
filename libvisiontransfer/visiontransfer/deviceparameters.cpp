@@ -42,6 +42,7 @@ public:
     void writeIntParameter(const char* id, int value);
     void writeDoubleParameter(const char* id, double value);
     void writeBoolParameter(const char* id, bool value);
+    void writeBoolParameterUnguarded(const char* id, bool value);
 
     std::map<std::string, ParameterInfo> getAllParameters();
 
@@ -105,6 +106,10 @@ void DeviceParameters::writeDoubleParameter(const char* id, double value) {
 
 void DeviceParameters::writeBoolParameter(const char* id, bool value) {
     pimpl->writeBoolParameter(id, value);
+}
+
+void DeviceParameters::writeBoolParameterUnguarded(const char* id, bool value) {
+    pimpl->writeBoolParameterUnguarded(id, value);
 }
 
 std::map<std::string, ParameterInfo> DeviceParameters::getAllParameters()
@@ -226,6 +231,10 @@ void DeviceParameters::Pimpl::writeDoubleParameter(const char* id, double value)
 
 void DeviceParameters::Pimpl::writeBoolParameter(const char* id, bool value) {
     paramTrans.writeParameterTransactionGuarded(id, value);
+}
+
+void DeviceParameters::Pimpl::writeBoolParameterUnguarded(const char* id, bool value) {
+    paramTrans.writeParameterTransactionUnguarded(id, value);
 }
 
 std::map<std::string, ParameterInfo> DeviceParameters::Pimpl::getAllParameters() {

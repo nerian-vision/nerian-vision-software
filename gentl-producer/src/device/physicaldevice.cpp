@@ -509,7 +509,7 @@ std::string PhysicalDevice::logicalIndexToId(int index) {
 void PhysicalDevice::sendSoftwareTriggerRequest() {
     if (deviceParameters) {
         try {
-            deviceParameters->setParameter("trigger_now", 1);
+            deviceParameters->triggerNow();
         } catch (visiontransfer::TransferException& e) {
             DEBUG_PHYS("Failed to send software trigger request (possible connection loss); Exception: " << e.what());
         }

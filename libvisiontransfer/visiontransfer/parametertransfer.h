@@ -139,7 +139,7 @@ public:
      * TransferException or ParameterException is thrown.
      */
     template<typename T>
-    void writeParameter(const char* id, const T& value);
+    void writeParameter(const char* id, const T& value, bool synchronous=true);
 
     /**
      * \brief Writes a scalar value to a parameter of the parameter server,
@@ -153,6 +153,19 @@ public:
      */
     template<typename T>
     void writeParameterTransactionGuarded(const char* id, const T& value);
+
+    /**
+     * \brief Writes a scalar value to a parameter of the parameter server,
+     * using 'fire-and-forget' for real-time commands (no replies expected).
+     *
+     * \param id    Unique ID of the parameter to be written.
+     * \param value Value that should be written to the parameter.
+     *
+     * If writing the parameter fails immediately, an exception of type
+     * TransferException is thrown.
+     */
+    template<typename T>
+    void writeParameterTransactionUnguarded(const char* id, const T& value);
 
     /**
      * \brief Enumerates all parameters as reported by the device.
@@ -258,6 +271,11 @@ private:
 
     template<typename T>
     void writeParameterTransactionGuardedImpl(const char* id, const T& value);
+
+    template<typename T>
+    void writeParameterTransactionUnguardedImpl(const char* id, const T& value);
+
+    void sendNetworkCommand(const std::string& cmdline);
 };
 
 }} // namespace
