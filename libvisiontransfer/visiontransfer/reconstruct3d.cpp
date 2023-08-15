@@ -437,9 +437,18 @@ void Reconstruct3D::Pimpl::writePlyFile(const char* file, const unsigned short* 
 
     // Count number of valid points
     int pointsCount = 0;
-    if(maxZ >= 0) {
+
+    // Maximum z might be constrained by q matrix
+    if(q[15] != 0.0) {
+        double absMaxZ = q[11] / q[15];
+        if(absMaxZ > 0) {
+            maxZ = std::min(maxZ, absMaxZ);
+        }
+    }
+
+    if(maxZ >= 0 || q[15] != 0) {
         for(int i=0; i<width*height; i++) {
-            if(pointMap[4*i+2] <= maxZ) {
+            if(pointMap[4*i+2] <= maxZ && pointMap[4*i+2] > 0) {
                 pointsCount++;
             }
         }
@@ -474,7 +483,7 @@ void Reconstruct3D::Pimpl::writePlyFile(const char* file, const unsigned short* 
         int y = i / width;
         int x = i % width;
 
-        if(maxZ < 0 || pointMap[4*i+2] <= maxZ) {
+        if((maxZ < 0 || pointMap[4*i+2] <= maxZ) && pointMap[4*i+2] > 0) {
             if(binary) {
                 // Write binary format
                 strm.write(reinterpret_cast<char*>(&pointMap[4*i]), sizeof(float)*3);
