@@ -440,7 +440,8 @@ void Reconstruct3D::Pimpl::writePlyFile(const char* file, const unsigned short* 
 
     // Maximum z might be constrained by q matrix
     if(q[15] != 0.0) {
-        double absMaxZ = q[11] / q[15];
+        const double epsilon = 1e-5; // 10um
+        double absMaxZ = q[11] / q[15] - epsilon;
         if(absMaxZ > 0) {
             maxZ = std::min(maxZ, absMaxZ);
         }
