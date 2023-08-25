@@ -1,5 +1,5 @@
-Nerian visiontransfer library, Python 3 wrapper
-===============================================
+Allied Vision visiontransfer library, Python 3 wrapper
+=====================================================
 
 This library is a cython wrapper for the C++ library. The wrapper is
 constructed from the current libvisiontransfer library during the

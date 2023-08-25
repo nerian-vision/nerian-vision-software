@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ###############################################################################/
-# Copyright (c) 2021 Nerian Vision GmbH
+# Copyright (c) 2023 Allied Vision Technologies GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ class App(QtWidgets.QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.title = 'Nerian Stereo for Python with PyQt5'
+        self.title = 'Stereo Vision for Python with PyQt5'
         self.left, self.top = 200, 200
         self.width, self.height = 800, 400
         self.transfer = None

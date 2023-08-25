@@ -51,7 +51,7 @@ GC_ERROR Library::getInfo(TL_INFO_CMD iInfoCmd, INFO_DATATYPE* piType, void* pBu
             info.setString("nerian-gentl");
             break;
         case TL_INFO_VENDOR:
-            info.setString("Nerian Vision GmbH");
+            info.setString("Allied Vision Technologies GmbH");
             break;
         case TL_INFO_MODEL:
             info.setString("nerian");

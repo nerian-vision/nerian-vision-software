@@ -131,7 +131,7 @@ GC_ERROR Interface::getDeviceInfo(const char* sDeviceID, DEVICE_INFO_CMD iInfoCm
             info.setString(sDeviceID);
             break;
         case DEVICE_INFO_VENDOR:
-            info.setString("Nerian Vision GmbH");
+            info.setString("Allied Vision Technologies GmbH");
             break;
         case DEVICE_INFO_MODEL: {
                 std::map<std::string, std::string>::const_iterator it = deviceIDToModelName.find(sDeviceID);

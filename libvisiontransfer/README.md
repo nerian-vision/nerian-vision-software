@@ -3,10 +3,10 @@ Vision Transfer Library 10.3.0
 
 The given library provides functionally for receiving and transmitting
 image pairs over a computer network. The intended use for this library
-is to receive output data from Nerian's 3D camera systems. However, the
+is to receive output data from Allied Vision's 3D camera systems. However, the
 library also provides functionality for transmitting image data. It can
 thus be used for emulating a camera system when performing systems
-development, or for transmitting image data to Nerian's SceneScan
+development, or for transmitting image data to Allied Vision's SceneScan
 system when using network image input.
 
 Images can be transferred with a bit depth of either 8 or 12 bits. When

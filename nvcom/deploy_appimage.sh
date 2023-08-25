@@ -22,7 +22,7 @@ cat >"$APPDIR"/usr/share/applications/nvcom.desktop <<EOF
 [Desktop Entry]
 Type=Application
 Name=NVCom
-Comment=NVCom, by Nerian Vision GmbH
+Comment=NVCom, by Allied Vision Technologies GmbH
 Exec=nvcom
 Icon=nvcom
 Categories=Video;AudioVideo;

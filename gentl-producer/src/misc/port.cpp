@@ -101,7 +101,7 @@ GC_ERROR Port::getPortInfo(PORT_INFO_CMD iInfoCmd, INFO_DATATYPE* piType,
             info.setString(id);
             break;
         case PORT_INFO_VENDOR:
-            info.setString("Nerian_Vision_Technologies");
+            info.setString("Allied_Vision_Technologies_GmbH");
             break;
         case PORT_INFO_MODEL:
             info.setString("nerian");

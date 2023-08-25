@@ -9,7 +9,7 @@ consumer, on the other hand, is any software that uses one or more
 GenTL producers through this interface. The supplied software module
 represents a GenTL producer and can be used with any application
 software that acts as a consumer. This allows for the the ready
-integration of Nerian's devices into existing machine vision software
+integration of Allied Vision's devices into existing machine vision software
 suites like e.g. HALCON.
 
 Once compiled, the producer can be found in the `lib/` directory, with
