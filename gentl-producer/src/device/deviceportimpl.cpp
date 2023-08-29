@@ -79,11 +79,17 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
 
     switch(featureId) {
         // Common device info, not related to component selector
-        case 0: // width
-            info.setUInt(metaData.getWidth());
+        case 0: // SensorWidth / WidthMax
+            {
+                int fullWidth = device->getPhysicalDevice()->getParameter("calib_image_size_full").at(0);
+                info.setUInt(fullWidth);
+            }
             break;
-        case 1: // height
-            info.setUInt(metaData.getHeight());
+        case 1: // SensorHeight / HeightMax
+            {
+                int fullHeight = device->getPhysicalDevice()->getParameter("calib_image_size_full").at(1);
+                info.setUInt(fullHeight);
+            }
             break;
         case 2: // Pixelformat
             info.setUInt(static_cast<unsigned int>(device->getStream()->getPixelFormat(
@@ -325,6 +331,85 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 }
             }
             break;
+        case 0x1f: // Width
+            {
+                info.setUInt(metaData.getWidth()); // actual current frame width
+            }
+            break;
+        case 0x20: // Width (min valid value; max is from WidthMax)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_width_min").getCurrent<int>());
+            }
+            break;
+        case 0x21: // Width (a-priori increment; valid res determined remotely)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_width_inc").getCurrent<int>());
+            }
+            break;
+        case 0x22: // Height
+            {
+                info.setUInt(metaData.getHeight()); // actual current frame height
+            }
+            break;
+        case 0x23: // Height (min valid value; max is from HeightMax)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_height_min").getCurrent<int>());
+            }
+            break;
+        case 0x24: // Height (a-priori increment; valid res determined remotely)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_height_inc").getCurrent<int>());
+            }
+            break;
+        case 0x25: // OffsetX
+            {
+                // Device parameters use coordinates relative from center; translate
+                auto dev = device->getPhysicalDevice();
+                int fullWidth = dev->getParameter("calib_image_size_full").at(0);
+                int curWidth = metaData.getWidth();
+                int widthDiff = (fullWidth - curWidth);
+                int ofsRel = dev->getParameter("RT_input_roi_ofs_left_x").getCurrent<int>();
+                //DEBUG_DEVPORT("widthDiff: " << fullWidth << " - " << curWidth << " = " << widthDiff);
+                //DEBUG_DEVPORT("ofsAbs:    " << widthDiff << "/2" << " + " << ofsRel << " = " << (widthDiff/2 + ofsRel));
+                info.setUInt(widthDiff/2 + ofsRel);
+            }
+            break;
+        case 0x26: // OffsetX (max valid value)
+            {
+                // Device parameters use coordinates relative from center (limits always symmetrical); translate
+                int maxX = 2 * device->getPhysicalDevice()->getParameter("image_offset_x").getMax<int>();
+                info.setUInt(maxX);
+            }
+            break;
+        case 0x27: // OffsetX (increment)
+            {
+                int incX = device->getPhysicalDevice()->getParameter("image_offset_x").getIncrement<int>();
+                info.setUInt(incX);
+            }
+            break;
+        case 0x28: // OffsetY
+            {
+                // Device parameters use coordinates relative from center; translate
+                int fullHeight = device->getPhysicalDevice()->getParameter("calib_image_size_full").at(1);
+                int curHeight = metaData.getHeight();
+                int heightDiff = (fullHeight - curHeight);
+                int ofsRel = device->getPhysicalDevice()->getParameter("RT_input_roi_ofs_left_y").getCurrent<int>();
+                info.setUInt(heightDiff/2 + ofsRel);
+            }
+            break;
+        case 0x29: // OffsetY (max valid value)
+            {
+                // Device parameters use coordinates relative from center (limits always symmetrical); translate
+                int maxY = 2 * device->getPhysicalDevice()->getParameter("image_offset_y").getMax<int>();
+                info.setUInt(maxY);
+            }
+            break;
+        case 0x2A: // OffsetY (increment)
+            {
+                int incY = device->getPhysicalDevice()->getParameter("image_offset_y").getIncrement<int>();
+                info.setUInt(incY);
+            }
+            break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
             {
                 uint32_t featureMap = 0;
@@ -497,6 +582,52 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
             }
             break;
         // (0x1c QMatrixData is read-only)
+        case 0x1f: // Width
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                DEBUG_DEVPORT("=== Requesting new width " << newVal << " ===");
+                device->getPhysicalDevice()->setParameter("image_width", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x22: // Height
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                DEBUG_DEVPORT("=== Requesting new height " << newVal << " ===");
+                device->getPhysicalDevice()->setParameter("image_height", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x25: // OffsetX
+            {
+                // Device parameters use coordinates relative from center; translate
+                auto dev = device->getPhysicalDevice();
+                int fullWidth = dev->getParameter("calib_image_size_full").at(0);
+                int curWidth = metaData.getWidth();
+                int widthDiff = (fullWidth - curWidth);
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - widthDiff;
+                DEBUG_DEVPORT("=== Requesting new ROI X offset " << newVal << " ===");
+                device->getPhysicalDevice()->setParameter("image_offset_x", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x28: // OffsetY
+            {
+                // Device parameters use coordinates relative from center; translate
+                auto dev = device->getPhysicalDevice();
+                int fullHeight = dev->getParameter("calib_image_size_full").at(1);
+                int curHeight = metaData.getHeight();
+                int heightDiff = (fullHeight - curHeight);
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - heightDiff;
+                DEBUG_DEVPORT("=== Requesting new ROI Y offset " << newVal << " ===");
+                device->getPhysicalDevice()->setParameter("image_offset_y", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
         default:
             DEBUG_DEVPORT("TODO - implement me (DevPortImpl::writeChildFeature)");
     }

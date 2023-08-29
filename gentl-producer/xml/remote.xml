@@ -206,13 +206,14 @@
     </Command>
 
     <Boolean Name="TriggerSoftwareBool" NameSpace="Custom">
+        <ImposedAccessMode>WO</ImposedAccessMode>
         <pValue>TriggerSoftwareReg</pValue>
     </Boolean>
 
     <IntReg Name="TriggerSoftwareReg" NameSpace="Custom">
         <Address>0xC001E000</Address>
         <Length>4</Length>
-        <AccessMode>RW</AccessMode>
+        <AccessMode>WO</AccessMode>
         <pPort>Device</pPort>
         <Endianess>LittleEndian</Endianess>
     </IntReg>
@@ -468,50 +469,6 @@
         <pMax>SensorHeightReg</pMax>
     </Integer>
     <IntReg Name="SensorHeightReg" NameSpace="Custom">
-        <Address>0xC0001000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-
-    <Integer Name="OffsetX" NameSpace="Standard">
-        <ImposedAccessMode>RO</ImposedAccessMode>
-        <Value>0</Value>
-        <Min>0</Min>
-        <Max>0</Max>
-    </Integer>
-
-    <Integer Name="OffsetY" NameSpace="Standard">
-        <ImposedAccessMode>RO</ImposedAccessMode>
-        <Value>0</Value>
-        <Min>0</Min>
-        <Max>0</Max>
-    </Integer>
-
-    <Integer Name="Width" NameSpace="Standard">
-        <ImposedAccessMode>RO</ImposedAccessMode>
-        <pValue>WidthReg</pValue>
-        <pMin>WidthReg</pMin>
-        <pMax>WidthReg</pMax>
-    </Integer>
-    <IntReg Name="WidthReg" NameSpace="Custom">
-        <Address>0xC0000000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-
-    <Integer Name="Height" NameSpace="Standard">
-        <ImposedAccessMode>RO</ImposedAccessMode>
-        <pValue>HeightReg</pValue>
-        <pMin>HeightReg</pMin>
-        <pMax>HeightReg</pMax>
-    </Integer>
-    <IntReg Name="HeightReg" NameSpace="Custom">
         <Address>0xC0001000</Address>
         <Length>4</Length>
         <AccessMode>RO</AccessMode>
@@ -843,6 +800,135 @@
         <pInvalidator>QMatrixIndexReg</pInvalidator>
         <Endianess>LittleEndian</Endianess>
     </FloatReg>
+
+    <Integer Name="Width" NameSpace="Standard">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>WidthReg</pValue>
+        <pMin>WidthMinReg</pMin>
+        <pMax>SensorWidthReg</pMax>
+        <pInc>WidthIncReg</pInc>
+    </Integer>
+    <IntReg Name="WidthReg" NameSpace="Custom">
+        <Address>0xC001F000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="WidthMinReg" NameSpace="Custom">
+        <Address>0xC0020000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="WidthIncReg" NameSpace="Custom">
+        <Address>0xC0021000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="Height" NameSpace="Standard">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>HeightReg</pValue>
+        <pMin>HeightMinReg</pMin>
+        <pMax>SensorHeightReg</pMax>
+        <pInc>HeightIncReg</pInc>
+    </Integer>
+    <IntReg Name="HeightReg" NameSpace="Custom">
+        <Address>0xC0022000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="HeightMinReg" NameSpace="Custom">
+        <Address>0xC0023000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="HeightIncReg" NameSpace="Custom">
+        <Address>0xC0024000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="OffsetX" NameSpace="Standard">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>OffsetXReg</pValue>
+        <Min>0</Min>
+        <pMax>OffsetXMaxReg</pMax>
+        <pInc>OffsetXIncReg</pInc>
+    </Integer>
+    <IntReg Name="OffsetXReg" NameSpace="Custom">
+        <Address>0xC0025000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="OffsetXMaxReg" NameSpace="Custom">
+        <Address>0xC0026000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="OffsetXIncReg" NameSpace="Custom">
+        <Address>0xC0027000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="OffsetY" NameSpace="Standard">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>OffsetYReg</pValue>
+        <Min>0</Min>
+        <pMax>OffsetYMaxReg</pMax>
+        <pInc>OffsetYIncReg</pInc>
+    </Integer>
+    <IntReg Name="OffsetYReg" NameSpace="Custom">
+        <Address>0xC0028000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="OffsetYMaxReg" NameSpace="Custom">
+        <Address>0xC0029000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="OffsetYIncReg" NameSpace="Custom">
+        <Address>0xC002A000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
 
 </RegisterDescription>
 
