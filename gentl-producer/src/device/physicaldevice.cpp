@@ -193,7 +193,33 @@ void PhysicalDevice::deviceReceiveThread() {
 
             {
                 std::unique_lock<std::mutex> lock(receiveMutex);
+                // Determine whether new image set is compatible to previous one
+                bool metadataChanged = false;
+                if (latestMetaData.getWidth()!=receivedSet.getWidth() || latestMetaData.getHeight()!=receivedSet.getHeight()) {
+                    metadataChanged = true;
+                } else if (latestMetaData.getNumberOfImages()!=receivedSet.getNumberOfImages()) {
+                    metadataChanged = true;
+                } else {
+                    for (int i=0; i<latestMetaData.getNumberOfImages(); ++i) {
+                        if (latestMetaData.getPixelFormat(i)!=receivedSet.getPixelFormat(i)) {
+                            metadataChanged = true;
+                            break;
+                        }
+                    }
+                }
+
                 latestMetaData = receivedSet;
+
+                if (metadataChanged) {
+                    // Live image ROI / metadata change - we need to invalidate the feature cache
+                    // for relevant parameters; they will be recalculated / queried again.
+                    invalidateFeatureFromAsyncEvent("Width");
+                    invalidateFeatureFromAsyncEvent("Height");
+                    invalidateFeatureFromAsyncEvent("PixelFormat");
+                    invalidateFeatureFromAsyncEvent("PayloadSize");
+                    invalidateFeatureFromAsyncEvent("OffsetX"); // GenTL representation is not center-based
+                    invalidateFeatureFromAsyncEvent("OffsetY"); // (and it might also be clipped to the edges)
+                }
 
                 // Apply disparity offset
                 if(disparityOffset != 0.0) {
@@ -534,6 +560,11 @@ void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
         invalidateFeatureFromAsyncEvent("GainAutoReg");
         invalidateFeatureFromAsyncEvent("ExposureAuto");
         invalidateFeatureFromAsyncEvent("GainAuto");
+    } else if (uid == "RT_input_roi_ofs_left_x" || uid == "RT_input_roi_ofs_left_y" || uid == "calib_image_size") {
+        invalidateFeatureFromAsyncEvent("Width");
+        invalidateFeatureFromAsyncEvent("Height");
+        invalidateFeatureFromAsyncEvent("OffsetX");
+        invalidateFeatureFromAsyncEvent("OffsetY");
     } else {
         return; // Unmapped feature - ignore parameter change
     }
