@@ -219,6 +219,16 @@ void PhysicalDevice::deviceReceiveThread() {
                     invalidateFeatureFromAsyncEvent("PayloadSize");
                     invalidateFeatureFromAsyncEvent("OffsetX"); // GenTL representation is not center-based
                     invalidateFeatureFromAsyncEvent("OffsetY"); // (and it might also be clipped to the edges)
+                    invalidateFeatureFromAsyncEvent("OffsetXReg");
+                    invalidateFeatureFromAsyncEvent("OffsetYReg");
+                    invalidateFeatureFromAsyncEvent("OffsetXMaxReg");
+                    invalidateFeatureFromAsyncEvent("OffsetYMaxReg");
+
+                    // Also signal all DataStreams - they must update their metadata reporting
+                    for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
+                        // this fetches latestMetaData internally, which is already up-to-date
+                        logicalDevices[i]->getStream()->updateBufferMapping();
+                    }
                 }
 
                 // Apply disparity offset

@@ -252,7 +252,7 @@ Parameter& DeviceParameters::Pimpl::getParameter(const std::string& name) {
     if (paramSet.count(name)) {
         return paramSet[name];
     } else {
-        throw ParameterException("Invalid or inaccessible parameter name");
+        throw ParameterException(std::string("Invalid or inaccessible parameter name: ") + name);
     }
 }
 
