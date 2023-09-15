@@ -606,7 +606,7 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 auto dev = device->getPhysicalDevice();
                 int fullWidth = dev->getParameter("calib_image_size_full").at(0);
                 int curWidth = metaData.getWidth();
-                int widthDiff = (fullWidth - curWidth);
+                int widthDiff = (fullWidth - curWidth) / 2;
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - widthDiff;
                 DEBUG_DEVPORT("=== Requesting new ROI X offset " << newVal << " ===");
@@ -620,7 +620,7 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 auto dev = device->getPhysicalDevice();
                 int fullHeight = dev->getParameter("calib_image_size_full").at(1);
                 int curHeight = metaData.getHeight();
-                int heightDiff = (fullHeight - curHeight);
+                int heightDiff = (fullHeight - curHeight) / 2;
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - heightDiff;
                 DEBUG_DEVPORT("=== Requesting new ROI Y offset " << newVal << " ===");
