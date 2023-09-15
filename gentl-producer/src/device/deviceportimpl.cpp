@@ -365,13 +365,11 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             {
                 // Device parameters use coordinates relative from center; translate
                 auto dev = device->getPhysicalDevice();
-                int fullWidth = dev->getParameter("calib_image_size_full").at(0);
-                int curWidth = metaData.getWidth();
-                int widthDiff = (fullWidth - curWidth);
                 int ofsRel = dev->getParameter("RT_input_roi_ofs_left_x").getCurrent<int>();
+                int maxRel = dev->getParameter("image_offset_x").getMax<int>();
                 //DEBUG_DEVPORT("widthDiff: " << fullWidth << " - " << curWidth << " = " << widthDiff);
                 //DEBUG_DEVPORT("ofsAbs:    " << widthDiff << "/2" << " + " << ofsRel << " = " << (widthDiff/2 + ofsRel));
-                info.setUInt(widthDiff/2 + ofsRel);
+                info.setUInt(ofsRel + maxRel);
             }
             break;
         case 0x26: // OffsetX (max valid value)
@@ -390,11 +388,10 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
         case 0x28: // OffsetY
             {
                 // Device parameters use coordinates relative from center; translate
-                int fullHeight = device->getPhysicalDevice()->getParameter("calib_image_size_full").at(1);
-                int curHeight = metaData.getHeight();
-                int heightDiff = (fullHeight - curHeight);
-                int ofsRel = device->getPhysicalDevice()->getParameter("RT_input_roi_ofs_left_y").getCurrent<int>();
-                info.setUInt(heightDiff/2 + ofsRel);
+                auto dev = device->getPhysicalDevice();
+                int ofsRel = dev->getParameter("RT_input_roi_ofs_left_y").getCurrent<int>();
+                int maxRel = dev->getParameter("image_offset_y").getMax<int>();
+                info.setUInt(ofsRel + maxRel);
             }
             break;
         case 0x29: // OffsetY (max valid value)
@@ -603,28 +600,24 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
         case 0x25: // OffsetX
             {
                 // Device parameters use coordinates relative from center; translate
-                auto dev = device->getPhysicalDevice();
-                int fullWidth = dev->getParameter("calib_image_size_full").at(0);
-                int curWidth = metaData.getWidth();
-                int widthDiff = (fullWidth - curWidth) / 2;
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
-                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - widthDiff;
+                auto dev = device->getPhysicalDevice();
+                int maxRel = dev->getParameter("image_offset_x").getMax<int>();
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - maxRel;
                 DEBUG_DEVPORT("=== Requesting new ROI X offset " << newVal << " ===");
-                device->getPhysicalDevice()->setParameter("image_offset_x", newVal);
+                dev->setParameter("image_offset_x", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
         case 0x28: // OffsetY
             {
                 // Device parameters use coordinates relative from center; translate
-                auto dev = device->getPhysicalDevice();
-                int fullHeight = dev->getParameter("calib_image_size_full").at(1);
-                int curHeight = metaData.getHeight();
-                int heightDiff = (fullHeight - curHeight) / 2;
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
-                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - heightDiff;
+                auto dev = device->getPhysicalDevice();
+                int maxRel = dev->getParameter("image_offset_y").getMax<int>();
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - maxRel;
                 DEBUG_DEVPORT("=== Requesting new ROI Y offset " << newVal << " ===");
-                device->getPhysicalDevice()->setParameter("image_offset_y", newVal);
+                dev->setParameter("image_offset_y", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
