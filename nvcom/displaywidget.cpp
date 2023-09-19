@@ -152,12 +152,12 @@ void DisplayWidget::drawMouseLabel() {
         snprintf(labelStr, sizeof(labelStr), "x = %7.3lf m\ny = %7.3lf m\nz = %7.3lf m\nSz = %0.3lf m",
             point.x, point.y, point.z, sdZ);
         // Generate the actual markup (the HTML renderer does not report a bounding box itself)
-        snprintf(labelMarkup, sizeof(labelMarkup), "<span style=\"font-family:Courier New,Courier,fixed;font-weight:bold;font-size:%dpt\">x<sub>&nbsp;</sub> = %7.3lf m<br/>y<sub>&nbsp;</sub> = %7.3lf m<br/>z<sub>&nbsp;</sub> = %7.3lf m<br/>&sigma;<sub>z</sub> = %0.3lf m</span>",
+        snprintf(labelMarkup, sizeof(labelMarkup), "<span style=\"color:black;font-family:Courier New,Courier,fixed;font-weight:bold;font-size:%dpt\">x<sub>&nbsp;</sub> = %7.3lf m<br/>y<sub>&nbsp;</sub> = %7.3lf m<br/>z<sub>&nbsp;</sub> = %7.3lf m<br/>&sigma;<sub>z</sub> = %0.3lf m</span>",
             pts, point.x, point.y, point.z, sdZ);
     } else {
         snprintf(labelStr, sizeof(labelStr), "x = %7.3lf m\ny = %7.3lf m\nz = %7.3lf m",
             point.x, point.y, point.z);
-        snprintf(labelMarkup, sizeof(labelMarkup), "<span style=\"font-family:Courier New,Courier,fixed;font-weight:bold;font-size:%dpt\">x<sub>&nbsp;</sub> = %7.3lf m<br/>y<sub>&nbsp;</sub> = %7.3lf m<br/>z<sub>&nbsp;</sub> = %7.3lf m</span>",
+        snprintf(labelMarkup, sizeof(labelMarkup), "<span style=\"color:black;font-family:Courier New,Courier,fixed;font-weight:bold;font-size:%dpt\">x<sub>&nbsp;</sub> = %7.3lf m<br/>y<sub>&nbsp;</sub> = %7.3lf m<br/>z<sub>&nbsp;</sub> = %7.3lf m</span>",
             pts, point.x, point.y, point.z);
     }
 
