@@ -40,6 +40,7 @@
         <pFeature>AcquisitionMode</pFeature>
         <pFeature>AcquisitionStart</pFeature>
         <pFeature>AcquisitionStop</pFeature>
+        <pFeature>AcquisitionFrameRate</pFeature>
         <pFeature>TriggerSelector</pFeature>
         <pFeature>TriggerMode</pFeature>
         <pFeature>TriggerSource</pFeature>
@@ -170,34 +171,77 @@
         <Value>1</Value>
     </Enumeration>
 
+    <Float Name="AcquisitionFrameRate" NameSpace="Standard">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>AcquisitionFrameRateReg</pValue>
+        <Min>0</Min>
+        <pMax>AcquisitionFrameRateMaxReg</pMax>
+    </Float>
+    <FloatReg Name="AcquisitionFrameRateReg" NameSpace="Custom">
+        <Address>0xC002B000</Address>
+        <Length>8</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </FloatReg>
+    <FloatReg Name="AcquisitionFrameRateMaxReg" NameSpace="Custom">
+        <Address>0xC002C000</Address>
+        <Length>8</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </FloatReg>
+
     <!-- Trigger control (inside category Acquisition) -->
 
     <Enumeration Name="TriggerSelector" NameSpace="Standard">
         <ImposedAccessMode>RO</ImposedAccessMode>
-        <EnumEntry Name="AcquisitionStart" NameSpace="Standard"> <!-- TODO test FrameStart -->
+        <EnumEntry Name="FrameStart" NameSpace="Standard">
             <Value>1</Value>
         </EnumEntry>
         <Value>1</Value>
     </Enumeration>
 
     <Enumeration Name="TriggerMode" NameSpace="Standard">
-        <ImposedAccessMode>RO</ImposedAccessMode>
+        <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Off" NameSpace="Standard">
             <Value>0</Value>
         </EnumEntry>
         <EnumEntry Name="On" NameSpace="Standard">
             <Value>1</Value>
         </EnumEntry>
-        <Value>0</Value>
+        <pValue>TriggerModeReg</pValue>
     </Enumeration>
+    <IntReg Name="TriggerModeReg" NameSpace="Custom">
+        <Address>0xC002D000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
 
+    <IntSwissKnife Name="HardwareTriggerInputPresent" NameSpace="Custom">
+        <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
+        <Formula>bitmask &amp; 4</Formula> <!-- Bit 2: availability of hardware trigger input -->
+    </IntSwissKnife>
     <Enumeration Name="TriggerSource" NameSpace="Standard">
         <ImposedAccessMode>RO</ImposedAccessMode>
-        <EnumEntry Name="Software" NameSpace="Standard">
+        <EnumEntry Name="Line1" NameSpace="Standard">
+            <pIsAvailable>HardwareTriggerInputPresent</pIsAvailable>
             <Value>1</Value>
         </EnumEntry>
-        <Value>1</Value>
+        <EnumEntry Name="Software" NameSpace="Standard">
+            <Value>2</Value>
+        </EnumEntry>
+        <pValue>TriggerSourceReg</pValue>
     </Enumeration>
+    <IntReg Name="TriggerSourceReg" NameSpace="Custom">
+        <Address>0xC002E000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
 
     <Command Name="TriggerSoftware" NameSpace="Standard">
         <ImposedAccessMode>WO</ImposedAccessMode>

@@ -40,18 +40,36 @@ Idx Mode Feature-Name [(comments)]
 0x1c RO QMatrixData   (CUSTOM - data value for currently selected index)
 0x1d RO Scan3dInvalidDataFlag
 0x1e WO TriggerSoftware (Set any value: emit software trigger signal)
-0x1f RW Width (R: taken from incoming frames; W: request live change)  [WIP]
-0x20 RO Width (min valid value; max is from WidthMax)                  [WIP]
-0x21 RO Width (a-priori increment; valid res determined remotely)      [WIP]
-0x22 RW Height                                                         [WIP]
-0x23 RO Height (min valid value; max is from HeightMax)                [WIP]
-0x24 RO Height (a-priori increment; valid res determined remotely)     [WIP]
-0x25 RW OffsetX                                                        [WIP]
-0x26 RO OffsetX (max valid value)                                      [WIP]
-0x27 RO OffsetX (increment)                                            [WIP]
-0x28 RW OffsetY                                                        [WIP]
-0x29 RO OffsetY (max valid value)                                      [WIP]
-0x2A RO OffsetY (increment)                                            [WIP]
+0x1f RW Width (R: taken from incoming frames; W: request live change)
+0x20 RO Width (min valid value; max is from WidthMax)
+0x21 RO Width (a-priori increment; valid res determined remotely)
+0x22 RW Height
+0x23 RO Height (min valid value; max is from HeightMax)
+0x24 RO Height (a-priori increment; valid res determined remotely)
+0x25 RW OffsetX
+0x26 RO OffsetX (max valid value)
+0x27 RO OffsetX (increment)
+0x28 RW OffsetY
+0x29 RO OffsetY (max valid value)
+0x2A RO OffsetY (increment)
+0x2B RW AcquisitionFrameRate (<-> trigger_frequency)                   [WIP]
+0x2C RO AcquisitionFrameRate (max valid value)                         [WIP]
+0x2D RW TriggerMode   (true / false    <-> trigger_input)              [WIP]
+0x2E RW TriggerSource (Software, Line1 <-> trigger_input)              [WIP]
+0x2F RO .                                                              [WIP]
+0x30 RO .                                                              [WIP]
+0x31 RO .                                                              [WIP]
+0x32 RO .                                                              [WIP]
+0x33 RO .                                                              [WIP]
+0x34 RO .                                                              [WIP]
+0x35 RO .                                                              [WIP]
+0x36 RO .                                                              [WIP]
+0x37 RO .                                                              [WIP]
+0x38 RO .                                                              [WIP]
+0x39 RO .                                                              [WIP]
+0x3A RO .                                                              [WIP]
+0x3B RO .                                                              [WIP]
+0x3C RO .                                                              [WIP]
 -----------------
 0xff RO Special: device-reported feature flags, for conditional XML (CUSTOM)
 

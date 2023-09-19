@@ -18,6 +18,8 @@
 #include "stream/datastream.h"
 #include "misc/infoquery.h"
 
+#include <algorithm>
+
 #include <iostream> // DEBUG
 #include <fstream>
 
@@ -43,6 +45,7 @@ DevicePortImpl::DevicePortImpl(LogicalDevice* device)
     currentSelectorForExposure = 0;
     currentSelectorForGain = 0;
     currentIndexForQMatrix = 0;
+    preferredTriggerSource = 2; // SW trigger is preselected (available everywhere)
 }
 
 GC_ERROR DevicePortImpl::readFeature(unsigned int featureId, void* pBuffer, size_t* piSize) {
@@ -401,10 +404,35 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setUInt(maxY);
             }
             break;
-        case 0x2A: // OffsetY (increment)
+        case 0x2a: // OffsetY (increment)
             {
                 int incY = device->getPhysicalDevice()->getParameter("image_offset_y").getIncrement<int>();
                 info.setUInt(incY);
+            }
+            break;
+        case 0x2b: // AcquisitionFrameRate
+            {
+                int rate = device->getPhysicalDevice()->getParameter("trigger_frequency").getCurrent<double>();
+                info.setDouble(rate);
+            }
+            break;
+        case 0x2c: // AcquisitionFrameRate (max valid value)
+            {
+                int maxRate = device->getPhysicalDevice()->getParameter("trigger_frequency").getMax<double>();
+                info.setDouble(maxRate);
+            }
+            break;
+        case 0x2d: // TriggerMode (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+            {
+                int activeTriggerInput = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
+                info.setUInt(activeTriggerInput != 0);
+            }
+            break;
+        case 0x2e: // TriggerSource (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+            {
+                int activeTriggerSource = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
+                if (activeTriggerSource == 0) activeTriggerSource = preferredTriggerSource;
+                info.setUInt(activeTriggerSource);
             }
             break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
@@ -415,6 +443,11 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 featureMap |= (numCameras>2) ? 1 : 0;
                 // Bit 1: Availability of Nerian software white balance
                 featureMap |= device->getPhysicalDevice()->hasParameter("white_balance_mode") ? 2 : 0;
+                // Bit 2: Availability of hardware trigger input
+                auto availTrigInputs = device->getPhysicalDevice()->getParameter("trigger_input").getOptions<int>();
+                // - device parameter enum option '1' corresponds to hardware trigger as well
+                auto trigInpHardwareAvail = std::find(availTrigInputs.begin(), availTrigInputs.end(), 1) != availTrigInputs.end();
+                featureMap |= trigInpHardwareAvail ? 4 : 0;
                 // Feature bitmap complete
                 DEBUG_DEVPORT("Device feature bit map: " << featureMap);
                 info.setInt(featureMap);
@@ -618,6 +651,45 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - maxRel;
                 DEBUG_DEVPORT("=== Requesting new ROI Y offset " << newVal << " ===");
                 dev->setParameter("image_offset_y", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x2b: // AcquisitionFrameRate
+            {
+                if (*piSize != 8) throw std::runtime_error("Expected a new feature value of size 8");
+                double newVal = (reinterpret_cast<const double*>(pBuffer))[0];
+                auto dev = device->getPhysicalDevice();
+                dev->setParameter("trigger_frequency", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x2d: // TriggerMode (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 8");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                auto dev = device->getPhysicalDevice();
+                if (newVal == 0) {
+                    // Deactivate (return to capture internally at AcquisitionFrameRate)
+                    dev->setParameter("trigger_input", 0);
+                } else {
+                    // Activate previously deferred trigger input mode
+                    dev->setParameter("trigger_input", preferredTriggerSource);
+                }
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x2e: // TriggerSource (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 8");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                preferredTriggerSource = newVal;
+                // Only actually change trigger source on device if already activated
+                // (otherwise defer until TriggerMode is set true, below)
+                auto dev = device->getPhysicalDevice();
+                bool triggerInputActive = dev->getParameter("trigger_input").getCurrent<int>() != 0;
+                if (triggerInputActive) {
+                    dev->setParameter("trigger_input", preferredTriggerSource);
+                }
                 return GC_ERR_SUCCESS;
             }
             break;
