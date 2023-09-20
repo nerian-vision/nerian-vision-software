@@ -435,19 +435,33 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setUInt(activeTriggerSource);
             }
             break;
+        case 0x2f: // PatternProjectorBrightness
+            {
+                auto dev = device->getPhysicalDevice();
+                if (dev->hasParameter("trigger_frequency")) {
+                    int rate = dev->getParameter("trigger_frequency").getCurrent<double>();
+                    info.setDouble(rate * 100.0);
+                } else {
+                    info.setDouble(0.0); // should not happen (feature also set as unavailable)
+                }
+            }
+            break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
             {
+                auto dev = device->getPhysicalDevice();
                 uint32_t featureMap = 0;
                 // Bit 0: Availability of third camera
-                int numCameras = device->getPhysicalDevice()->getParameter("calib_num_cameras").getCurrent<int>();
+                int numCameras = dev->getParameter("calib_num_cameras").getCurrent<int>();
                 featureMap |= (numCameras>2) ? 1 : 0;
                 // Bit 1: Availability of Nerian software white balance
-                featureMap |= device->getPhysicalDevice()->hasParameter("white_balance_mode") ? 2 : 0;
+                featureMap |= dev->hasParameter("white_balance_mode") ? 2 : 0;
                 // Bit 2: Availability of hardware trigger input
-                auto availTrigInputs = device->getPhysicalDevice()->getParameter("trigger_input").getOptions<int>();
+                auto availTrigInputs = dev->getParameter("trigger_input").getOptions<int>();
                 // - device parameter enum option '1' corresponds to hardware trigger as well
                 auto trigInpHardwareAvail = std::find(availTrigInputs.begin(), availTrigInputs.end(), 1) != availTrigInputs.end();
                 featureMap |= trigInpHardwareAvail ? 4 : 0;
+                // Bit 3: Availability of pattern projector
+                featureMap |= dev->hasParameter("projector_brightness") ? 8 : 0;
                 // Feature bitmap complete
                 DEBUG_DEVPORT("Device feature bit map: " << featureMap);
                 info.setInt(featureMap);
@@ -690,6 +704,16 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 if (triggerInputActive) {
                     dev->setParameter("trigger_input", preferredTriggerSource);
                 }
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x2f: // PatternProjectorBrightness
+            {
+                if (*piSize != 8) throw std::runtime_error("Expected a new feature value of size 8");
+                double newVal = (reinterpret_cast<const double*>(pBuffer))[0];
+                auto dev = device->getPhysicalDevice();
+                if (!dev->hasParameter("projector_brightness")) return GC_ERR_NOT_AVAILABLE; // should not happen
+                dev->setParameter("projector_brightness", newVal / 100.0);
                 return GC_ERR_SUCCESS;
             }
             break;

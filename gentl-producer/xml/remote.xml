@@ -25,7 +25,7 @@
         <pFeature>ImageFormatControl</pFeature>
         <pFeature>TransportLayerControl</pFeature>
         <pFeature>Scan3dControl</pFeature>
-        <pFeature>Metadata</pFeature>
+        <pFeature>Nerian</pFeature>
     </Category>
 
     <Category Name="DeviceControl" NameSpace="Standard">
@@ -41,6 +41,7 @@
         <pFeature>AcquisitionStart</pFeature>
         <pFeature>AcquisitionStop</pFeature>
         <pFeature>AcquisitionFrameRate</pFeature>
+        <pFeature>AcquisitionFrameRateEnable</pFeature>
         <pFeature>TriggerSelector</pFeature>
         <pFeature>TriggerMode</pFeature>
         <pFeature>TriggerSource</pFeature>
@@ -94,7 +95,8 @@
         <pFeature>Scan3dCoordinateOffset</pFeature>
     </Category>
 
-    <Category Name="Metadata" NameSpace="Custom">
+    <Category Name="Nerian" NameSpace="Custom">
+        <pFeature>PatternProjectorBrightness</pFeature>
         <pFeature>QMatrixIndex</pFeature>
         <pFeature>QMatrixData</pFeature>
     </Category>
@@ -191,6 +193,11 @@
         <pPort>Device</pPort>
         <Endianess>LittleEndian</Endianess>
     </FloatReg>
+
+    <Boolean Name="AcquisitionFrameRateEnable" NameSpace="Standard">
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <Value>1</Value>
+    </Boolean>
 
     <!-- Trigger control (inside category Acquisition) -->
 
@@ -573,6 +580,154 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
 
+    <!-- Image format control: dynamic ROI parameters -->
+
+    <Integer Name="Width" NameSpace="Standard">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>WidthReg</pValue>
+        <pMin>WidthMinReg</pMin>
+        <pMax>SensorWidthReg</pMax>
+        <pInc>WidthIncReg</pInc>
+    </Integer>
+    <IntReg Name="WidthReg" NameSpace="Custom">
+        <Address>0xC001F000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="WidthMinReg" NameSpace="Custom">
+        <Address>0xC0020000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="WidthIncReg" NameSpace="Custom">
+        <Address>0xC0021000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="Height" NameSpace="Standard">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>HeightReg</pValue>
+        <pMin>HeightMinReg</pMin>
+        <pMax>SensorHeightReg</pMax>
+        <pInc>HeightIncReg</pInc>
+    </Integer>
+    <IntReg Name="HeightReg" NameSpace="Custom">
+        <Address>0xC0022000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="HeightMinReg" NameSpace="Custom">
+        <Address>0xC0023000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="HeightIncReg" NameSpace="Custom">
+        <Address>0xC0024000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="OffsetX" NameSpace="Standard">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pInvalidator>Width</pInvalidator>
+        <pInvalidator>Height</pInvalidator>
+        <pValue>OffsetXReg</pValue>
+        <Min>0</Min>
+        <pMax>OffsetXMaxReg</pMax>
+        <pInc>OffsetXIncReg</pInc>
+    </Integer>
+    <IntReg Name="OffsetXReg" NameSpace="Custom">
+        <Address>0xC0025000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <pInvalidator>Width</pInvalidator>
+        <pInvalidator>Height</pInvalidator>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="OffsetXMaxReg" NameSpace="Custom">
+        <Address>0xC0026000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <pInvalidator>Width</pInvalidator>
+        <pInvalidator>Height</pInvalidator>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="OffsetXIncReg" NameSpace="Custom">
+        <Address>0xC0027000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <pInvalidator>Width</pInvalidator>
+        <pInvalidator>Height</pInvalidator>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="OffsetY" NameSpace="Standard">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pInvalidator>Width</pInvalidator>
+        <pInvalidator>Height</pInvalidator>
+        <pValue>OffsetYReg</pValue>
+        <Min>0</Min>
+        <pMax>OffsetYMaxReg</pMax>
+        <pInc>OffsetYIncReg</pInc>
+    </Integer>
+    <IntReg Name="OffsetYReg" NameSpace="Custom">
+        <Address>0xC0028000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <pInvalidator>Width</pInvalidator>
+        <pInvalidator>Height</pInvalidator>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="OffsetYMaxReg" NameSpace="Custom">
+        <Address>0xC0029000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <pInvalidator>Width</pInvalidator>
+        <pInvalidator>Height</pInvalidator>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="OffsetYIncReg" NameSpace="Custom">
+        <Address>0xC002A000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <pInvalidator>Width</pInvalidator>
+        <pInvalidator>Height</pInvalidator>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <!-- Image format control: active components -->
+
     <Enumeration Name="ComponentSelector" NameSpace="Standard">
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pInvalidator>IntensitySource</pInvalidator> <!-- changing the source may change the pixel format for Intensity -->
@@ -824,7 +979,32 @@
         <Value>1</Value>
     </Enumeration>
 
+    <!-- Nerian-specific features -->
+
+    <!-- Additional controllable hardware -->
+
+    <!-- Integrated IR pattern projector (not available on all models) -->
+    <IntSwissKnife Name="PatternProjectorPresent" NameSpace="Custom">
+        <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
+        <Formula>bitmask &amp; 8</Formula> <!-- Bit 3: availability of pattern projector -->
+    </IntSwissKnife>
+    <Float Name="PatternProjectorBrightness" NameSpace="Custom">
+        <pIsAvailable>PatternProjectorPresent</pIsAvailable>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>PatternProjectorBrightnessReg</pValue>
+        <Min>0.0</Min>
+        <Max>100.0</Max>
+    </Float>
+    <FloatReg Name="PatternProjectorBrightnessReg" NameSpace="Custom">
+        <Address>0xC002F000</Address>
+        <Length>8</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </FloatReg>
+
     <!-- Metadata (Nerian-specific custom data) -->
+
     <!-- Read access to Q matrix (as 16-element data array) -->
     <Integer Name="QMatrixIndex" NameSpace="Custom">
         <ImposedAccessMode>RW</ImposedAccessMode>
@@ -848,150 +1028,6 @@
         <pInvalidator>QMatrixIndexReg</pInvalidator>
         <Endianess>LittleEndian</Endianess>
     </FloatReg>
-
-    <Integer Name="Width" NameSpace="Standard">
-        <ImposedAccessMode>RW</ImposedAccessMode>
-        <pValue>WidthReg</pValue>
-        <pMin>WidthMinReg</pMin>
-        <pMax>SensorWidthReg</pMax>
-        <pInc>WidthIncReg</pInc>
-    </Integer>
-    <IntReg Name="WidthReg" NameSpace="Custom">
-        <Address>0xC001F000</Address>
-        <Length>4</Length>
-        <AccessMode>RW</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-    <IntReg Name="WidthMinReg" NameSpace="Custom">
-        <Address>0xC0020000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-    <IntReg Name="WidthIncReg" NameSpace="Custom">
-        <Address>0xC0021000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-
-    <Integer Name="Height" NameSpace="Standard">
-        <ImposedAccessMode>RW</ImposedAccessMode>
-        <pValue>HeightReg</pValue>
-        <pMin>HeightMinReg</pMin>
-        <pMax>SensorHeightReg</pMax>
-        <pInc>HeightIncReg</pInc>
-    </Integer>
-    <IntReg Name="HeightReg" NameSpace="Custom">
-        <Address>0xC0022000</Address>
-        <Length>4</Length>
-        <AccessMode>RW</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-    <IntReg Name="HeightMinReg" NameSpace="Custom">
-        <Address>0xC0023000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-    <IntReg Name="HeightIncReg" NameSpace="Custom">
-        <Address>0xC0024000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-
-    <Integer Name="OffsetX" NameSpace="Standard">
-        <ImposedAccessMode>RW</ImposedAccessMode>
-        <pInvalidator>Width</pInvalidator>
-        <pInvalidator>Height</pInvalidator>
-        <pValue>OffsetXReg</pValue>
-        <Min>0</Min>
-        <pMax>OffsetXMaxReg</pMax>
-        <pInc>OffsetXIncReg</pInc>
-    </Integer>
-    <IntReg Name="OffsetXReg" NameSpace="Custom">
-        <Address>0xC0025000</Address>
-        <Length>4</Length>
-        <AccessMode>RW</AccessMode>
-        <pPort>Device</pPort>
-        <pInvalidator>Width</pInvalidator>
-        <pInvalidator>Height</pInvalidator>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-    <IntReg Name="OffsetXMaxReg" NameSpace="Custom">
-        <Address>0xC0026000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <pInvalidator>Width</pInvalidator>
-        <pInvalidator>Height</pInvalidator>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-    <IntReg Name="OffsetXIncReg" NameSpace="Custom">
-        <Address>0xC0027000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <pInvalidator>Width</pInvalidator>
-        <pInvalidator>Height</pInvalidator>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-
-    <Integer Name="OffsetY" NameSpace="Standard">
-        <ImposedAccessMode>RW</ImposedAccessMode>
-        <pInvalidator>Width</pInvalidator>
-        <pInvalidator>Height</pInvalidator>
-        <pValue>OffsetYReg</pValue>
-        <Min>0</Min>
-        <pMax>OffsetYMaxReg</pMax>
-        <pInc>OffsetYIncReg</pInc>
-    </Integer>
-    <IntReg Name="OffsetYReg" NameSpace="Custom">
-        <Address>0xC0028000</Address>
-        <Length>4</Length>
-        <AccessMode>RW</AccessMode>
-        <pPort>Device</pPort>
-        <pInvalidator>Width</pInvalidator>
-        <pInvalidator>Height</pInvalidator>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-    <IntReg Name="OffsetYMaxReg" NameSpace="Custom">
-        <Address>0xC0029000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <pInvalidator>Width</pInvalidator>
-        <pInvalidator>Height</pInvalidator>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-    <IntReg Name="OffsetYIncReg" NameSpace="Custom">
-        <Address>0xC002A000</Address>
-        <Length>4</Length>
-        <AccessMode>RO</AccessMode>
-        <pPort>Device</pPort>
-        <pInvalidator>Width</pInvalidator>
-        <pInvalidator>Height</pInvalidator>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
 
 
 </RegisterDescription>
