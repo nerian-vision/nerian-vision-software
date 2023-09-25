@@ -446,6 +446,66 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 }
             }
             break;
+        case 0x30: // NumberOfDisparities
+            {
+                int num = device->getPhysicalDevice()->getParameter("number_of_disparities").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x31: // NumberOfDisparities (min)
+            {
+                int num = device->getPhysicalDevice()->getParameter("number_of_disparities").getMin<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x32: // NumberOfDisparities (max)
+            {
+                int num = device->getPhysicalDevice()->getParameter("number_of_disparities").getMax<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x33: // NumberOfDisparities (increment)
+            {
+                int num = device->getPhysicalDevice()->getParameter("number_of_disparities").getIncrement<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x34: // DisparityOffset
+            {
+                int num = device->getPhysicalDevice()->getParameter("disparity_offset").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x35: // SgmP1NoEdge
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_p1_no_edge").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x36: // SgmP1Edge
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_p1_edge").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x37: // SgmP2NoEdge
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_p2_no_edge").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x38: // SgmP2Edge
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_p2_edge").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x39: // SgmEdgeSensitivity
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_edge_sensitivity").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
             {
                 auto dev = device->getPhysicalDevice();
@@ -714,6 +774,62 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 auto dev = device->getPhysicalDevice();
                 if (!dev->hasParameter("projector_brightness")) return GC_ERR_NOT_AVAILABLE; // should not happen
                 dev->setParameter("projector_brightness", newVal / 100.0);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x30: // NumberOfDisparities
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("number_of_disparities", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x34: // DisparityOffset
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("disparity_offset", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x35: // SgmP1NoEdge
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_p1_no_edge", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x36: // SgmP1Edge
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_p1_edge", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x37: // SgmP2NoEdge
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_p2_no_edge", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x38: // SgmP2Edge
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_p2_edge", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x39: // SgmEdgeSensitivity
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_edge_sensitivity", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;

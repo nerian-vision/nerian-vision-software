@@ -99,6 +99,30 @@
         <pFeature>PatternProjectorBrightness</pFeature>
         <pFeature>QMatrixIndex</pFeature>
         <pFeature>QMatrixData</pFeature>
+        <pFeature>NumberOfDisparities</pFeature>
+        <pFeature>DisparityOffset</pFeature>
+        <pFeature>SgmP1NoEdge</pFeature>
+        <pFeature>SgmP1Edge</pFeature>
+        <pFeature>SgmP2NoEdge</pFeature>
+        <pFeature>SgmP2Edge</pFeature>
+        <pFeature>SgmEdgeSensitivity</pFeature>
+        <!--
+        <pFeature>SubpixelOptimizationROIEnabled</pFeature>
+        <pFeature>SubpixelOptimizationROIWidth</pFeature>
+        <pFeature>SubpixelOptimizationROIHeight</pFeature>
+        <pFeature>SubpixelOptimizationROIOffsetX</pFeature>
+        <pFeature>SubpixelOptimizationROIOffsetY</pFeature>
+        <pFeature>MaskBorderPixelsEnabled</pFeature>
+        <pFeature>ConsistencyCheckEnabled</pFeature>
+        <pFeature>ConsistencyCheckSensitivity</pFeature>
+        <pFeature>UniquenessCheckEnabled</pFeature>
+        <pFeature>UniquenessCheckSensitivity</pFeature>
+        <pFeature>TextureFilterEnabled</pFeature>
+        <pFeature>TextureFilterSensitivity</pFeature>
+        <pFeature>GapInterpolationEnabled</pFeature>
+        <pFeature>NoiseReductionEnabled</pFeature>
+        <pFeature>SpeckleFilterIterations</pFeature>
+        -->
     </Category>
 
     <Port Name="Device" NameSpace="Standard">
@@ -980,6 +1004,167 @@
     </Enumeration>
 
     <!-- Nerian-specific features -->
+
+    <!-- Stereo algorithm parameters -->
+
+    <Integer Name="NumberOfDisparities" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>NumberOfDisparitiesReg</pValue>
+        <pMin>NumberOfDisparitiesMinReg</pMin>
+        <pMax>NumberOfDisparitiesMaxReg</pMax>
+        <pInc>NumberOfDisparitiesIncReg</pInc>
+    </Integer>
+    <IntReg Name="NumberOfDisparitiesReg" NameSpace="Custom">
+        <Address>0xC0030000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="NumberOfDisparitiesMinReg" NameSpace="Custom">
+        <Address>0xC0031000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="NumberOfDisparitiesMaxReg" NameSpace="Custom">
+        <Address>0xC0032000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="NumberOfDisparitiesIncReg" NameSpace="Custom">
+        <Address>0xC0033000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="DisparityOffset" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pInvalidator>NumberOfDisparities</pInvalidator>
+        <pInvalidator>NumberOfDisparitiesReg</pInvalidator>
+        <pValue>DisparityOffsetReg</pValue>
+        <Min>0</Min>
+        <pMax>DisparityOffsetMax</pMax>
+    </Integer>
+    <IntReg Name="DisparityOffsetReg" NameSpace="Custom">
+        <Address>0xC0034000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <pInvalidator>NumberOfDisparities</pInvalidator>
+        <pInvalidator>NumberOfDisparitiesReg</pInvalidator>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntSwissKnife Name="DisparityOffsetMax" NameSpace="Custom">
+        <pInvalidator>NumberOfDisparities</pInvalidator>
+        <pInvalidator>NumberOfDisparitiesReg</pInvalidator>
+        <pVariable Name="maxNumDisp">NumberOfDisparitiesMaxReg</pVariable>
+        <pVariable Name="numDisp">NumberOfDisparities</pVariable>
+        <Formula>maxNumDisp - numDisp</Formula>
+    </IntSwissKnife>
+
+    <Integer Name="SgmP1NoEdge" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SgmP1NoEdgeReg</pValue>
+        <Min>0</Min>
+        <Max>255</Max>
+    </Integer>
+    <IntReg Name="SgmP1NoEdgeReg" NameSpace="Custom">
+        <Address>0xC0035000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SgmP1Edge" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SgmP1EdgeReg</pValue>
+        <Min>0</Min>
+        <Max>255</Max>
+    </Integer>
+    <IntReg Name="SgmP1EdgeReg" NameSpace="Custom">
+        <Address>0xC0036000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SgmP2NoEdge" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SgmP2NoEdgeReg</pValue>
+        <Min>0</Min>
+        <Max>255</Max>
+    </Integer>
+    <IntReg Name="SgmP2NoEdgeReg" NameSpace="Custom">
+        <Address>0xC0037000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SgmP2Edge" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SgmP2EdgeReg</pValue>
+        <Min>0</Min>
+        <Max>255</Max>
+    </Integer>
+    <IntReg Name="SgmP2EdgeReg" NameSpace="Custom">
+        <Address>0xC0038000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SgmEdgeSensitivity" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SgmEdgeSensitivityReg</pValue>
+        <Min>0</Min>
+        <Max>255</Max>
+    </Integer>
+    <IntReg Name="SgmEdgeSensitivityReg" NameSpace="Custom">
+        <Address>0xC0039000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <!--
+        <pFeature>SubpixelOptimizationROIEnabled</pFeature>
+        <pFeature>SubpixelOptimizationROIWidth</pFeature>
+        <pFeature>SubpixelOptimizationROIHeight</pFeature>
+        <pFeature>SubpixelOptimizationROIOffsetX</pFeature>
+        <pFeature>SubpixelOptimizationROIOffsetY</pFeature>
+        <pFeature>MaskBorderPixelsEnabled</pFeature>
+        <pFeature>ConsistencyCheckEnabled</pFeature>
+        <pFeature>ConsistencyCheckSensitivity</pFeature>
+        <pFeature>UniquenessCheckEnabled</pFeature>
+        <pFeature>UniquenessCheckSensitivity</pFeature>
+        <pFeature>TextureFilterEnabled</pFeature>
+        <pFeature>TextureFilterSensitivity</pFeature>
+        <pFeature>GapInterpolationEnabled</pFeature>
+        <pFeature>NoiseReductionEnabled</pFeature>
+        <pFeature>SpeckleFilterIterations</pFeature>
+    -->
 
     <!-- Additional controllable hardware -->
 
