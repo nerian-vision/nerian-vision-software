@@ -553,6 +553,8 @@ void PhysicalDevice::sendSoftwareTriggerRequest() {
 }
 
 void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
+    // This is the mapping for invalidating the proper GenICam SFNC features
+    //  when the corresponding parameter is modified on the remote side.
     DEBUG_PHYS("Got remote update for " << uid);
     std::string featureName = "";
     if (uid == "manual_exposure_time" || uid == "manual_exposure_time_color") {
@@ -571,10 +573,77 @@ void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
         invalidateFeatureFromAsyncEvent("ExposureAuto");
         invalidateFeatureFromAsyncEvent("GainAuto");
     } else if (uid == "RT_input_roi_ofs_left_x" || uid == "RT_input_roi_ofs_left_y" || uid == "calib_image_size") {
+        invalidateFeatureFromAsyncEvent("WidthReg");
+        invalidateFeatureFromAsyncEvent("HeightReg");
+        invalidateFeatureFromAsyncEvent("OffsetXReg");
+        invalidateFeatureFromAsyncEvent("OffsetYReg");
         invalidateFeatureFromAsyncEvent("Width");
         invalidateFeatureFromAsyncEvent("Height");
         invalidateFeatureFromAsyncEvent("OffsetX");
         invalidateFeatureFromAsyncEvent("OffsetY");
+    } else if (uid == "trigger_frequency") {
+        invalidateFeatureFromAsyncEvent("AcquisitionFrameRateReg");
+        invalidateFeatureFromAsyncEvent("AcquisitionFrameRate");
+    } else if (uid == "trigger_input") {
+        invalidateFeatureFromAsyncEvent("TriggerModeReg");
+        invalidateFeatureFromAsyncEvent("TriggerSourceReg");
+        invalidateFeatureFromAsyncEvent("TriggerMode");
+        invalidateFeatureFromAsyncEvent("TriggerSource");
+    } else if (uid == "projector_brightness") {
+        invalidateFeatureFromAsyncEvent("PatternProjectorBrightnessReg");
+        invalidateFeatureFromAsyncEvent("PatternProjectorBrightness");
+    } else if (uid == "number_of_disparities" || uid == "disparity_offset") {
+        invalidateFeatureFromAsyncEvent("NumberOfDisparitiesReg");
+        invalidateFeatureFromAsyncEvent("DisparityOffsetMaxReg");
+        invalidateFeatureFromAsyncEvent("DisparityOffsetReg");
+        invalidateFeatureFromAsyncEvent("NumberOfDisparities");
+        invalidateFeatureFromAsyncEvent("DisparityOffsetMax");
+        invalidateFeatureFromAsyncEvent("DisparityOffset");
+    } else if (uid == "sgm_p1_no_edge") {
+        invalidateFeatureFromAsyncEvent("SgmP1NoEdgeReg");
+        invalidateFeatureFromAsyncEvent("SgmP1NoEdge");
+    } else if (uid == "sgm_p1_edge") {
+        invalidateFeatureFromAsyncEvent("SgmP1EdgeReg");
+        invalidateFeatureFromAsyncEvent("SgmP1Edge");
+    } else if (uid == "sgm_p2_no_edge") {
+        invalidateFeatureFromAsyncEvent("SgmP2NoEdgeReg");
+        invalidateFeatureFromAsyncEvent("SgmP2NoEdge");
+    } else if (uid == "sgm_p2_edge") {
+        invalidateFeatureFromAsyncEvent("SgmP2EdgeReg");
+        invalidateFeatureFromAsyncEvent("SgmP2Edge");
+    } else if (uid == "sgm_edge_sensitivity") {
+        invalidateFeatureFromAsyncEvent("SgmEdgeSensitivityReg");
+        invalidateFeatureFromAsyncEvent("SgmEdgeSensitivity");
+    } else if (uid == "subpixel_optimization_roi_enabled") {
+        invalidateFeatureFromAsyncEvent("SubpixelOptimizationROIEnabled");
+    } else if (uid == "subpixel_optimization_roi_width") {
+        invalidateFeatureFromAsyncEvent("SubpixelOptimizationROIWidth");
+    } else if (uid == "subpixel_optimization_roi_height") {
+        invalidateFeatureFromAsyncEvent("SubpixelOptimizationROIHeight");
+    } else if (uid == "subpixel_optimization_roi_x") {
+        invalidateFeatureFromAsyncEvent("SubpixelOptimizationROIOffsetX");
+    } else if (uid == "subpixel_optimization_roi_y") {
+        invalidateFeatureFromAsyncEvent("SubpixelOptimizationROIOffsetY");
+    } else if (uid == "mask_border_pixels_enabled") {
+        invalidateFeatureFromAsyncEvent("MaskBorderPixelsEnabled");
+    } else if (uid == "consistency_check_enabled") {
+        invalidateFeatureFromAsyncEvent("ConsistencyCheckEnabled");
+    } else if (uid == "consistency_check_sensitivity") {
+        invalidateFeatureFromAsyncEvent("ConsistencyCheckSensitivity");
+    } else if (uid == "uniqueness_check_enabled") {
+        invalidateFeatureFromAsyncEvent("UniquenessCheckEnabled");
+    } else if (uid == "uniqueness_check_sensitivity") {
+        invalidateFeatureFromAsyncEvent("UniquenessCheckSensitivity");
+    } else if (uid == "texture_filter_enabled") {
+        invalidateFeatureFromAsyncEvent("TextureFilterEnabled");
+    } else if (uid == "texture_filter_sensitivity") {
+        invalidateFeatureFromAsyncEvent("TextureFilterSensitivity");
+    } else if (uid == "gap_interpolation_enabled") {
+        invalidateFeatureFromAsyncEvent("GapInterpolationEnabled");
+    } else if (uid == "noise_reduction_enabled") {
+        invalidateFeatureFromAsyncEvent("NoiseReductionEnabled");
+    } else if (uid == "speckle_filter_iterations") {
+        invalidateFeatureFromAsyncEvent("SpeckleFilterIterations");
     } else {
         return; // Unmapped feature - ignore parameter change
     }

@@ -96,6 +96,7 @@
     </Category>
 
     <Category Name="Nerian" NameSpace="Custom">
+        <pFeature>PatternProjectorPresent</pFeature>
         <pFeature>PatternProjectorBrightness</pFeature>
         <pFeature>QMatrixIndex</pFeature>
         <pFeature>QMatrixData</pFeature>
@@ -106,7 +107,6 @@
         <pFeature>SgmP2NoEdge</pFeature>
         <pFeature>SgmP2Edge</pFeature>
         <pFeature>SgmEdgeSensitivity</pFeature>
-        <!--
         <pFeature>SubpixelOptimizationROIEnabled</pFeature>
         <pFeature>SubpixelOptimizationROIWidth</pFeature>
         <pFeature>SubpixelOptimizationROIHeight</pFeature>
@@ -122,7 +122,6 @@
         <pFeature>GapInterpolationEnabled</pFeature>
         <pFeature>NoiseReductionEnabled</pFeature>
         <pFeature>SpeckleFilterIterations</pFeature>
-        -->
     </Category>
 
     <Port Name="Device" NameSpace="Standard">
@@ -1148,23 +1147,224 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
 
-    <!--
-        <pFeature>SubpixelOptimizationROIEnabled</pFeature>
-        <pFeature>SubpixelOptimizationROIWidth</pFeature>
-        <pFeature>SubpixelOptimizationROIHeight</pFeature>
-        <pFeature>SubpixelOptimizationROIOffsetX</pFeature>
-        <pFeature>SubpixelOptimizationROIOffsetY</pFeature>
-        <pFeature>MaskBorderPixelsEnabled</pFeature>
-        <pFeature>ConsistencyCheckEnabled</pFeature>
-        <pFeature>ConsistencyCheckSensitivity</pFeature>
-        <pFeature>UniquenessCheckEnabled</pFeature>
-        <pFeature>UniquenessCheckSensitivity</pFeature>
-        <pFeature>TextureFilterEnabled</pFeature>
-        <pFeature>TextureFilterSensitivity</pFeature>
-        <pFeature>GapInterpolationEnabled</pFeature>
-        <pFeature>NoiseReductionEnabled</pFeature>
-        <pFeature>SpeckleFilterIterations</pFeature>
-    -->
+    <Boolean Name="SubpixelOptimizationROIEnabled" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SubpixelOptimizationROIEnabledReg</pValue>
+    </Boolean>
+    <IntReg Name="SubpixelOptimizationROIEnabledReg" NameSpace="Custom">
+        <Address>0xC003A000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SubpixelOptimizationROIWidth" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SubpixelOptimizationROIWidthReg</pValue>
+        <Min>16</Min>
+        <pMax>WidthReg</pMax>
+    </Integer>
+    <IntReg Name="SubpixelOptimizationROIWidthReg" NameSpace="Custom">
+        <Address>0xC003B000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SubpixelOptimizationROIHeight" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SubpixelOptimizationROIHeightReg</pValue>
+        <Min>16</Min>
+        <pMax>HeightReg</pMax>
+    </Integer>
+    <IntReg Name="SubpixelOptimizationROIHeightReg" NameSpace="Custom">
+        <Address>0xC003C000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SubpixelOptimizationROIOffsetX" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SubpixelOptimizationROIOffsetXReg</pValue>
+        <Min>0</Min>
+        <pMax>OffsetXMaxReg</pMax>
+    </Integer>
+    <IntReg Name="SubpixelOptimizationROIOffsetXReg" NameSpace="Custom">
+        <Address>0xC003D000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SubpixelOptimizationROIOffsetY" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SubpixelOptimizationROIOffsetYReg</pValue>
+        <Min>0</Min>
+        <pMax>OffsetYMaxReg</pMax>
+    </Integer>
+    <IntReg Name="SubpixelOptimizationROIOffsetYReg" NameSpace="Custom">
+        <Address>0xC003E000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Boolean Name="MaskBorderPixelsEnabled" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>MaskBorderPixelsEnabledReg</pValue>
+    </Boolean>
+    <IntReg Name="MaskBorderPixelsEnabledReg" NameSpace="Custom">
+        <Address>0xC003F000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Boolean Name="ConsistencyCheckEnabled" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>ConsistencyCheckEnabledReg</pValue>
+    </Boolean>
+    <IntReg Name="ConsistencyCheckEnabledReg" NameSpace="Custom">
+        <Address>0xC0040000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="ConsistencyCheckSensitivity" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>ConsistencyCheckSensitivityReg</pValue>
+        <Min>0</Min>
+        <Max>15</Max>
+    </Integer>
+    <IntReg Name="ConsistencyCheckSensitivityReg" NameSpace="Custom">
+        <Address>0xC0041000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Boolean Name="UniquenessCheckEnabled" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>UniquenessCheckEnabledReg</pValue>
+    </Boolean>
+    <IntReg Name="UniquenessCheckEnabledReg" NameSpace="Custom">
+        <Address>0xC0042000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="UniquenessCheckSensitivity" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>UniquenessCheckSensitivityReg</pValue>
+        <Min>0</Min>
+        <Max>256</Max>
+    </Integer>
+    <IntReg Name="UniquenessCheckSensitivityReg" NameSpace="Custom">
+        <Address>0xC0043000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Boolean Name="TextureFilterEnabled" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>TextureFilterEnabledReg</pValue>
+    </Boolean>
+    <IntReg Name="TextureFilterEnabledReg" NameSpace="Custom">
+        <Address>0xC0044000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="TextureFilterSensitivity" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>TextureFilterSensitivityReg</pValue>
+        <Min>0</Min>
+        <Max>63</Max>
+    </Integer>
+    <IntReg Name="TextureFilterSensitivityReg" NameSpace="Custom">
+        <Address>0xC0045000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Boolean Name="GapInterpolationEnabled" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>GapInterpolationEnabledReg</pValue>
+    </Boolean>
+    <IntReg Name="GapInterpolationEnabledReg" NameSpace="Custom">
+        <Address>0xC0046000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Boolean Name="NoiseReductionEnabled" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>NoiseReductionEnabledReg</pValue>
+    </Boolean>
+    <IntReg Name="NoiseReductionEnabledReg" NameSpace="Custom">
+        <Address>0xC0047000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SpeckleFilterIterations" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SpeckleFilterIterationsReg</pValue>
+        <Min>0</Min>
+        <pMax>SpeckleFilterIterationsMaxReg</pMax>
+    </Integer>
+    <IntReg Name="SpeckleFilterIterationsReg" NameSpace="Custom">
+        <Address>0xC0048000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="SpeckleFilterIterationsMaxReg" NameSpace="Custom">
+        <Address>0xC0049000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
 
     <!-- Additional controllable hardware -->
 

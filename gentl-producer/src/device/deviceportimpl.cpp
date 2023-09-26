@@ -506,6 +506,102 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setUInt(num);
             }
             break;
+        case 0x3A: // SubpixelOptimizationROIEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3B: // SubpixelOptimizationROIWidth
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_width").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3C: // SubpixelOptimizationROIHeight
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_height").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3D: // SubpixelOptimizationROIOffsetX
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_x").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3E: // SubpixelOptimizationROIOffsetY
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_y").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3F: // MaskBorderPixelsEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("mask_border_pixels_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x40: // ConsistencyCheckEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("consistency_check_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x41: // ConsistencyCheckSensitivity
+            {
+                int num = device->getPhysicalDevice()->getParameter("consistency_check_sensitivity").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x42: // UniquenessCheckEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("uniqueness_check_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x43: // UniquenessCheckSensitivity
+            {
+                int num = device->getPhysicalDevice()->getParameter("uniqueness_check_sensitivity").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x44: // TextureFilterEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("texture_filter_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x45: // TextureFilterSensitivity
+            {
+                int num = device->getPhysicalDevice()->getParameter("texture_filter_sensitivity").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x46: // GapInterpolationEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("gap_interpolation_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x47: // NoiseReductionEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("noise_reduction_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x48: // SpeckleFilterIterations
+            {
+                int num = device->getPhysicalDevice()->getParameter("speckle_filter_iterations").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x49: // SpeckleFilterIterations (max valid value)
+            {
+                int num = device->getPhysicalDevice()->getParameter("speckle_filter_iterations").getMax<int>();
+                info.setUInt(num);
+            }
+            break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
             {
                 auto dev = device->getPhysicalDevice();
@@ -830,6 +926,126 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
                 device->getPhysicalDevice()->setParameter("sgm_edge_sensitivity", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3a: // SubpixelOptimizationROIEnabled
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3b: // SubpixelOptimizationROIWidth
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_width", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3c: // SubpixelOptimizationROIHeight
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_height", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3d: // SubpixelOptimizationROIOffsetX
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_x", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3e: // SubpixelOptimizationROIOffsetY
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_y", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3f: // MaskBorderPixelsEnabled
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("mask_border_pixels_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x40: // ConsistencyCheckEnabled
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("consistency_check_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x41: // ConsistencyCheckSensitivity
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("consistency_check_sensitivity", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x42: // UniquenessCheckEnabled 
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("uniqueness_check_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x43: // UniquenessCheckSensitivity
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("uniqueness_check_sensitivity", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x44: // TextureFilterEnabled 
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("texture_filter_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x45: // TextureFilterSensitivity
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("texture_filter_sensitivity", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x46: // GapInterpolationEnabled 
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("gap_interpolation_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x47: // NoiseReductionEnabled
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("noise_reduction_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x48: // SpeckleFilterIterations
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("speckle_filter_iterations", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;

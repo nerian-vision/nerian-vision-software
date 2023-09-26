@@ -52,37 +52,37 @@ Idx Mode Feature-Name [(comments)]
 0x28 RW OffsetY
 0x29 RO  '' (max valid value)
 0x2A RO  '' (increment)
-0x2B RW AcquisitionFrameRate (<-> trigger_frequency)           [TODO events]
+0x2B RW AcquisitionFrameRate (<-> trigger_frequency)
 0x2C RO  '' (max valid value)
 0x2D RW TriggerMode   (true / false    <-> trigger_input)
 0x2E RW TriggerSource (Software, Line1 <-> trigger_input)
-0x2F RW PatternProjectorBrightness                             [TODO events]
-0x30 RW NumberOfDisparities                                    [TODO events]
-0x31 RO  '' (min)                                              [TODO events]
-0x32 RO  '' (max)                                              [TODO events]
-0x33 RO  '' (inc)                                              [TODO events]
-0x34 RW DisparityOffset (min=0, max=(MaxNumDisp-NumDisp))      [TODO events]
-0x35 RW SgmP1NoEdge                                            [TODO events]
-0x36 RW SgmP1Edge                                              [TODO events]
-0x37 RW SgmP2NoEdge                                            [TODO events]
-0x38 RW SgmP2Edge                                              [TODO events]
-0x39 RW EdgeSensitivity                                        [TODO events]
-0x3A RW SubpixelOptimizationROIEnabled                                 [WIP]
-0x3B RW SubpixelOptimizationROIWidth                                   [WIP]
-0x3C RW SubpixelOptimizationROIHeight                                  [WIP]
-0x3D RW SubpixelOptimizationROIOffsetX                                 [WIP]
-0x3E RW SubpixelOptimizationROIOffsetY                                 [WIP]
-0x3F RW MaskBorderPixelsEnabled                                        [WIP]
-0x40 RW ConsistencyCheckEnabled                                        [WIP]
-0x41 RW ConsistencyCheckSensitivity                                    [WIP]
-0x42 RW UniquenessCheckEnabled                                         [WIP]
-0x43 RW UniquenessCheckSensitivity                                     [WIP]
-0x44 RW TextureFilterEnabled                                           [WIP]
-0x45 RW TextureFilterSensitivity                                       [WIP]
-0x46 RW GapInterpolationEnabled                                        [WIP]
-0x47 RW NoiseReductionEnabled                                          [WIP]
-0x48 RW SpeckleFilterIterations                                        [WIP]
-0x49 RO  '' (max valid value)                                          [WIP]
+0x2F RW PatternProjectorBrightness
+0x30 RW NumberOfDisparities
+0x31 RO  '' (min)
+0x32 RO  '' (max)
+0x33 RO  '' (inc)
+0x34 RW DisparityOffset (min=0, max=(MaxNumDisp-NumDisp))
+0x35 RW SgmP1NoEdge
+0x36 RW SgmP1Edge
+0x37 RW SgmP2NoEdge
+0x38 RW SgmP2Edge
+0x39 RW EdgeSensitivity
+0x3A RW SubpixelOptimizationROIEnabled
+0x3B RW SubpixelOptimizationROIWidth
+0x3C RW SubpixelOptimizationROIHeight
+0x3D RW SubpixelOptimizationROIOffsetX
+0x3E RW SubpixelOptimizationROIOffsetY
+0x3F RW MaskBorderPixelsEnabled
+0x40 RW ConsistencyCheckEnabled
+0x41 RW ConsistencyCheckSensitivity
+0x42 RW UniquenessCheckEnabled
+0x43 RW UniquenessCheckSensitivity
+0x44 RW TextureFilterEnabled
+0x45 RW TextureFilterSensitivity
+0x46 RW GapInterpolationEnabled
+0x47 RW NoiseReductionEnabled
+0x48 RW SpeckleFilterIterations
+0x49 RO  '' (max valid value)
 -----------------
 0xff RO Special: device-reported feature flags, for conditional XML (CUSTOM)
 
