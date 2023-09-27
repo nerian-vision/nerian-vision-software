@@ -255,7 +255,7 @@
         <Formula>bitmask &amp; 4</Formula> <!-- Bit 2: availability of hardware trigger input -->
     </IntSwissKnife>
     <Enumeration Name="TriggerSource" NameSpace="Standard">
-        <ImposedAccessMode>RO</ImposedAccessMode>
+        <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Line1" NameSpace="Standard">
             <pIsAvailable>HardwareTriggerInputPresent</pIsAvailable>
             <Value>1</Value>
@@ -829,6 +829,7 @@
         <Formula>bitmask &amp; 1</Formula> <!-- Bit 0: availability of third camera -->
     </IntSwissKnife>
     <Enumeration Name="IntensitySource" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <pIsAvailable>ThirdCameraPresent</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Auto" NameSpace="Standard">
@@ -920,6 +921,7 @@
     <!-- Invalid data values: values are set internally in code
       based on stream type and current component selector -->
     <Boolean Name="Scan3dInvalidDataFlag" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RO</ImposedAccessMode>
         <pInvalidator>ComponentSelector</pInvalidator>
         <pValue>Scan3dInvalidDataFlagReg</pValue>
@@ -1047,6 +1049,7 @@
     </IntReg>
 
     <Integer Name="DisparityOffset" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pInvalidator>NumberOfDisparities</pInvalidator>
         <pInvalidator>NumberOfDisparitiesReg</pInvalidator>
@@ -1073,6 +1076,7 @@
     </IntSwissKnife>
 
     <Integer Name="SgmP1NoEdge" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP1NoEdgeReg</pValue>
         <Min>0</Min>
@@ -1088,6 +1092,7 @@
     </IntReg>
 
     <Integer Name="SgmP1Edge" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP1EdgeReg</pValue>
         <Min>0</Min>
@@ -1103,6 +1108,7 @@
     </IntReg>
 
     <Integer Name="SgmP2NoEdge" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP2NoEdgeReg</pValue>
         <Min>0</Min>
@@ -1118,6 +1124,7 @@
     </IntReg>
 
     <Integer Name="SgmP2Edge" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP2EdgeReg</pValue>
         <Min>0</Min>
@@ -1133,6 +1140,7 @@
     </IntReg>
 
     <Integer Name="SgmEdgeSensitivity" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmEdgeSensitivityReg</pValue>
         <Min>0</Min>
@@ -1148,6 +1156,7 @@
     </IntReg>
 
     <Boolean Name="SubpixelOptimizationROIEnabled" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SubpixelOptimizationROIEnabledReg</pValue>
     </Boolean>
@@ -1161,6 +1170,7 @@
     </IntReg>
 
     <Integer Name="SubpixelOptimizationROIWidth" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SubpixelOptimizationROIWidthReg</pValue>
         <Min>16</Min>
@@ -1176,6 +1186,7 @@
     </IntReg>
 
     <Integer Name="SubpixelOptimizationROIHeight" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SubpixelOptimizationROIHeightReg</pValue>
         <Min>16</Min>
@@ -1191,6 +1202,7 @@
     </IntReg>
 
     <Integer Name="SubpixelOptimizationROIOffsetX" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SubpixelOptimizationROIOffsetXReg</pValue>
         <Min>0</Min>
@@ -1206,6 +1218,7 @@
     </IntReg>
 
     <Integer Name="SubpixelOptimizationROIOffsetY" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SubpixelOptimizationROIOffsetYReg</pValue>
         <Min>0</Min>
@@ -1221,6 +1234,7 @@
     </IntReg>
 
     <Boolean Name="MaskBorderPixelsEnabled" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>MaskBorderPixelsEnabledReg</pValue>
     </Boolean>
@@ -1234,6 +1248,7 @@
     </IntReg>
 
     <Boolean Name="ConsistencyCheckEnabled" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>ConsistencyCheckEnabledReg</pValue>
     </Boolean>
@@ -1247,6 +1262,7 @@
     </IntReg>
 
     <Integer Name="ConsistencyCheckSensitivity" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>ConsistencyCheckSensitivityReg</pValue>
         <Min>0</Min>
@@ -1262,6 +1278,7 @@
     </IntReg>
 
     <Boolean Name="UniquenessCheckEnabled" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>UniquenessCheckEnabledReg</pValue>
     </Boolean>
@@ -1275,6 +1292,7 @@
     </IntReg>
 
     <Integer Name="UniquenessCheckSensitivity" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>UniquenessCheckSensitivityReg</pValue>
         <Min>0</Min>
@@ -1290,6 +1308,7 @@
     </IntReg>
 
     <Boolean Name="TextureFilterEnabled" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>TextureFilterEnabledReg</pValue>
     </Boolean>
@@ -1303,6 +1322,7 @@
     </IntReg>
 
     <Integer Name="TextureFilterSensitivity" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>TextureFilterSensitivityReg</pValue>
         <Min>0</Min>
@@ -1318,6 +1338,7 @@
     </IntReg>
 
     <Boolean Name="GapInterpolationEnabled" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>GapInterpolationEnabledReg</pValue>
     </Boolean>
@@ -1331,6 +1352,7 @@
     </IntReg>
 
     <Boolean Name="NoiseReductionEnabled" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>NoiseReductionEnabledReg</pValue>
     </Boolean>
@@ -1344,6 +1366,7 @@
     </IntReg>
 
     <Integer Name="SpeckleFilterIterations" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SpeckleFilterIterationsReg</pValue>
         <Min>0</Min>
@@ -1392,6 +1415,7 @@
 
     <!-- Read access to Q matrix (as 16-element data array) -->
     <Integer Name="QMatrixIndex" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>QMatrixIndexReg</pValue>
         <Min>0</Min>
@@ -1405,6 +1429,7 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
     <FloatReg Name="QMatrixData" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
         <Address>0xC001C000</Address>
         <Length>8</Length>
         <AccessMode>RO</AccessMode>
