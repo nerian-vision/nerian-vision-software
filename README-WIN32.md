@@ -6,18 +6,18 @@ Included components
 
 This software release comprises the following components:
 
-* `libvisiontransfer`: A C++ API for communicating with Nerian's
+* `libvisiontransfer`: A C++ API for communicating with Allied Vision's
   stereo vision sensor systems.
 
 * `API documentation`: Reference documentation for the libvisiontransfer
   API.
 
 * `NVCom`: A client application that provides a live display of the
-  depth data that is delivered by Nerian's devices. This application
+  depth data that is delivered by Allied Vision's devices. This application
   depends on `libvisiontransfer`.
 
 * `GenTL producer`: A GenICam GenTL compatible producer module. Use this
-  module for integrating Nerian's devices into existing applications that
+  module for integrating Allied Vision's devices into existing applications that
   act as GenTL consumers, such as HALCON or MATLAB.
 
 * `Examples`: Programming examples for using the libvisiontransfer API
@@ -28,7 +28,7 @@ This software release comprises the following components:
   Python examples (included) may require additional external modules.
 
 Source code for all applications and libraries can be obtained from the
-Nerian website.
+Allied Vision website.
 
 Further Information
 -------------------
@@ -40,14 +40,14 @@ user manual.
 Contact
 -------
 
-For further information please contact Nerian Vision GmbH at:
+For further information please contact Allied Vision Technologies GmbH at:
 
-Email: service (at) nerian.com  
-Website: http://nerian.com
+Email: info (at) alliedvision.com  
+Website: https://www.alliedvision.com
 
 Address:  
-Nerian Vision GmbH  
-Zettachring 2  
-70567 Stuttgart  
-Germany  
-
+Allied Vision Technologies GmbH  
+Taschenweg 2a  
+07646 Stadtroda  
+Germany
+ 

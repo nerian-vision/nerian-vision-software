@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ###############################################################################/
-# Copyright (c) 2022 Nerian Vision GmbH
+# Copyright (c) 2023 Allied Vision Technologies GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -39,8 +39,8 @@ libdir = libbase
 
 setup(
     name="visiontransfer",
-    author="Nerian Vision GmbH",
-    author_email="service@nerian.com",
+    author="Allied Vision Technologies GmbH",
+    author_email="info@alliedvision.com",
     version="1.0.0",
     packages=["visiontransfer"],
     ext_modules=cythonize(

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RegisterDescription
     ModelName="NerianGentTLSystem"
-    VendorName="Nerian_Vision_GmbH"
+    VendorName="Allied_Vision_Technologies_GmbH"
     ToolTip="TL System"
     StandardNameSpace="None"
     SchemaMajorVersion="1"

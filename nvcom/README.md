@@ -8,7 +8,7 @@ to enable the live 3D display, you will also require Open3D.
 
 NVCom provides the following features:
 
-* Receive and display images and disparity maps from Nerian's devices
+* Receive and display images and disparity maps from Allied Vision's devices
 * Perform color-coding of disparity maps
 * Interactive 3D display of pointclouds (requires Open3D)
 * Write received data to files as images or 3D point clouds

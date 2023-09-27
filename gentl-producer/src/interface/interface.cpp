@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2022 Nerian Vision GmbH
+ * Copyright (c) 2023 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -131,7 +131,7 @@ GC_ERROR Interface::getDeviceInfo(const char* sDeviceID, DEVICE_INFO_CMD iInfoCm
             info.setString(sDeviceID);
             break;
         case DEVICE_INFO_VENDOR:
-            info.setString("Nerian Vision GmbH");
+            info.setString("Allied Vision Technologies GmbH");
             break;
         case DEVICE_INFO_MODEL: {
                 std::map<std::string, std::string>::const_iterator it = deviceIDToModelName.find(sDeviceID);

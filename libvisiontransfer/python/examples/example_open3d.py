@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ###############################################################################/
-# Copyright (c) 2021 Nerian Vision GmbH
+# Copyright (c) 2023 Allied Vision Technologies GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -66,7 +66,7 @@ if __name__=='__main__':
 
     # Open3D point cloud viewer
     vis = open3d.visualization.Visualizer()
-    vis.create_window(window_name='Nerian visiontransfer and Open3D Python', width=800, height=600)
+    vis.create_window(window_name='visiontransfer and Open3D Python', width=800, height=600)
     vis.add_geometry(pcd)
     ctl = vis.get_view_control()
     ctl.set_zoom(0.1)
