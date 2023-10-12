@@ -12,6 +12,7 @@
  * all copies or substantial portions of the Software.
  *******************************************************************************/
 
+#include <cstdint>
 #include <cstring>
 
 #include "visiontransfer/deviceenumeration.h"
