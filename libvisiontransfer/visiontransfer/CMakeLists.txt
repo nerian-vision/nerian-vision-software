@@ -29,7 +29,6 @@ set(HEADERS
     parametertransferdata.h
     deviceparameters.h
     scenescanparameters.h
-    standardparameterids.h
     networking.h
     sensorringbuffer.h
     sensordata.h
@@ -56,7 +55,6 @@ set(SOURCES
     parameterinfo.cpp
     parametertransfer.cpp
     deviceparameters.cpp
-    standardparameterids.cpp
     networking.cpp
 )
 

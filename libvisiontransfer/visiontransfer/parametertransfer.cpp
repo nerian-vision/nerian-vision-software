@@ -17,7 +17,6 @@
 #include "visiontransfer/parametertransfer.h"
 #include "visiontransfer/exceptions.h"
 #include "visiontransfer/internalinformation.h"
-#include "visiontransfer/standardparameterids.h"
 #include "visiontransfer/parametertransferdata.h"
 #include "visiontransfer/parameterserialization.h"
 
