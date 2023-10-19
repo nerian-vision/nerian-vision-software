@@ -1,0 +1,89 @@
+This is a combined reference of code-internal register numbers and
+available standard feature names (unless specified as a custom feature)
+
+== Standard selectors in 0xD000'0000 range ==
+
+0x00 RW ComponentSelector
+
+== Device params in 0xC000'0000 range; reg no. 0x0a <-> 0xC000A000 etc. ==
+
+Idx Mode Feature-Name [(comments)]
+---- -- --------------------------
+0x00 RO SensorWidth / WidthMax   (currently the calib-time 'max' resolution)
+0x01 RO SensorHeight / HeightMax ('')
+0x02 RO PixelFormat
+0x03 RO PayloadSize
+0x04 RW ComponentEnable (Range is switchable; others depend on device cfg)
+0x05 RO ComponentID
+0x06 RO Scan3dFocalLength
+0x07 RO Scan3dBaseline
+0x08 RO Scan3dInvalidDataValue
+0x09 RO Scan3dPrincipalPointU
+0x0a RO Scan3dPrincipalPointV
+0x0b RW ExposureTime
+0x0c RO  '' (min valid value)
+0x0d RO  '' (max valid value)
+0x0e RW ExposureAuto
+0x0f RW Gain
+0x10 RO  '' (min valid value)
+0x11 RO  '' (max valid value)
+0x12 RW GainAuto
+0x13 RW BalanceRatioSelector
+0x14 RW BalanceRatio[BalanceRatioSelector]
+0x15 RO  '' (min valid value)
+0x16 RO  '' (max valid value)
+0x17 RW BalanceWhiteAuto
+0x18 RW IntensitySource (CUSTOM - select Intensity channel for 3-cam models)
+0x19 RW ExposureTimeSelector (CUSTOM - config mono vs color on 3-cam models)
+0x1a RW GainSelector         (CUSTOM - ditto)
+0x1b RW QMatrixIndex  (CUSTOM - element index 0..15 into current 'Q' matrix)
+0x1c RO QMatrixData   (CUSTOM - data value for currently selected index)
+0x1d RO Scan3dInvalidDataFlag
+0x1e WO TriggerSoftware (Set any value: emit software trigger signal)
+0x1f RW Width (R: taken from incoming frames; W: request live change)
+0x20 RO '' (min valid value; max is from WidthMax)
+0x21 RO '' (a-priori increment; valid res determined remotely)
+0x22 RW Height
+0x23 RO  '' (min valid value; max is from HeightMax)
+0x24 RO  '' (a-priori increment; valid res determined remotely)
+0x25 RW OffsetX
+0x26 RO  '' (max valid value)
+0x27 RO  '' (increment)
+0x28 RW OffsetY
+0x29 RO  '' (max valid value)
+0x2A RO  '' (increment)
+0x2B RW AcquisitionFrameRate (<-> trigger_frequency)
+0x2C RO  '' (max valid value)
+0x2D RW TriggerMode   (true / false    <-> trigger_input)
+0x2E RW TriggerSource (Software, Line1 <-> trigger_input)
+0x2F RW PatternProjectorBrightness
+0x30 RW NumberOfDisparities
+0x31 RO  '' (min)
+0x32 RO  '' (max)
+0x33 RO  '' (inc)
+0x34 RW DisparityOffset (min=0, max=(MaxNumDisp-NumDisp))
+0x35 RW SgmP1NoEdge
+0x36 RW SgmP1Edge
+0x37 RW SgmP2NoEdge
+0x38 RW SgmP2Edge
+0x39 RW EdgeSensitivity
+0x3A RW SubpixelOptimizationROIEnabled
+0x3B RW SubpixelOptimizationROIWidth
+0x3C RW SubpixelOptimizationROIHeight
+0x3D RW SubpixelOptimizationROIOffsetX
+0x3E RW SubpixelOptimizationROIOffsetY
+0x3F RW MaskBorderPixelsEnabled
+0x40 RW ConsistencyCheckEnabled
+0x41 RW ConsistencyCheckSensitivity
+0x42 RW UniquenessCheckEnabled
+0x43 RW UniquenessCheckSensitivity
+0x44 RW TextureFilterEnabled
+0x45 RW TextureFilterSensitivity
+0x46 RW GapInterpolationEnabled
+0x47 RW NoiseReductionEnabled
+0x48 RW SpeckleFilterIterations
+0x49 RO  '' (max valid value)
+-----------------
+0xff RO Special: device-reported feature flags, for conditional XML (CUSTOM)
+
+

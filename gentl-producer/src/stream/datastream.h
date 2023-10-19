@@ -111,6 +111,10 @@ public:
 
     const BufferMapping& getBufferMapping() const { return bufferMapping; }
 
+    // Update the BufferMapping, i.e. mapping from ImageSet to buffer parts, given metadata and features.
+    // PhysicalDevice can invoke this directly, once any visiontransfer::ImageSet metadata changes at run time.
+    void updateBufferMapping();
+
 private:
     LogicalDevice* logicalDevice; // The physical device this stream is associated with
     StreamType streamType;
@@ -140,9 +144,6 @@ private:
     template <class T> bool findBuffer(T queue, Buffer* buffer);
     size_t getPayloadSizeForImageType(visiontransfer::ImageSet::ImageType typ);
     uint64_t getPixelFormatForStreamType(const visiontransfer::ImageSet& metaData, StreamType streamType);
-
-    // Update the BufferMapping, i.e. mapping from ImageSet to buffer parts, given metadata and features
-    void updateBufferMapping();
 };
 
 }

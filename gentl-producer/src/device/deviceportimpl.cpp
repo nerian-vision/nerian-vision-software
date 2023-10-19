@@ -18,6 +18,8 @@
 #include "stream/datastream.h"
 #include "misc/infoquery.h"
 
+#include <algorithm>
+
 #include <iostream> // DEBUG
 #include <fstream>
 
@@ -43,6 +45,7 @@ DevicePortImpl::DevicePortImpl(LogicalDevice* device)
     currentSelectorForExposure = 0;
     currentSelectorForGain = 0;
     currentIndexForQMatrix = 0;
+    preferredTriggerSource = 2; // SW trigger is preselected (available everywhere)
 }
 
 GC_ERROR DevicePortImpl::readFeature(unsigned int featureId, void* pBuffer, size_t* piSize) {
@@ -79,11 +82,17 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
 
     switch(featureId) {
         // Common device info, not related to component selector
-        case 0: // width
-            info.setUInt(metaData.getWidth());
+        case 0: // SensorWidth / WidthMax
+            {
+                int fullWidth = device->getPhysicalDevice()->getParameter("calib_image_size_full").at(0);
+                info.setUInt(fullWidth);
+            }
             break;
-        case 1: // height
-            info.setUInt(metaData.getHeight());
+        case 1: // SensorHeight / HeightMax
+            {
+                int fullHeight = device->getPhysicalDevice()->getParameter("calib_image_size_full").at(1);
+                info.setUInt(fullHeight);
+            }
             break;
         case 2: // Pixelformat
             info.setUInt(static_cast<unsigned int>(device->getStream()->getPixelFormat(
@@ -325,14 +334,290 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 }
             }
             break;
+        case 0x1f: // Width
+            {
+                info.setUInt(metaData.getWidth()); // actual current frame width
+            }
+            break;
+        case 0x20: // Width (min valid value; max is from WidthMax)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_width_min").getCurrent<int>());
+            }
+            break;
+        case 0x21: // Width (a-priori increment; valid res determined remotely)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_width_inc").getCurrent<int>());
+            }
+            break;
+        case 0x22: // Height
+            {
+                info.setUInt(metaData.getHeight()); // actual current frame height
+            }
+            break;
+        case 0x23: // Height (min valid value; max is from HeightMax)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_height_min").getCurrent<int>());
+            }
+            break;
+        case 0x24: // Height (a-priori increment; valid res determined remotely)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_height_inc").getCurrent<int>());
+            }
+            break;
+        case 0x25: // OffsetX
+            {
+                // Device parameters use coordinates relative from center; translate
+                auto dev = device->getPhysicalDevice();
+                int ofsRel = dev->getParameter("RT_input_roi_ofs_left_x").getCurrent<int>();
+                int maxRel = dev->getParameter("image_offset_x").getMax<int>();
+                //DEBUG_DEVPORT("widthDiff: " << fullWidth << " - " << curWidth << " = " << widthDiff);
+                //DEBUG_DEVPORT("ofsAbs:    " << widthDiff << "/2" << " + " << ofsRel << " = " << (widthDiff/2 + ofsRel));
+                info.setUInt(ofsRel + maxRel);
+            }
+            break;
+        case 0x26: // OffsetX (max valid value)
+            {
+                // Device parameters use coordinates relative from center (limits always symmetrical); translate
+                int maxX = 2 * device->getPhysicalDevice()->getParameter("image_offset_x").getMax<int>();
+                info.setUInt(maxX);
+            }
+            break;
+        case 0x27: // OffsetX (increment)
+            {
+                int incX = device->getPhysicalDevice()->getParameter("image_offset_x").getIncrement<int>();
+                info.setUInt(incX);
+            }
+            break;
+        case 0x28: // OffsetY
+            {
+                // Device parameters use coordinates relative from center; translate
+                auto dev = device->getPhysicalDevice();
+                int ofsRel = dev->getParameter("RT_input_roi_ofs_left_y").getCurrent<int>();
+                int maxRel = dev->getParameter("image_offset_y").getMax<int>();
+                info.setUInt(ofsRel + maxRel);
+            }
+            break;
+        case 0x29: // OffsetY (max valid value)
+            {
+                // Device parameters use coordinates relative from center (limits always symmetrical); translate
+                int maxY = 2 * device->getPhysicalDevice()->getParameter("image_offset_y").getMax<int>();
+                info.setUInt(maxY);
+            }
+            break;
+        case 0x2a: // OffsetY (increment)
+            {
+                int incY = device->getPhysicalDevice()->getParameter("image_offset_y").getIncrement<int>();
+                info.setUInt(incY);
+            }
+            break;
+        case 0x2b: // AcquisitionFrameRate
+            {
+                int rate = device->getPhysicalDevice()->getParameter("trigger_frequency").getCurrent<double>();
+                info.setDouble(rate);
+            }
+            break;
+        case 0x2c: // AcquisitionFrameRate (max valid value)
+            {
+                int maxRate = device->getPhysicalDevice()->getParameter("trigger_frequency").getMax<double>();
+                info.setDouble(maxRate);
+            }
+            break;
+        case 0x2d: // TriggerMode (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+            {
+                int activeTriggerInput = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
+                info.setUInt(activeTriggerInput != 0);
+            }
+            break;
+        case 0x2e: // TriggerSource (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+            {
+                int activeTriggerSource = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
+                if (activeTriggerSource == 0) activeTriggerSource = preferredTriggerSource;
+                info.setUInt(activeTriggerSource);
+            }
+            break;
+        case 0x2f: // PatternProjectorBrightness
+            {
+                auto dev = device->getPhysicalDevice();
+                if (dev->hasParameter("trigger_frequency")) {
+                    int rate = dev->getParameter("trigger_frequency").getCurrent<double>();
+                    info.setDouble(rate * 100.0);
+                } else {
+                    info.setDouble(0.0); // should not happen (feature also set as unavailable)
+                }
+            }
+            break;
+        case 0x30: // NumberOfDisparities
+            {
+                int num = device->getPhysicalDevice()->getParameter("number_of_disparities").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x31: // NumberOfDisparities (min)
+            {
+                int num = device->getPhysicalDevice()->getParameter("number_of_disparities").getMin<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x32: // NumberOfDisparities (max)
+            {
+                int num = device->getPhysicalDevice()->getParameter("number_of_disparities").getMax<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x33: // NumberOfDisparities (increment)
+            {
+                int num = device->getPhysicalDevice()->getParameter("number_of_disparities").getIncrement<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x34: // DisparityOffset
+            {
+                int num = device->getPhysicalDevice()->getParameter("disparity_offset").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x35: // SgmP1NoEdge
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_p1_no_edge").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x36: // SgmP1Edge
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_p1_edge").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x37: // SgmP2NoEdge
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_p2_no_edge").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x38: // SgmP2Edge
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_p2_edge").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x39: // SgmEdgeSensitivity
+            {
+                int num = device->getPhysicalDevice()->getParameter("sgm_edge_sensitivity").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3A: // SubpixelOptimizationROIEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3B: // SubpixelOptimizationROIWidth
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_width").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3C: // SubpixelOptimizationROIHeight
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_height").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3D: // SubpixelOptimizationROIOffsetX
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_x").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3E: // SubpixelOptimizationROIOffsetY
+            {
+                int num = device->getPhysicalDevice()->getParameter("subpixel_optimization_roi_y").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x3F: // MaskBorderPixelsEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("mask_border_pixels_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x40: // ConsistencyCheckEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("consistency_check_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x41: // ConsistencyCheckSensitivity
+            {
+                int num = device->getPhysicalDevice()->getParameter("consistency_check_sensitivity").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x42: // UniquenessCheckEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("uniqueness_check_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x43: // UniquenessCheckSensitivity
+            {
+                int num = device->getPhysicalDevice()->getParameter("uniqueness_check_sensitivity").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x44: // TextureFilterEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("texture_filter_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x45: // TextureFilterSensitivity
+            {
+                int num = device->getPhysicalDevice()->getParameter("texture_filter_sensitivity").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x46: // GapInterpolationEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("gap_interpolation_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x47: // NoiseReductionEnabled
+            {
+                int num = device->getPhysicalDevice()->getParameter("noise_reduction_enabled").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x48: // SpeckleFilterIterations
+            {
+                int num = device->getPhysicalDevice()->getParameter("speckle_filter_iterations").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
+        case 0x49: // SpeckleFilterIterations (max valid value)
+            {
+                int num = device->getPhysicalDevice()->getParameter("speckle_filter_iterations").getMax<int>();
+                info.setUInt(num);
+            }
+            break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
             {
+                auto dev = device->getPhysicalDevice();
                 uint32_t featureMap = 0;
                 // Bit 0: Availability of third camera
-                int numCameras = device->getPhysicalDevice()->getParameter("calib_num_cameras").getCurrent<int>();
+                int numCameras = dev->getParameter("calib_num_cameras").getCurrent<int>();
                 featureMap |= (numCameras>2) ? 1 : 0;
                 // Bit 1: Availability of Nerian software white balance
-                featureMap |= device->getPhysicalDevice()->hasParameter("white_balance_mode") ? 2 : 0;
+                featureMap |= dev->hasParameter("white_balance_mode") ? 2 : 0;
+                // Bit 2: Availability of hardware trigger input
+                auto availTrigInputs = dev->getParameter("trigger_input").getOptions<int>();
+                // - device parameter enum option '1' corresponds to hardware trigger as well
+                auto trigInpHardwareAvail = std::find(availTrigInputs.begin(), availTrigInputs.end(), 1) != availTrigInputs.end();
+                featureMap |= trigInpHardwareAvail ? 4 : 0;
+                // Bit 3: Availability of pattern projector
+                featureMap |= dev->hasParameter("projector_brightness") ? 8 : 0;
                 // Feature bitmap complete
                 DEBUG_DEVPORT("Device feature bit map: " << featureMap);
                 info.setInt(featureMap);
@@ -497,6 +782,273 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
             }
             break;
         // (0x1c QMatrixData is read-only)
+        case 0x1f: // Width
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                DEBUG_DEVPORT("=== Requesting new width " << newVal << " ===");
+                device->getPhysicalDevice()->setParameter("image_width", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x22: // Height
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                DEBUG_DEVPORT("=== Requesting new height " << newVal << " ===");
+                device->getPhysicalDevice()->setParameter("image_height", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x25: // OffsetX
+            {
+                // Device parameters use coordinates relative from center; translate
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                auto dev = device->getPhysicalDevice();
+                int maxRel = dev->getParameter("image_offset_x").getMax<int>();
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - maxRel;
+                DEBUG_DEVPORT("=== Requesting new ROI X offset " << newVal << " ===");
+                dev->setParameter("image_offset_x", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x28: // OffsetY
+            {
+                // Device parameters use coordinates relative from center; translate
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                auto dev = device->getPhysicalDevice();
+                int maxRel = dev->getParameter("image_offset_y").getMax<int>();
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - maxRel;
+                DEBUG_DEVPORT("=== Requesting new ROI Y offset " << newVal << " ===");
+                dev->setParameter("image_offset_y", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x2b: // AcquisitionFrameRate
+            {
+                if (*piSize != 8) throw std::runtime_error("Expected a new feature value of size 8");
+                double newVal = (reinterpret_cast<const double*>(pBuffer))[0];
+                auto dev = device->getPhysicalDevice();
+                dev->setParameter("trigger_frequency", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x2d: // TriggerMode (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 8");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                auto dev = device->getPhysicalDevice();
+                if (newVal == 0) {
+                    // Deactivate (return to capture internally at AcquisitionFrameRate)
+                    dev->setParameter("trigger_input", 0);
+                } else {
+                    // Activate previously deferred trigger input mode
+                    dev->setParameter("trigger_input", preferredTriggerSource);
+                }
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x2e: // TriggerSource (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 8");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                preferredTriggerSource = newVal;
+                // Only actually change trigger source on device if already activated
+                // (otherwise defer until TriggerMode is set true, below)
+                auto dev = device->getPhysicalDevice();
+                bool triggerInputActive = dev->getParameter("trigger_input").getCurrent<int>() != 0;
+                if (triggerInputActive) {
+                    dev->setParameter("trigger_input", preferredTriggerSource);
+                }
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x2f: // PatternProjectorBrightness
+            {
+                if (*piSize != 8) throw std::runtime_error("Expected a new feature value of size 8");
+                double newVal = (reinterpret_cast<const double*>(pBuffer))[0];
+                auto dev = device->getPhysicalDevice();
+                if (!dev->hasParameter("projector_brightness")) return GC_ERR_NOT_AVAILABLE; // should not happen
+                dev->setParameter("projector_brightness", newVal / 100.0);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x30: // NumberOfDisparities
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("number_of_disparities", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x34: // DisparityOffset
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("disparity_offset", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x35: // SgmP1NoEdge
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_p1_no_edge", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x36: // SgmP1Edge
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_p1_edge", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x37: // SgmP2NoEdge
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_p2_no_edge", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x38: // SgmP2Edge
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_p2_edge", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x39: // SgmEdgeSensitivity
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("sgm_edge_sensitivity", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3a: // SubpixelOptimizationROIEnabled
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3b: // SubpixelOptimizationROIWidth
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_width", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3c: // SubpixelOptimizationROIHeight
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_height", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3d: // SubpixelOptimizationROIOffsetX
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_x", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3e: // SubpixelOptimizationROIOffsetY
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("subpixel_optimization_roi_y", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x3f: // MaskBorderPixelsEnabled
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("mask_border_pixels_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x40: // ConsistencyCheckEnabled
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("consistency_check_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x41: // ConsistencyCheckSensitivity
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("consistency_check_sensitivity", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x42: // UniquenessCheckEnabled 
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("uniqueness_check_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x43: // UniquenessCheckSensitivity
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("uniqueness_check_sensitivity", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x44: // TextureFilterEnabled 
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("texture_filter_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x45: // TextureFilterSensitivity
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("texture_filter_sensitivity", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x46: // GapInterpolationEnabled 
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("gap_interpolation_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x47: // NoiseReductionEnabled
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("noise_reduction_enabled", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x48: // SpeckleFilterIterations
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("speckle_filter_iterations", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
         default:
             DEBUG_DEVPORT("TODO - implement me (DevPortImpl::writeChildFeature)");
     }
