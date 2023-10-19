@@ -15,6 +15,12 @@
 #ifndef VISIONTRANSFER_STANDARDPARAMETERS_H
 #define VISIONTRANSFER_STANDARDPARAMETERS_H
 
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
+#include <cstdint>
+#else
+#include <stdint.h>
+#endif
+
 #include <map>
 #include <string>
 #include "visiontransfer/common.h"

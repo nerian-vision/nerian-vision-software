@@ -21,6 +21,7 @@
 #include <visiontransfer/sensorringbuffer.h>
 
 #include <vector>
+#include <stdexcept>
 
 namespace visiontransfer {
 namespace internal {

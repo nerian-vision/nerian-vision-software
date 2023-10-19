@@ -128,6 +128,12 @@ class ColorSource(enum.IntEnum):
     COLOR_LEFT = 2
     COLOR_THIRD_COLOR = 3
 
+class TriggerInputMode(enum.IntEnum):
+    _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::DeviceParameters::TriggerInputMode")
+    INTERNAL = 0
+    EXTERNAL = 1
+    SOFTWARE = 2
+
 cdef class DeviceEnumeration:
     _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::DeviceEnumeration")
 
