@@ -75,6 +75,12 @@ cdef extern from "visiontransfer/reconstruct3d.h" namespace "visiontransfer::Rec
         COLOR_LEFT
         COLOR_THIRD_COLOR
 
+cdef extern from "visiontransfer/deviceparameters.h" namespace "visiontransfer::DeviceParameters::TriggerInputMode":
+    cdef enum TriggerInputMode "visiontransfer::DeviceParameters::TriggerInputMode":
+        INTERNAL
+        EXTERNAL
+        SOFTWARE
+
 cdef extern from "visiontransfer/deviceinfo.h" namespace "visiontransfer":
     cdef cppclass DeviceStatus:
         DeviceStatus() except +
