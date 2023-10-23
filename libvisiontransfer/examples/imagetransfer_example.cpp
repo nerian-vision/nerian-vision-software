@@ -72,9 +72,7 @@ int main() {
             for(int i = 0; i < imageSet.getNumberOfImages(); i++) {
                 // Create PGM file
                 char fileName[100];
-                snprintf(fileName, sizeof(fileName), "image%03d_%d.pgm", i,
-                    imgNum);
-
+                snprintf(fileName, sizeof(fileName), "image%03d_%d.pgm", imgNum, i);
                 imageSet.writePgmFile(i, fileName);
             }
         }

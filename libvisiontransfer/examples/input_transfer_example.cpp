@@ -113,9 +113,7 @@ void receiveThread(AsyncTransfer* asyncTransfer) {
         for(int imageNumber = 0; imageNumber < imageSet.getNumberOfImages(); imageNumber++) {
             // Create PGM file
             char fileName[100];
-            snprintf(fileName, sizeof(fileName), "image%03d_%d.pgm", i,
-                imageNumber);
-
+            snprintf(fileName, sizeof(fileName), "image%03d_%d.pgm", imageNumber, i);
             imageSet.writePgmFile(imageNumber, fileName);
         }
     }

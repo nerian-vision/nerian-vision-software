@@ -27,11 +27,6 @@
 #   include <unistd.h>
 #endif
 
-#ifdef _MSC_VER
-// Visual studio does not come with snprintf
-#define snprintf _snprintf_s
-#endif
-
 using namespace std;
 using namespace visiontransfer;
 

@@ -26,11 +26,6 @@
 #include <exception>
 #include <stdio.h>
 
-#ifdef _MSC_VER
-// Visual studio does not come with snprintf
-#define snprintf _snprintf_s
-#endif
-
 using namespace visiontransfer;
 
 #define RGB_CLOUD // Undefine for monochrome cameras
