@@ -44,6 +44,7 @@ private:
     int currentSelectorForExposure;
     int currentSelectorForGain;
     int currentIndexForQMatrix;
+    int preferredTriggerSource;
 };
 
 }

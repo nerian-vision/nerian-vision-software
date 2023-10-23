@@ -17,7 +17,6 @@
 
 #include "visiontransfer/common.h"
 #include "visiontransfer/deviceinfo.h"
-#include "visiontransfer/standardparameterids.h"
 #include "visiontransfer/parameterinfo.h"
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include "visiontransfer/parameter.h"
@@ -857,19 +856,36 @@ public:
     }
 
     /**
-     * \brief Returns true if the extgernal trigger input is enabled.
+     * \brief Trigger input modes supported by Nerian stereo devices.
      */
-    bool getInput() {
-        return readBoolParameter("trigger_input");
+    enum TriggerInputMode {
+        /// Trigger input disabled; internal triggering configuration is used.
+        INTERNAL = 0,
+
+        /// External hardware trigger input active (not available on all Nerian devices).
+        EXTERNAL = 1,
+
+        /// Software triggering active (see triggerNow()).
+        SOFTWARE = 2
+    };
+
+    /**
+     * \brief Returns the current trigger input configuration.
+     */
+    TriggerInputMode getTriggerInputMode() {
+        return static_cast<TriggerInputMode>(readIntParameter("trigger_input"));
     }
 
     /**
-     * \brief Enables or disables the external trigger input
+     * \brief Requests to change the trigger input configuration.
+     *
+     * \param mode      The desired input mode.
+     *
+     * External hardware trigger input (EXTERNAL) is not available on all devices.
      */
-    void setTrigger1Offset(bool enabled) {
-        writeBoolParameter("trigger_input", enabled);
+    void setTriggerInputMode(TriggerInputMode mode) {
+        writeIntParameter("trigger_input", static_cast<int>(mode));
     }
-
 
     // Auto calibration parameters
 
