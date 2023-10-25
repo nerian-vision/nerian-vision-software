@@ -1,6 +1,18 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
+10.x.x (2023-10-xx)
+-------------------
+* GenTL producer
+    * Standard feature support added for:
+        * Changing ROI size and position
+        * Selecting external/software trigger input
+        * Frame rate
+    * Custom feature support added for:
+        * Stereo processing parameters of Nerian devices
+        * Control of internal pattern projector (Ruby)
+* API: C++11 parameter getter functions are now (logical) const
+
 10.5.0 (2023-05-03)
 -------------------
 * Added support for parameter transactions

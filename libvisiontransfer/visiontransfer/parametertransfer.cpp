@@ -87,7 +87,7 @@ void ParameterTransfer::attemptConnection() {
     freeaddrinfo(addressInfo);
 }
 
-void ParameterTransfer::waitNetworkReady() {
+void ParameterTransfer::waitNetworkReady() const {
     if (!networkReady) {
         // Block for network to become ready
         std::unique_lock<std::mutex> readyLock(readyMutex);
@@ -576,6 +576,15 @@ void ParameterTransfer::blockingCallThisThread(std::function<void()> fn, int wai
 }
 
 ParameterSet& ParameterTransfer::getParameterSet() {
+    waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
+    return paramSet;
+}
+
+ParameterSet const& ParameterTransfer::getParameterSet() const {
     waitNetworkReady();
     if (networkError) {
         // collecting deferred error from background thread

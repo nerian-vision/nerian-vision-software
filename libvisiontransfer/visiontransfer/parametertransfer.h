@@ -177,6 +177,11 @@ public:
      */
     param::ParameterSet& getParameterSet();
 
+    /**
+     * \brief Returns a reference to the internal parameter set (once the network handshake is complete)
+     */
+    param::ParameterSet const& getParameterSet() const;
+
     void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
 
     /**
@@ -229,9 +234,9 @@ private:
     param::ParameterSet paramSet;
 
     /// Mutex for the network-ready block
-    std::mutex readyMutex;
+    mutable std::mutex readyMutex;
     /// Cond for the network-ready wait
-    std::condition_variable readyCond;
+    mutable std::condition_variable readyCond;
     /// Mutex to guard the request wait cond/mutex maps for atomic emplacement
     std::mutex mapMutex;
     /// Mutex to guard the socket in case of modification (invalidation by disconnect)
@@ -253,7 +258,7 @@ private:
     void attemptConnection();
 
     /// Block current thread until networkReady (set by the receiver thread)
-    void waitNetworkReady();
+    void waitNetworkReady() const;
 
     /// Obtain a basic type thread ID independent of platform / thread implementation
     int getThreadId();

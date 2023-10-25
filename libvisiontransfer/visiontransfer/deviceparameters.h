@@ -1029,7 +1029,7 @@ public:
     /**
      * \brief Tests whether a specific named parameter is available for this device.
      */
-    bool hasParameter(const std::string& name);
+    bool hasParameter(const std::string& name) const;
 
     /**
      *  \brief Returns a Parameter object for the named device parameter. ParameterException for invalid or inaccessible parameter names.
@@ -1039,7 +1039,7 @@ public:
      *
      * \note This function is available for C++11 and newer.
      */
-    visiontransfer::param::Parameter getParameter(const std::string& name);
+    visiontransfer::param::Parameter getParameter(const std::string& name) const;
 
     /**
      * \brief Returns all API-accessible parameters as reported by the device.
@@ -1051,7 +1051,7 @@ public:
      *
      * \note This function is available for C++11 and newer.
      */
-    visiontransfer::param::ParameterSet getParameterSet();
+    visiontransfer::param::ParameterSet getParameterSet() const;
 
     /**
      * \brief Sets the optional user parameter update callback. This is then called for all asynchronous value or metadata changes that the server sends.

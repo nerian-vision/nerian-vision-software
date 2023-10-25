@@ -46,11 +46,11 @@ public:
 
     std::map<std::string, ParameterInfo> getAllParameters();
 
-    bool hasParameter(const std::string& name);
+    bool hasParameter(const std::string& name) const;
 
-    Parameter& getParameter(const std::string& name);
+    Parameter const& getParameter(const std::string& name) const;
 
-    ParameterSet& getParameterSet();
+    ParameterSet const& getParameterSet() const;
 
     void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
 
@@ -168,15 +168,15 @@ bool VT_EXPORT DeviceParameters::getNamedParameter(const std::string& name) {
 #endif
 
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
-bool DeviceParameters::hasParameter(const std::string& name) {
+bool DeviceParameters::hasParameter(const std::string& name) const {
     return pimpl->hasParameter(name);
 }
 
-Parameter DeviceParameters::getParameter(const std::string& name) {
+Parameter DeviceParameters::getParameter(const std::string& name) const {
     return pimpl->getParameter(name); // copied here
 }
 
-ParameterSet DeviceParameters::getParameterSet() {
+ParameterSet DeviceParameters::getParameterSet() const {
     return pimpl->getParameterSet(); // copied here
 }
 
@@ -242,21 +242,21 @@ std::map<std::string, ParameterInfo> DeviceParameters::Pimpl::getAllParameters()
     return serverSideEnumeration;
 }
 
-bool DeviceParameters::Pimpl::hasParameter(const std::string& name) {
-    auto& paramSet = paramTrans.getParameterSet();
+bool DeviceParameters::Pimpl::hasParameter(const std::string& name) const {
+    auto const& paramSet = paramTrans.getParameterSet();
     return paramSet.count(name) != 0;
 }
 
-Parameter& DeviceParameters::Pimpl::getParameter(const std::string& name) {
-    auto& paramSet = paramTrans.getParameterSet();
+Parameter const& DeviceParameters::Pimpl::getParameter(const std::string& name) const {
+    auto const& paramSet = paramTrans.getParameterSet();
     if (paramSet.count(name)) {
-        return paramSet[name];
+        return paramSet.at(name);
     } else {
         throw ParameterException(std::string("Invalid or inaccessible parameter name: ") + name);
     }
 }
 
-ParameterSet& DeviceParameters::Pimpl::getParameterSet() {
+ParameterSet const& DeviceParameters::Pimpl::getParameterSet() const {
     return paramTrans.getParameterSet();
 }
 
