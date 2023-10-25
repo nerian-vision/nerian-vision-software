@@ -11,7 +11,9 @@ Changelog for Nerian Vision Software Release
     * Custom feature support added for:
         * Stereo processing parameters of Nerian devices
         * Control of internal pattern projector (Ruby)
-* API: C++11 parameter getter functions are now (logical) const
+* API
+    * Fixed / amended get/setTriggerInputMode (C++, Python)
+    * Parameter getter functions are now (logical) const (C++)
 
 10.5.0 (2023-05-03)
 -------------------
