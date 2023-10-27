@@ -56,10 +56,6 @@ MainWindow::MainWindow(QWidget *parent, QApplication& app): QMainWindow(parent),
         &MainWindow::writeApplicationSettings);
 
     fpsTimer.setInterval(200);
-    for(int i=0; i<6; i++) {
-        fpsCounters.push_back(std::make_pair(0, steady_clock::now()));
-    }
-
     qRegisterMetaType<std::vector<int> >("std::vector<int>");
 }
 
@@ -352,9 +348,16 @@ void MainWindow::openSettingsDialog() {
     }
 }
 
-void MainWindow::display2DFrame(int origW, int origH, const std::vector<cv::Mat_<cv::Vec3b>>& frames, int numActiveImages, bool resize) {
-    fpsCounters.back().first++;
+void MainWindow::countFrame() {
+    frameTimes.push_back(steady_clock::now());
 
+    if(frameTimes.size() > 100) {
+        frameTimes.pop_front();
+    }
+}
+
+void MainWindow::display2DFrame(int origW, int origH, const std::vector<cv::Mat_<cv::Vec3b>>& frames, int numActiveImages, bool resize) {
+    countFrame();
     unique_lock<mutex> lock(displayMutex, std::defer_lock);
     if(!lock.try_lock()) {
         return;
@@ -385,7 +388,7 @@ void MainWindow::display3DFrame(std::shared_ptr<open3d::geometry::PointCloud> po
 
     if(open3dWidget != nullptr) {
         if(open3dWidget->setDisplayCloud(pointcloud, fovHoriz)) {
-            fpsCounters.back().first++;
+            countFrame();
         }
     }
 
@@ -527,19 +530,25 @@ void MainWindow::displayException(const std::string& msg) {
 }
 
 void MainWindow::displayFrameRate() {
-    // Compute frame rate
-    int framesCount = 0;
-    for(auto counter: fpsCounters) {
-        framesCount += counter.first;
+    double fps = 0;
+    if(frameTimes.size() >= 2) {
+        // Compute frame rate
+        steady_clock::time_point firstTime = frameTimes.front();
+        steady_clock::time_point lastTime = frameTimes.back();
+
+        if((steady_clock::now() - lastTime) > 2*(lastTime - firstTime)/(frameTimes.size()-1)) {
+            // At least one frame skipped or camera stopped!
+            lastTime = steady_clock::now();
+        }
+
+        int elapsedTime = duration_cast<microseconds>(lastTime - firstTime).count();
+        fps = (frameTimes.size()-1) / (elapsedTime*1.0e-6);
     }
 
-    int elapsedTime = duration_cast<microseconds>(
-        steady_clock::now() - fpsCounters[0].second).count();
-    double fps = framesCount / (elapsedTime*1.0e-6);
-
-    // Drop one counter
-    fpsCounters.pop_front();
-    fpsCounters.push_back(std::make_pair(0, steady_clock::now()));
+    // Drop old time measures
+    while(frameTimes.size() > 0 && duration_cast<milliseconds>(steady_clock::now() - frameTimes.front()) > 1s) {
+        frameTimes.pop_front();
+    }
 
     // Update label
     char fpsStr[6];

@@ -93,7 +93,7 @@ private:
     int lastDropped;
     int lastNumPoints;
 
-    std::deque<std::pair<unsigned int, std::chrono::steady_clock::time_point> > fpsCounters;
+    std::deque<std::chrono::steady_clock::time_point> frameTimes;
 
     std::mutex displayMutex;
 
@@ -115,6 +115,7 @@ private:
     void makeFullscreen();
     void openSettingsDialog();
     void switchView(bool view3D);
+    void countFrame();
 };
 
 #endif
