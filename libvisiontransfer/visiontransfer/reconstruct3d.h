@@ -83,7 +83,7 @@ public:
 
     DEPRECATED("Use createPointMap(const ImageSet&, ...) instead.")
     float* createPointMap(const unsigned short* dispMap, int width, int height,
-        int rowStride, const float* q, unsigned short minDisparity = 1,
+        int rowStride, const float* q, unsigned short minDisparity = 0,
         int subpixelFactor = 16, unsigned short maxDisparity = 0xFFF);
 #endif
 
@@ -108,7 +108,7 @@ public:
      * The returned point map is valid until the next call of createPointMap(), createZMap(), or
      * writePlyFile().
      */
-    float* createPointMap(const ImageSet& imageSet, unsigned short minDisparity = 1,
+    float* createPointMap(const ImageSet& imageSet, unsigned short minDisparity = 0,
         unsigned short maxDisparity = 0xFFF);
 
     /**
@@ -134,7 +134,7 @@ public:
      * The returned map is valid until the next call of createZMap(), createPointMap() or
      * writePlyFile().
      */
-    float* createZMap(const ImageSet& imageSet, unsigned short minDisparity = 1,
+    float* createZMap(const ImageSet& imageSet, unsigned short minDisparity = 0,
         unsigned short maxDisparity = 0xFFF);
 
     /**

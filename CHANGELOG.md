@@ -12,6 +12,8 @@ Changelog for Nerian Vision Software Release
         * Stereo processing parameters of Nerian devices
         * Control of internal pattern projector (Ruby)
 * API
+    * Changed default value of createPointMap() and createZMap()
+      parameter minDisparity from 1 to 0 for better consistency
     * Fixed / amended get/setTriggerInputMode (C++, Python)
     * Parameter getter functions are now (logical) const (C++)
 
