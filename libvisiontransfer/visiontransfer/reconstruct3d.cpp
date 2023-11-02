@@ -20,6 +20,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <cmath>
+#include <limits>
 
 // SIMD Headers
 #ifdef __AVX2__
@@ -27,6 +28,8 @@
 #elif __SSE2__
 #include <emmintrin.h>
 #endif
+
+#include <iostream>
 
 using namespace std;
 using namespace visiontransfer;
@@ -134,20 +137,26 @@ float* Reconstruct3D::Pimpl::createPointMap(const unsigned short* dispMap, int w
         pointMap.resize(4*width*height);
     }
 
+    // +inf mapping of invalid points only works for fallback implementation
+    // in case of angled cameras.
+    bool angledCameraFallback = (q[15] != 0.0 && minDisparity == 0);
+
 #   ifdef __AVX2__
-        if(maxDisparity <= 0x1000 && width % 16 == 0 && (uintptr_t)dispMap % 32 == 0) {
+        if(!angledCameraFallback && maxDisparity <= 0x1000 && width % 16 == 0 && (uintptr_t)dispMap % 32 == 0) {
             return createPointMapAVX2(dispMap, width, height, rowStride, q,
                 minDisparity, subpixelFactor, maxDisparity);
         } else
 #   endif
 #   ifdef __SSE2__
-        if(maxDisparity <= 0x1000 && width % 8 == 0 && (uintptr_t)dispMap % 16 == 0) {
+        if(!angledCameraFallback && maxDisparity <= 0x1000 && width % 8 == 0 && (uintptr_t)dispMap % 16 == 0) {
             return createPointMapSSE2(dispMap, width, height, rowStride, q,
                 minDisparity, subpixelFactor, maxDisparity);
         } else
 #   endif
-        return createPointMapFallback(dispMap, width, height, rowStride, q,
-            minDisparity, subpixelFactor, maxDisparity);
+        {
+            return createPointMapFallback(dispMap, width, height, rowStride, q,
+                minDisparity, subpixelFactor, maxDisparity);
+        }
 }
 
 float* Reconstruct3D::Pimpl::createPointMap(const ImageSet& imageSet, unsigned short minDisparity, unsigned short maxDisparity) {
@@ -171,6 +180,16 @@ float* Reconstruct3D::Pimpl::createPointMapFallback(const unsigned short* dispMa
     float* outputPtr = &pointMap[0];
     int stride = rowStride / 2;
 
+    double dInvalid;
+    if(minDisparity == 0) {
+        // Manually force invalid points to +inf, so that this works even
+        // for for angled cameras
+        dInvalid = std::numeric_limits<double>::infinity();
+    } else {
+        // Set invalid disparity to minimum disparity
+        dInvalid = double(minDisparity) / double(subpixelFactor);
+    }
+
     for(int y = 0; y < height; y++) {
         double qx = q[1]*y + q[3];
         double qy = q[5]*y + q[7];
@@ -180,11 +199,14 @@ float* Reconstruct3D::Pimpl::createPointMapFallback(const unsigned short* dispMa
         const unsigned short* dispRow = &dispMap[y*stride];
         for(int x = 0; x < width; x++) {
             unsigned short intDisp = std::max(minDisparity, dispRow[x]);
+            double d;
+
             if(intDisp >= maxDisparity) {
-                intDisp = minDisparity; // Invalid disparity
+                d = dInvalid;
+            } else {
+                d = double(intDisp) / double(subpixelFactor);
             }
 
-            double d = intDisp / double(subpixelFactor);
             double w = qw + q[14]*d;
 
             *outputPtr = static_cast<float>((qx + q[2]*d)/w); // x
@@ -218,6 +240,16 @@ float* Reconstruct3D::Pimpl::createZMap(const ImageSet& imageSet, unsigned short
     int subpixelFactor = imageSet.getSubpixelFactor();
     const float* q = imageSet.getQMatrix();
 
+    double dInvalid;
+    if(minDisparity == 0) {
+        // Manually force invalid points to +inf, so that this works even
+        // for for angled cameras
+        dInvalid = std::numeric_limits<double>::infinity();
+    } else {
+        // Set invalid disparity to minimum disparity
+        dInvalid = double(minDisparity) / double(subpixelFactor);
+    }
+
     for(int y = 0; y < imageSet.getHeight(); y++) {
         double qz = q[9]*y + q[11];
         double qw = q[13]*y + q[15];
@@ -225,11 +257,14 @@ float* Reconstruct3D::Pimpl::createZMap(const ImageSet& imageSet, unsigned short
         const unsigned short* dispRow = &dispMap[y*stride];
         for(int x = 0; x < imageSet.getWidth(); x++) {
             unsigned short intDisp = std::max(minDisparity, dispRow[x]);
+            double d;
+
             if(intDisp >= maxDisparity) {
-                intDisp = minDisparity; // Invalid disparity
+                d = dInvalid;
+            } else {
+                d = double(intDisp) / double(subpixelFactor);
             }
 
-            double d = intDisp / double(subpixelFactor);
             double w = qw + q[14]*d;
 
             *outputPtr = static_cast<float>((qz + q[10]*d)/w); // z
@@ -437,17 +472,7 @@ void Reconstruct3D::Pimpl::writePlyFile(const char* file, const unsigned short* 
 
     // Count number of valid points
     int pointsCount = 0;
-
-    // Maximum z might be constrained by q matrix
-    if(q[15] != 0.0) {
-        const double epsilon = 1e-5; // 10um
-        double absMaxZ = q[11] / q[15] - epsilon;
-        if(absMaxZ > 0) {
-            maxZ = std::min(maxZ, absMaxZ);
-        }
-    }
-
-    if(maxZ >= 0 || q[15] != 0) {
+    if(maxZ >= 0) {
         for(int i=0; i<width*height; i++) {
             if(pointMap[4*i+2] <= maxZ && pointMap[4*i+2] > 0) {
                 pointsCount++;
