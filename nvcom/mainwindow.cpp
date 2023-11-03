@@ -546,7 +546,7 @@ void MainWindow::displayFrameRate() {
     }
 
     // Drop old time measures
-    while(frameTimes.size() > 0 && duration_cast<milliseconds>(steady_clock::now() - frameTimes.front()) > duration::seconds(1)) {
+    while(frameTimes.size() > 0 && duration_cast<milliseconds>(steady_clock::now() - frameTimes.front()) > chrono::seconds(1)) {
         frameTimes.pop_front();
     }
 
