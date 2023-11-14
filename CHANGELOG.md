@@ -12,6 +12,7 @@ Changelog for Nerian Vision Software Release
         * Stereo processing parameters of Nerian devices
         * Control of internal pattern projector (Ruby)
 * API
+    * Pre-built binaries for Python 3.12 for Windows release
     * Changed default value of createPointMap() and createZMap()
       parameter minDisparity from 1 to 0 for better consistency
     * Fixed / amended get/setTriggerInputMode (C++, Python)
