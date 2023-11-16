@@ -290,6 +290,14 @@ public:
         ensureValidCurrent();
         return *this;
     }
+    /** Unsets the valid value range for the Parameter; i.e. removes min and max bounds */
+    Parameter& unsetRange() {
+        minValue.setType(ParameterValue::ParameterType::TYPE_UNDEFINED);
+        maxValue.setType(ParameterValue::ParameterType::TYPE_UNDEFINED);
+        ensureValidDefault();
+        ensureValidCurrent();
+        return *this;
+    }
     /** Sets the uniform increment (granularity) for the Parameter (only checked for numerical scalars) */
     template<typename T>
     Parameter& setIncrement(T t) {
@@ -311,7 +319,7 @@ public:
     Parameter& setCurrentFrom(const Parameter& from);
     /** Copies over the current value from the default value, if specified */
     Parameter& setCurrentFromDefault();
-    /** Specifies a vector of possible values and a vector of description strings, making the present Parameter an enum-style option list */
+    /** Specifies a vector of possible values and a vector of description strings, making the present Parameter an enum-style option list. Use zero-length arguments to remove an enum restriction. */
     template<typename T>
     Parameter& setOptions(const std::vector<T>& opts, const std::vector<std::string>& descriptions) {
         if (opts.size() != descriptions.size()) throw std::runtime_error("Option list and description list of mismatched size");

@@ -321,12 +321,18 @@ bool Parameter::ensureValidCurrent() {
                 return false; // Valid value -> no revision needed
             }
         }
-        // Invalid current value: copy default if available, otherwise fallback
+        // Invalid current value: copy default if available and valid
         if (hasDefault()) {
-            currentValue.setValue<std::string>(defaultValue.getValue<std::string>());
-        } else {
-            currentValue.setValue<std::string>(validOptions[0].getValue<std::string>());
+            std::string defVal = defaultValue.getValue<std::string>();
+            for (auto& o: validOptions) {
+                if (defVal == o.getValue<std::string>()) {
+                    currentValue.setValue<std::string>(defVal);
+                    return true; // Default value is still valid for current option set
+                }
+            }
         }
+        // The only venue left is to fall back to the first entry
+        currentValue.setValue<std::string>(validOptions[0].getValue<std::string>());
         return true;
     } else {
         if ((type==ParameterValue::ParameterType::TYPE_INT) || (type==ParameterValue::ParameterType::TYPE_DOUBLE)) {

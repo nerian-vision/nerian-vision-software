@@ -369,7 +369,7 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 // Device parameters use coordinates relative from center; translate
                 auto dev = device->getPhysicalDevice();
                 int ofsRel = dev->getParameter("RT_input_roi_ofs_left_x").getCurrent<int>();
-                int maxRel = dev->getParameter("image_offset_x").getMax<int>();
+                int maxRel = dev->getParameter("capture_cam0_roi_offset_x").getMax<int>();
                 //DEBUG_DEVPORT("widthDiff: " << fullWidth << " - " << curWidth << " = " << widthDiff);
                 //DEBUG_DEVPORT("ofsAbs:    " << widthDiff << "/2" << " + " << ofsRel << " = " << (widthDiff/2 + ofsRel));
                 info.setUInt(ofsRel + maxRel);
@@ -378,13 +378,13 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
         case 0x26: // OffsetX (max valid value)
             {
                 // Device parameters use coordinates relative from center (limits always symmetrical); translate
-                int maxX = 2 * device->getPhysicalDevice()->getParameter("image_offset_x").getMax<int>();
+                int maxX = 2 * device->getPhysicalDevice()->getParameter("capture_cam0_roi_offset_x").getMax<int>();
                 info.setUInt(maxX);
             }
             break;
         case 0x27: // OffsetX (increment)
             {
-                int incX = device->getPhysicalDevice()->getParameter("image_offset_x").getIncrement<int>();
+                int incX = device->getPhysicalDevice()->getParameter("capture_cam0_roi_offset_x").getIncrement<int>();
                 info.setUInt(incX);
             }
             break;
@@ -393,20 +393,20 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 // Device parameters use coordinates relative from center; translate
                 auto dev = device->getPhysicalDevice();
                 int ofsRel = dev->getParameter("RT_input_roi_ofs_left_y").getCurrent<int>();
-                int maxRel = dev->getParameter("image_offset_y").getMax<int>();
+                int maxRel = dev->getParameter("capture_cam0_roi_offset_y").getMax<int>();
                 info.setUInt(ofsRel + maxRel);
             }
             break;
         case 0x29: // OffsetY (max valid value)
             {
                 // Device parameters use coordinates relative from center (limits always symmetrical); translate
-                int maxY = 2 * device->getPhysicalDevice()->getParameter("image_offset_y").getMax<int>();
+                int maxY = 2 * device->getPhysicalDevice()->getParameter("capture_cam0_roi_offset_y").getMax<int>();
                 info.setUInt(maxY);
             }
             break;
         case 0x2a: // OffsetY (increment)
             {
-                int incY = device->getPhysicalDevice()->getParameter("image_offset_y").getIncrement<int>();
+                int incY = device->getPhysicalDevice()->getParameter("capture_cam0_roi_offset_y").getIncrement<int>();
                 info.setUInt(incY);
             }
             break;
@@ -787,7 +787,7 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
                 DEBUG_DEVPORT("=== Requesting new width " << newVal << " ===");
-                device->getPhysicalDevice()->setParameter("image_width", newVal);
+                device->getPhysicalDevice()->setParameter("capture_roi_width", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
@@ -796,7 +796,7 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
                 DEBUG_DEVPORT("=== Requesting new height " << newVal << " ===");
-                device->getPhysicalDevice()->setParameter("image_height", newVal);
+                device->getPhysicalDevice()->setParameter("capture_roi_height", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
@@ -805,10 +805,12 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 // Device parameters use coordinates relative from center; translate
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 auto dev = device->getPhysicalDevice();
-                int maxRel = dev->getParameter("image_offset_x").getMax<int>();
+                int maxRel = dev->getParameter("capture_cam0_roi_offset_x").getMax<int>();
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - maxRel;
                 DEBUG_DEVPORT("=== Requesting new ROI X offset " << newVal << " ===");
-                dev->setParameter("image_offset_x", newVal);
+                // TODO GenTL: preserve any L-R offset?
+                dev->setParameter("capture_cam0_roi_offset_x", newVal);
+                dev->setParameter("capture_cam1_roi_offset_x", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
@@ -817,10 +819,12 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 // Device parameters use coordinates relative from center; translate
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 auto dev = device->getPhysicalDevice();
-                int maxRel = dev->getParameter("image_offset_y").getMax<int>();
+                int maxRel = dev->getParameter("capture_cam0_roi_offset_y").getMax<int>();
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0] - maxRel;
                 DEBUG_DEVPORT("=== Requesting new ROI Y offset " << newVal << " ===");
-                dev->setParameter("image_offset_y", newVal);
+                // TODO GenTL: preserve any L-R offset?
+                dev->setParameter("capture_cam0_roi_offset_y", newVal);
+                dev->setParameter("capture_cam1_roi_offset_y", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
