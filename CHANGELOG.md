@@ -1,7 +1,7 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
-10.x.x (2023-10-xx)
+10.6.0 (2023-11-28)
 -------------------
 * GenTL producer
     * Standard feature support added for:
@@ -17,6 +17,9 @@ Changelog for Nerian Vision Software Release
       parameter minDisparity from 1 to 0 for better consistency
     * Fixed / amended get/setTriggerInputMode (C++, Python)
     * Parameter getter functions are now (logical) const (C++)
+* NVCom
+    * Improved accuracy of frame rate display
+    * Additional firewall exceptions for Windows installer
 
 10.5.0 (2023-05-03)
 -------------------
