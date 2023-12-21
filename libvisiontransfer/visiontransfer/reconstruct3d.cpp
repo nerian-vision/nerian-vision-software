@@ -140,6 +140,7 @@ float* Reconstruct3D::Pimpl::createPointMap(const unsigned short* dispMap, int w
     // +inf mapping of invalid points only works for fallback implementation
     // in case of angled cameras.
     bool angledCameraFallback = (q[15] != 0.0 && minDisparity == 0);
+    (void)angledCameraFallback; // Suppresses unused variable warning
 
 #   ifdef __AVX2__
         if(!angledCameraFallback && maxDisparity <= 0x1000 && width % 16 == 0 && (uintptr_t)dispMap % 32 == 0) {
