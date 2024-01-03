@@ -15,9 +15,10 @@ using namespace visiontransfer;
 static const int COLUMN_IP     = 0;
 static const int COLUMN_PROTO  = 1;
 static const int COLUMN_MODEL  = 2;
-static const int COLUMN_FW     = 3;
-static const int COLUMN_STATUS = 4;
-static const int COLUMN_IDX    = 5;
+static const int COLUMN_SERIAL = 3;
+static const int COLUMN_FW     = 4;
+static const int COLUMN_STATUS = 5;
+static const int COLUMN_IDX    = 7;
 
 ConnectionDialog::ConnectionDialog(QWidget *parent) :
     QDialog(parent),
@@ -54,8 +55,9 @@ ConnectionDialog::ConnectionDialog(QWidget *parent) :
     ui->hostsList->header()->resizeSection(COLUMN_IP, 130);
     ui->hostsList->header()->resizeSection(COLUMN_PROTO, 80);
     ui->hostsList->header()->resizeSection(COLUMN_MODEL, 130);
+    ui->hostsList->header()->resizeSection(COLUMN_SERIAL, 100);
     ui->hostsList->header()->resizeSection(COLUMN_FW, 80);
-    ui->hostsList->header()->resizeSection(COLUMN_STATUS, 350);
+    ui->hostsList->header()->resizeSection(COLUMN_STATUS, 250);
 
     updateTimer.start(0);
 }
@@ -110,6 +112,10 @@ void ConnectionDialog::createHostList() {
             default: modelString = "Unknown"; break;
         }
         hostItems.back().setData(COLUMN_MODEL, Qt::DisplayRole, modelString.c_str());
+
+        std::string serialString = currDeviceList[i].getSerialNumber();
+        hostItems.back().setData(COLUMN_SERIAL, Qt::DisplayRole, serialString.c_str());
+
         hostItems.back().setData(COLUMN_FW, Qt::DisplayRole, currDeviceList[i].getFirmwareVersion().c_str());
         if(!currDeviceList[i].isCompatible()) {
             hostItems.back().setIcon(0, QIcon(":/nvcom/icons/warning.png"));
@@ -123,9 +129,9 @@ void ConnectionDialog::createHostList() {
             } else {
                 hostItems.back().setIcon(COLUMN_STATUS, QIcon(":/nvcom/icons/warning.png"));
                 if (status.getCurrentCaptureSource() == "arv") {
-                    ss << "No images";
+                    ss << "No images!";
                 } else {
-                    ss << "No images";
+                    ss << "No images!";
                 }
             }
             if (status.getJumboFramesEnabled()) {

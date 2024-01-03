@@ -133,10 +133,15 @@ DeviceEnumeration::DeviceList DeviceEnumeration::Pimpl::collectDiscoverResponses
             // There are no more replies
             break;
         }
-        bool isLegacy = received == sizeof(InternalInformation::DiscoveryMessageBasic);
-        if((received != sizeof(msg)) && !isLegacy ) {
-            // Invalid message
-            continue;
+        bool isLegacy = received == (int) sizeof(InternalInformation::DiscoveryMessageBasic);
+        bool isLegacyWithStatusInfo = received == (int) sizeof(InternalInformation::DiscoveryMessageWithStatus);
+        if(!(isLegacy||isLegacyWithStatusInfo)) {
+            if  ( ((received < (int) sizeof(InternalInformation::DiscoveryMessageExtensibleV0)))
+               || ((received < (int) sizeof(InternalInformation::DiscoveryMessageExtensibleV1)) && (msg.discoveryExtensionVersion >= 0x01))
+                ) {
+                // Malformed message, truncated relative to reported format
+                continue;
+            }
         }
 
         // Zero terminate version string
@@ -150,13 +155,32 @@ DeviceEnumeration::DeviceList DeviceEnumeration::Pimpl::collectDiscoverResponses
             status = DeviceStatus(msg.lastFps, msg.jumboSize, msg.currentCaptureSource);
         }
 
+        // Fallback for undefined fields
+        std::string serial = "Need_FW_Update_For_Serial";
+
+        if (!(isLegacy||isLegacyWithStatusInfo)) {
+            // Parse extension fields up to maximum supported reported version
+            if (msg.discoveryExtensionVersion >= 0x01) {
+                serial = std::string(msg.serialNumber);
+            }
+            // [Append subsequent extension levels here]
+
+            if (msg.discoveryExtensionVersion > InternalInformation::CURRENT_DISCOVERY_EXTENSION_VERSION) {
+                // Device is sending more fields than we know of (library not up-to-date)
+                //
+                // Could warn here (but should continue)
+            }
+        }
+
+        char* ip_addr = inet_ntoa(senderAddress.sin_addr);
         // Add to result list
         DeviceInfo info(
-            inet_ntoa(senderAddress.sin_addr),
+            ip_addr,
             msg.useTcp ? DeviceInfo::PROTOCOL_TCP : DeviceInfo::PROTOCOL_UDP,
             fwVersion,
             (DeviceInfo::DeviceModel)msg.model,
             msg.protocolVersion == InternalInformation::CURRENT_PROTOCOL_VERSION,
+            serial,
             status
         );
         ret.push_back(info);

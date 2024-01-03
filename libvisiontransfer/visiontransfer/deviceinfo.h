@@ -62,7 +62,7 @@ public:
      * \brief Constructs an empty object with default information
      */
     DeviceInfo(): ip(""), protocol(PROTOCOL_TCP), fwVersion(""), model(SCENESCAN),
-        compatible(false) {
+        compatible(false), serialNumber("") {
     }
 
     /**
@@ -77,18 +77,18 @@ public:
      *        API version.
      */
     DeviceInfo(const char* ip, NetworkProtocol protocol, const char* fwVersion,
-         DeviceModel model, bool compatible)
+         DeviceModel model, bool compatible, const std::string& serialNumber)
         : ip(ip), protocol(protocol), fwVersion(fwVersion), model(model),
-        compatible(compatible) {
+        compatible(compatible), serialNumber(serialNumber) {
     }
 
     /**
      * \brief Construct DeviceInfo with pre-initialized DeviceStatus field, for received health reports
      */
     DeviceInfo(const char* ip, NetworkProtocol protocol, const char* fwVersion,
-         DeviceModel model, bool compatible, const DeviceStatus& status)
+         DeviceModel model, bool compatible, const std::string& serialNumber, const DeviceStatus& status)
         : ip(ip), protocol(protocol), fwVersion(fwVersion), model(model),
-        compatible(compatible), status(status){
+        compatible(compatible), serialNumber(serialNumber), status(status){
     }
 
     /**
@@ -136,6 +136,11 @@ public:
     bool isCompatible() const {return compatible;}
 
     /**
+     * \brief Returns the device serial number
+     */
+    std::string getSerialNumber() const { return serialNumber; }
+
+    /**
      * \brief Converts this object to a printable string.
      *
      * All information is concatenated into a readable string, which
@@ -152,6 +157,7 @@ public:
         }
 
         ret += "; " + fwVersion + "; " + (compatible ? "compatible" : "incompatible");
+        ret += "; " + serialNumber;
         return ret;
     }
 
@@ -160,7 +166,7 @@ public:
      */
     bool operator == (const DeviceInfo& other) const {
         return ip == other.ip && protocol == other.protocol && fwVersion == other.fwVersion
-            && model == other.model && compatible == other.compatible;
+            && model == other.model && compatible == other.compatible && serialNumber == other.serialNumber;
     }
 
 private:
@@ -169,6 +175,7 @@ private:
     std::string fwVersion;
     DeviceModel model;
     bool compatible;
+    std::string serialNumber;
     // Extended device status / health info
     DeviceStatus status;
 };

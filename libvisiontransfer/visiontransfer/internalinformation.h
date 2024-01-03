@@ -30,15 +30,26 @@ struct InternalInformation {
         unsigned char useTcp;
         char firmwareVersion[14];
     };
-    struct DiscoveryMessage: public DiscoveryMessageBasic {
+    struct DiscoveryMessageWithStatus: public DiscoveryMessageBasic {
         // Extended device status / health info
         double lastFps; // Most recent FPS report, or 0.0 if N/A
         unsigned int jumboSize; // Jumbo MTU or 0 if disabled
         char currentCaptureSource[8]; // For targeted debug instructions
     };
+    struct DiscoveryMessageExtensibleV0: public DiscoveryMessageWithStatus {
+        // Reported extension version (increase when new fields appended)
+        unsigned char discoveryExtensionVersion;
+    };
+    struct DiscoveryMessageExtensibleV1: public DiscoveryMessageExtensibleV0 {
+        char serialNumber[32];
+    };
+    // Alias the most current version
+    struct DiscoveryMessage: public DiscoveryMessageExtensibleV1 {
+    };
 #pragma pack(pop)
 
-    static const char DISCOVERY_BROADCAST_MSG[16];
+    static const char DISCOVERY_BROADCAST_MSG_LEGACY[16];
+    static const char DISCOVERY_BROADCAST_MSG[25];
 
     static constexpr int DISCOVERY_BROADCAST_PORT = 7680;
     static constexpr int IMAGEDATA_PORT = 7681;
@@ -51,6 +62,7 @@ struct InternalInformation {
     static constexpr unsigned char CURRENT_PARAMETER_PROTOCOL_VERSION_MAJOR = 0x07;
     static constexpr unsigned char CURRENT_PARAMETER_PROTOCOL_VERSION_MINOR = 0x01;
 
+    static constexpr unsigned char CURRENT_DISCOVERY_EXTENSION_VERSION = 0x01;
 };
 
 }} // namespace

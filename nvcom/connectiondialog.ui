@@ -39,7 +39,7 @@
       <bool>true</bool>
      </property>
      <property name="columnCount">
-      <number>5</number>
+      <number>6</number>
      </property>
      <attribute name="headerCascadingSectionResizes">
       <bool>false</bool>
@@ -69,6 +69,11 @@
      <column>
       <property name="text">
        <string>Model</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Serial Number</string>
       </property>
      </column>
      <column>

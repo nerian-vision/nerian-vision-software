@@ -20,7 +20,8 @@ using namespace visiontransfer::internal;
 namespace visiontransfer {
 namespace internal {
 
-const char InternalInformation::DISCOVERY_BROADCAST_MSG[16]  = "NERIAN-DISCOVER";
+const char InternalInformation::DISCOVERY_BROADCAST_MSG_LEGACY[16]  = "NERIAN-DISCOVER";
+const char InternalInformation::DISCOVERY_BROADCAST_MSG[25] = "NERIAN-DISCOVER-EXTENDED";
 
 }} // namespace
 
