@@ -322,8 +322,9 @@ no deallocation attempts by the C++ API will ever take place on this clone).
         _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::ImageSet::getHeight")
         return self.c_obj.getHeight()
 
-    def get_row_stride(self, image_number):
+    def get_row_stride(self, what):
         _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::ImageSet::getRowStride")
+        image_number = self.get_index_of(what, True) if isinstance(what, ImageType) else int(what)
         return self.c_obj.getRowStride(image_number)
 
     def get_pixel_format(self, what):
