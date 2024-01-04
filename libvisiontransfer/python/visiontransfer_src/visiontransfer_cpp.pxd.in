@@ -245,6 +245,17 @@ cdef extern from "visiontransfer/parameterset.h" namespace "visiontransfer::para
         size_t count(const string& uid) except +
         size_t size() except +
 
+cdef extern from "visiontransfer/libraryinfo.h" namespace "visiontransfer":
+    cdef cppclass LibraryInfo:
+        @staticmethod
+        const char* getLibraryVersionString() except +
+        @staticmethod
+        int getLibraryVersionMajor() except +
+        @staticmethod
+        int getLibraryVersionMinor() except +
+        @staticmethod
+        int getLibraryVersionPatch() except +
+
 # Also include auto-generated parameter glue code
 include "visiontransfer_parameters_cpp_autogen.pxd"
 

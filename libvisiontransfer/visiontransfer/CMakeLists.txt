@@ -33,6 +33,7 @@ set(HEADERS
     sensorringbuffer.h
     sensordata.h
     conversionhelpers.h
+    libraryinfo.h
 )
 
 set(SOURCES
@@ -56,6 +57,7 @@ set(SOURCES
     parametertransfer.cpp
     deviceparameters.cpp
     networking.cpp
+    libraryinfo.cpp
 )
 
 # Build static and shared version
