@@ -181,6 +181,11 @@ cdef class DeviceInfo:
         _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::DeviceInfo::isCompatible")
         return self.c_obj.isCompatible()
 
+    def get_serial_number(self):
+        _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::DeviceInfo::getSerialNumber")
+        cdef string s = self.c_obj.getSerialNumber()
+        return s.decode('utf-8')
+
     def __str__(self):
         cdef string s = self.c_obj.toString()
         return s.decode("utf-8")

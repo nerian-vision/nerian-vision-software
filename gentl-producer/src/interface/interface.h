@@ -63,6 +63,7 @@ private:
     std::vector<visiontransfer::DeviceInfo> deviceList;
     std::vector<std::string> deviceSuffixes;
     std::map<std::string, std::string> deviceIDToModelName;
+    std::map<std::string, std::string> deviceIDToSerialNumber;
 
     bool parseDeviceUrl(const char* sDeviceID, bool& udp, std::string& host,
         std::string& stream);

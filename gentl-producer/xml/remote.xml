@@ -33,7 +33,7 @@
         <pFeature>DeviceModelName</pFeature>
         <pFeature>DeviceManufacturerInfo</pFeature>
         <pFeature>DeviceID</pFeature>
-        <!--pFeature>DeviceSerialNumber</pFeature-->
+        <pFeature>DeviceSerialNumber</pFeature>
     </Category>
 
     <Category Name="AcquisitionControl" NameSpace="Standard">
@@ -157,12 +157,12 @@
         <pPort>Device</pPort>
     </StringReg>
 
-    <!--StringReg Name="DeviceSerialNumber" NameSpace="Standard">
+    <StringReg Name="DeviceSerialNumber" NameSpace="Standard">
         <Address>0xE0007000</Address>
         <Length>128</Length>
         <AccessMode>RO</AccessMode>
         <pPort>Device</pPort>
-    </StringReg-->
+    </StringReg>
 
     <IntReg Name="DeviceFeatureReg" NameSpace="Custom">
         <!-- Nerian device feature bit map. Used to mask/unmask features with pIsAvailable and IntSwissKnife -->

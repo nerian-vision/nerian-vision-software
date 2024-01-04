@@ -40,7 +40,7 @@ GC_ERROR Interface::updateDeviceList(bool8_t* pbChanged, uint64_t iTimeout) {
 #ifdef DELIVER_TEST_DATA
     deviceList.clear();
     deviceList.push_back(DeviceInfo("123.123.123.123", DeviceInfo::PROTOCOL_UDP, "1.0",
-        DeviceInfo::SCENESCAN, true));
+        DeviceInfo::SCENESCAN, true, "dummy_serial"));
 #else
     DeviceEnumeration devEnum;
     deviceList = devEnum.discoverDevices();
@@ -63,20 +63,25 @@ void Interface::updateDeviceMetadataCache() {
     char deviceID[1024];
     size_t sz = 1024;
     deviceIDToModelName.clear();
+    deviceIDToSerialNumber.clear();
     for (int iIndex=0; iIndex<(int) deviceList.size(); ++iIndex) {
         DeviceInfo& devInfo = deviceList[iIndex / deviceSuffixes.size()];
         // For querying hardware parameters by abstract name
         DeviceInfo::DeviceModel model = devInfo.getModel();
+        std::string serialNumber = devInfo.getSerialNumber();
         std::string modelName;
         switch(model) {
+            case DeviceInfo::DeviceModel::SCENESCAN:
+                modelName = "Nerian SceneScan";
+                break;
             case DeviceInfo::DeviceModel::SCENESCAN_PRO:
-                modelName = "SceneScan Pro";
+                modelName = "Nerian SceneScan Pro";
                 break;
             case DeviceInfo::DeviceModel::SCARLET:
-                modelName = "Scarlet";
+                modelName = "Nerian Scarlet";
                 break;
             case DeviceInfo::DeviceModel::RUBY:
-                modelName = "Ruby";
+                modelName = "Nerian Ruby";
                 break;
             default:
                 break;
@@ -90,6 +95,7 @@ void Interface::updateDeviceMetadataCache() {
                 subName += std::string(" (") + deviceSuffixes[i].substr(1) + " only)";
             }
             deviceIDToModelName[deviceID] = subName;
+            deviceIDToSerialNumber[deviceID] = serialNumber;
         }
 
     }
@@ -155,9 +161,15 @@ GC_ERROR Interface::getDeviceInfo(const char* sDeviceID, DEVICE_INFO_CMD iInfoCm
                 info.setInt(DEVICE_ACCESS_STATUS_BUSY);
             }
             break;
-        //case DEVICE_INFO_SERIAL_NUMBER:
-        //    info.setString(sDeviceID);
-        //    break;
+        case DEVICE_INFO_SERIAL_NUMBER: {
+                std::map<std::string, std::string>::const_iterator it = deviceIDToSerialNumber.find(sDeviceID);
+                if (it != deviceIDToSerialNumber.end()) {
+                    info.setString(it->second);
+                } else {
+                    info.setString("unknown_serial"); // should not happen
+                }
+                break;
+            }
         case DEVICE_INFO_USER_DEFINED_NAME:
         case DEVICE_INFO_VERSION:
             return GC_ERR_NOT_AVAILABLE;
