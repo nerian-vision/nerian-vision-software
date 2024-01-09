@@ -586,7 +586,8 @@ CPU thread is not acceptable.
             self.c_obj = new cpp.ImageTransfer(
                         (<DeviceInfo> device_info_or_address).c_obj,
                         kwargs.get('buffer_size', 16*1048576),
-                        kwargs.get('max_udp_packet_size', 1472)
+                        kwargs.get('max_udp_packet_size', 1472),
+                        kwargs.get('auto_reconnect_delay', 1)
                     )
         else:
             self.c_obj = new cpp.ImageTransfer(
@@ -595,7 +596,8 @@ CPU thread is not acceptable.
                         kwargs.get('prot_type', ProtocolType.PROTOCOL_UDP),
                         kwargs.get('server', False),
                         kwargs.get('buffer_size', 16*1048576),
-                        kwargs.get('max_udp_packet_size', 1472)
+                        kwargs.get('max_udp_packet_size', 1472),
+                        kwargs.get('auto_reconnect_delay', 1)
                     )
 
     def __init__(self, device_info_or_address, **kwargs):
@@ -615,6 +617,8 @@ Kwargs:
         default 16 MiB,
     max_udp_packet_size: Maximum allowed size of a UDP packet when
         sending data; default 1472.
+    auto_reconnect_delay: Seconds between automatic reconnection
+        attempts after disconnection, or 0 to disable; default 1.
         '''
         pass
 
@@ -701,7 +705,8 @@ The class encapsulates ImageTransfer.
             self.c_obj = new cpp.AsyncTransfer(
                         (<DeviceInfo> device_info_or_address).c_obj,
                         kwargs.get('buffer_size', 16*1048576),
-                        kwargs.get('max_udp_packet_size', 1472)
+                        kwargs.get('max_udp_packet_size', 1472),
+                        kwargs.get('auto_reconnect_delay', 1)
                     )
         else:
             self.c_obj = new cpp.AsyncTransfer(
@@ -710,8 +715,10 @@ The class encapsulates ImageTransfer.
                         kwargs.get('prot_type', ProtocolType.PROTOCOL_UDP),
                         kwargs.get('server', False),
                         kwargs.get('buffer_size', 16*1048576),
-                        kwargs.get('max_udp_packet_size', 1472)
+                        kwargs.get('max_udp_packet_size', 1472),
+                        kwargs.get('auto_reconnect_delay', 1)
                     )
+
 
     def __init__(self, device_info_or_address, **kwargs):
         '''
@@ -730,6 +737,8 @@ Kwargs:
         default 16 MiB,
     max_udp_packet_size: Maximum allowed size of a UDP packet when
         sending data; default 1472.
+    auto_reconnect_delay: Seconds between automatic reconnection
+        attempts after disconnection, or 0 to disable; default 1.
         '''
         pass
 

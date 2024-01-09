@@ -56,6 +56,7 @@ DataBlockProtocol::DataBlockProtocol(bool server, ProtocolType protType, int max
         clientConnectionPending(false), resendMessagePending(false),
         lastRemoteHostActivity(), lastSentHeartbeat(),
         lastReceivedHeartbeat(std::chrono::steady_clock::now()),
+        heartbeatReplyQueued(false),
         finishedReception(false), droppedReceptions(0),
         completedReceptions(0), lostSegmentRate(0.0), lostSegmentBytes(0),
         unprocessedMsgLength(0), headerReceived(false) {
@@ -193,11 +194,18 @@ std::string DataBlockProtocol::statusReport() {
 }
 
 const unsigned char* DataBlockProtocol::getTransferMessage(int& length) {
-    if(transferDone || rawValidBytes == 0) {
+    if(transferDone) {
         // No more data to be transferred
         length = 0;
         return nullptr;
     }
+    for (int i=0; i<numTransferBlocks; ++i) {
+        if (rawValidBytes[i] == 0) {
+            length = 0;
+            return nullptr;
+        }
+    }
+
 
     // For TCP we always send the header first
     if(protType == PROTOCOL_TCP && transferHeaderData != nullptr) {
@@ -717,6 +725,11 @@ bool DataBlockProtocol::processControlMessage(int length) {
         case HEARTBEAT_MESSAGE:
             // A cyclic heartbeat message
             lastReceivedHeartbeat = std::chrono::steady_clock::now();
+            if (isServer) {
+                // We send back a 'pong' that UDP clients expect so
+                // they can ascertain when a connection is interrupted
+                heartbeatReplyQueued = true;
+            }
             break;
         default:
             throw ProtocolException("Received invalid control message!");
@@ -731,9 +744,9 @@ bool DataBlockProtocol::isConnected() const {
         // Connection is handled by TCP and not by us
         return true;
     } else if(connectionConfirmed) {
-        return !isServer || std::chrono::duration_cast<std::chrono::milliseconds>(
+        return /*!isServer ||*/ std::chrono::duration_cast<std::chrono::milliseconds>( // NOTE RYT: extended to client as well!!
             std::chrono::steady_clock::now() - lastReceivedHeartbeat).count()
-        < 2*HEARTBEAT_INTERVAL_MS;
+        < (isServer?2:3)*HEARTBEAT_INTERVAL_MS; // Client has 3, more robust wrt. message timing
     } else return false;
 }
 
@@ -778,12 +791,14 @@ const unsigned char* DataBlockProtocol::getNextControlMessage(int& length) {
             length = 0;
             return nullptr;
         }
-    } else if(!isServer && std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - lastSentHeartbeat).count() > HEARTBEAT_INTERVAL_MS) {
+    } else if(heartbeatReplyQueued ||
+            (!isServer && std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - lastSentHeartbeat).count() > HEARTBEAT_INTERVAL_MS)) {
         // Send a heartbeat message
         controlMessageBuffer[0] = HEARTBEAT_MESSAGE;
         length = 1;
         lastSentHeartbeat = std::chrono::steady_clock::now();
+        heartbeatReplyQueued = false; // Replied with 'pong'
     } else {
         return nullptr;
     }

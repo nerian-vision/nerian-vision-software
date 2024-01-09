@@ -44,7 +44,7 @@ class AsyncTransfer::Pimpl {
 public:
     Pimpl(const char* address, const char* service,
         ImageProtocol::ProtocolType protType, bool server,
-        int bufferSize, int maxUdpPacketSize);
+        int bufferSize, int maxUdpPacketSize, int autoReconnectDelay);
     ~Pimpl();
 
     // Redeclaration of public members
@@ -55,6 +55,8 @@ public:
     void disconnect();
     std::string getRemoteAddress() const;
     bool tryAccept();
+    void setConnectionStateChangeCallback(std::function<void(ImageTransfer::ConnectionStateChange)> callback);
+    void setAutoReconnect(int secondsBetweenRetries);
 
 private:
     static constexpr int NUM_BUFFERS = ImageSet::MAX_SUPPORTED_IMAGES * 3;
@@ -112,13 +114,15 @@ private:
 
 AsyncTransfer::AsyncTransfer(const char* address, const char* service,
         ImageProtocol::ProtocolType protType, bool server,
-        int bufferSize, int maxUdpPacketSize)
-    : pimpl(new Pimpl(address, service, protType, server, bufferSize, maxUdpPacketSize)) {
+        int bufferSize, int maxUdpPacketSize, int autoReconnectDelay)
+    : pimpl(new Pimpl(address, service, protType, server, bufferSize, maxUdpPacketSize,
+                autoReconnectDelay)) {
 }
 
-AsyncTransfer::AsyncTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize)
+AsyncTransfer::AsyncTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize,
+        int autoReconnectDelay)
     : pimpl(new Pimpl(device.getIpAddress().c_str(), "7681", static_cast<ImageProtocol::ProtocolType>(device.getNetworkProtocol()),
-    false, bufferSize, maxUdpPacketSize)) {
+    false, bufferSize, maxUdpPacketSize, autoReconnectDelay)) {
 }
 
 AsyncTransfer::~AsyncTransfer() {
@@ -142,7 +146,9 @@ bool AsyncTransfer::isConnected() const {
 }
 
 void AsyncTransfer::disconnect() {
-    return pimpl->disconnect();
+    // User-requested disconnect: disable reconnection first
+    pimpl->setAutoReconnect(0);
+    pimpl->disconnect();
 }
 
 std::string AsyncTransfer::getRemoteAddress() const {
@@ -153,12 +159,24 @@ bool AsyncTransfer::tryAccept() {
     return pimpl->tryAccept();
 }
 
+void AsyncTransfer::setConnectionStateChangeCallback(void(*callback)(ImageTransfer::ConnectionStateChange)) {
+    pimpl->setConnectionStateChangeCallback(callback);
+}
+
+void AsyncTransfer::setConnectionStateChangeCallback(std::function<void(ImageTransfer::ConnectionStateChange)> callback) {
+    pimpl->setConnectionStateChangeCallback(callback);
+}
+
+void AsyncTransfer::setAutoReconnect(int secondsBetweenRetries) {
+    pimpl->setAutoReconnect(secondsBetweenRetries);
+}
+
 /******************** Implementation in pimpl class *******************/
 
 AsyncTransfer::Pimpl::Pimpl(const char* address, const char* service,
         ImageProtocol::ProtocolType protType, bool server,
-        int bufferSize, int maxUdpPacketSize)
-    : imgTrans(address, service, protType, server, bufferSize, maxUdpPacketSize),
+        int bufferSize, int maxUdpPacketSize, int autoReconnectDelay)
+    : imgTrans(address, service, protType, server, bufferSize, maxUdpPacketSize, autoReconnectDelay),
     terminate(false), receiveBufferIndex(0), newDataReceived(false), sendSetValid(false),
     deleteSendData(false), sendThreadCreated(false),
     receiveThreadCreated(false), uncollectedDroppedFrames(-1) {
@@ -438,6 +456,14 @@ int AsyncTransfer::Pimpl::getNumDroppedFrames() const {
 
 bool AsyncTransfer::Pimpl::tryAccept() {
     return imgTrans.tryAccept();
+}
+
+void AsyncTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(ImageTransfer::ConnectionStateChange)> callback) {
+    imgTrans.setConnectionStateChangeCallback(callback);
+}
+
+void AsyncTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
+    imgTrans.setAutoReconnect(secondsBetweenRetries);
 }
 
 constexpr int AsyncTransfer::Pimpl::NUM_BUFFERS;

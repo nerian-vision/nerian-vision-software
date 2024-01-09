@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <thread>
 #include "visiontransfer/imagetransfer.h"
 #include "visiontransfer/exceptions.h"
 #include "visiontransfer/datablockprotocol.h"
@@ -35,7 +36,7 @@ namespace visiontransfer {
 class ImageTransfer::Pimpl {
 public:
     Pimpl(const char* address, const char* service, ImageProtocol::ProtocolType protType,
-        bool server, int bufferSize, int maxUdpPacketSize);
+        bool server, int bufferSize, int maxUdpPacketSize, int autoReconnectDelay);
     ~Pimpl();
 
     // Redeclaration of public members
@@ -51,8 +52,12 @@ public:
     void disconnect();
     std::string getRemoteAddress() const;
     bool tryAccept();
+    void setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback);
+    void establishConnection();
+    void setAutoReconnect(int secondsBetweenRetries);
 
     std::string statusReport();
+
 private:
     // Configuration parameters
     ImageProtocol::ProtocolType protType;
@@ -68,6 +73,10 @@ private:
     SOCKET clientSocket;
     SOCKET tcpServerSocket;
     sockaddr_in remoteAddress;
+    addrinfo* addressInfo;
+
+    int tcpReconnectSecondsBetweenRetries;
+    bool previousConnectedState;
 
     // Object for encoding and decoding the network protocol
     std::unique_ptr<ImageProtocol> protocol;
@@ -76,6 +85,9 @@ private:
     int currentMsgLen;
     int currentMsgOffset;
     const unsigned char* currentMsg;
+
+    // User callback for connection state changes
+    std::function<void(ConnectionStateChange)> connectionStateChangeCallback;
 
     // Socket configuration
     void setSocketOptions();
@@ -98,14 +110,17 @@ private:
 /******************** Stubs for all public members ********************/
 
 ImageTransfer::ImageTransfer(const char* address, const char* service,
-        ImageProtocol::ProtocolType protType, bool server, int bufferSize, int maxUdpPacketSize):
-        pimpl(new Pimpl(address, service, protType, server, bufferSize, maxUdpPacketSize)) {
+        ImageProtocol::ProtocolType protType, bool server, int bufferSize, int maxUdpPacketSize,
+        int autoReconnectDelay):
+        pimpl(new Pimpl(address, service, protType, server, bufferSize, maxUdpPacketSize,
+                autoReconnectDelay)) {
     // All initialization in the pimpl class
 }
 
-ImageTransfer::ImageTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize):
+ImageTransfer::ImageTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize,
+        int autoReconnectDelay):
         pimpl(new Pimpl(device.getIpAddress().c_str(), "7681", static_cast<ImageProtocol::ProtocolType>(device.getNetworkProtocol()),
-        false, bufferSize, maxUdpPacketSize)) {
+        false, bufferSize, maxUdpPacketSize, autoReconnectDelay)) {
     // All initialization in the pimpl class
 }
 
@@ -147,6 +162,8 @@ bool ImageTransfer::isConnected() const {
 }
 
 void ImageTransfer::disconnect() {
+    // User-requested disconnect: disable reconnection first
+    pimpl->setAutoReconnect(0);
     pimpl->disconnect();
 }
 
@@ -158,13 +175,27 @@ bool ImageTransfer::tryAccept() {
     return pimpl->tryAccept();
 }
 
+void ImageTransfer::setConnectionStateChangeCallback(void(*callback)(ConnectionStateChange)) {
+    pimpl->setConnectionStateChangeCallback(callback);
+}
+
+void ImageTransfer::setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback) {
+    pimpl->setConnectionStateChangeCallback(callback);
+}
+
+void ImageTransfer::setAutoReconnect(int secondsBetweenRetries) {
+    pimpl->setAutoReconnect(secondsBetweenRetries);
+}
+
 /******************** Implementation in pimpl class *******************/
 ImageTransfer::Pimpl::Pimpl(const char* address, const char* service,
         ImageProtocol::ProtocolType protType, bool server, int
-        bufferSize, int maxUdpPacketSize)
+        bufferSize, int maxUdpPacketSize, int autoReconnectDelay)
         : protType(protType), isServer(server), bufferSize(bufferSize),
         maxUdpPacketSize(maxUdpPacketSize),
         clientSocket(INVALID_SOCKET), tcpServerSocket(INVALID_SOCKET),
+        tcpReconnectSecondsBetweenRetries(autoReconnectDelay),
+        previousConnectedState(false),
         currentMsgLen(0), currentMsgOffset(0), currentMsg(nullptr) {
 
     Networking::initNetworking();
@@ -180,7 +211,11 @@ ImageTransfer::Pimpl::Pimpl(const char* address, const char* service,
         address = "0.0.0.0";
     }
 
-    addrinfo* addressInfo = Networking::resolveAddress(address, service);
+    addressInfo = Networking::resolveAddress(address, service);
+    establishConnection();
+}
+
+void ImageTransfer::Pimpl::establishConnection() {
 
     try {
         if(protType == ImageProtocol::PROTOCOL_UDP) {
@@ -191,16 +226,22 @@ ImageTransfer::Pimpl::Pimpl(const char* address, const char* service,
             initTcpClient(addressInfo);
         }
     } catch(...) {
-        freeaddrinfo(addressInfo);
         throw;
     }
+
+    previousConnectedState = true;
+    if (connectionStateChangeCallback) {
+        connectionStateChangeCallback(ConnectionStateChange::CONNECTED);
+    }
+    
+}
+
+ImageTransfer::Pimpl::~Pimpl() {
 
     if(addressInfo != nullptr) {
         freeaddrinfo(addressInfo);
     }
-}
 
-ImageTransfer::Pimpl::~Pimpl() {
     if(clientSocket != INVALID_SOCKET) {
         Networking::closeSocket(clientSocket);
     }
@@ -502,6 +543,15 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
         }
     }
 
+    // Track and signal connection state (for UDP; TCP reacts to disconnect events instead)
+    bool currentConnectedState = isConnected();
+    if (currentConnectedState != previousConnectedState) {
+        if (connectionStateChangeCallback) {
+            connectionStateChangeCallback(currentConnectedState ? CONNECTED : DISCONNECTED);
+        }
+        previousConnectedState = currentConnectedState;
+    }
+
     return bytesReceived > 0;
 }
 
@@ -511,8 +561,26 @@ void ImageTransfer::Pimpl::disconnect() {
     unique_lock<recursive_mutex> recvLock(receiveMutex);
     unique_lock<recursive_mutex> sendLock(sendMutex);
 
+    if (connectionStateChangeCallback) connectionStateChangeCallback(ConnectionStateChange::DISCONNECTED);
+
     if(clientSocket != INVALID_SOCKET && protType == ImageProtocol::PROTOCOL_TCP) {
         Networking::closeSocket(clientSocket);
+        memset(&remoteAddress, 0, sizeof(remoteAddress));
+
+        // Attempt reconnection, if configured
+        if ((!isServer) && (tcpReconnectSecondsBetweenRetries > 0)) {
+            for (;;) {
+                try {
+                    establishConnection();
+                    // Successful reconnection (state change has been signaled inside establishConnection)
+                    return;
+                } catch(...) {
+                    // An exception has occurred during reconnection. Since the connection
+                    // had suceeded originally during construction, we just keep trying.
+                    std::this_thread::sleep_for(std::chrono::seconds(tcpReconnectSecondsBetweenRetries));
+                }
+            }
+        }
     }
     memset(&remoteAddress, 0, sizeof(remoteAddress));
 }
@@ -643,6 +711,14 @@ std::string ImageTransfer::statusReport() {
 }
 std::string ImageTransfer::Pimpl::statusReport() {
     return protocol->statusReport();
+}
+
+void ImageTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback) {
+    connectionStateChangeCallback = callback;
+}
+
+void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
+    tcpReconnectSecondsBetweenRetries = std::max(0, secondsBetweenRetries);
 }
 
 } // namespace

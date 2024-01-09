@@ -21,6 +21,10 @@
 #include "visiontransfer/imageprotocol.h"
 #include "visiontransfer/deviceinfo.h"
 
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
+#include <functional>
+#endif
+
 namespace visiontransfer {
 
 /**
@@ -45,12 +49,14 @@ public:
      * \param server If set to true, this object will be a communication server.
      * \param bufferSize Buffer size for sending / receiving network data.
      * \param maxUdpPacketSize Maximum allowed size of a UDP packet when sending data.
+     * \param autoReconnectDelay Auto-reconnection behavior, see setAutoReconnect
      *
      * Please see ImageTransfer::ImageTransfer() for further details.
      */
     AsyncTransfer(const char* address, const char* service = "7681",
         ImageProtocol::ProtocolType protType = ImageProtocol::PROTOCOL_UDP,
-        bool server = false, int bufferSize = 16*1048576, int maxUdpPacketSize = 1472);
+        bool server = false, int bufferSize = 16*1048576, int maxUdpPacketSize = 1472,
+        int autoReconnectDelay=1);
 
     /**
      * \brief Creates a new transfer object by using the device information
@@ -60,8 +66,10 @@ public:
      *        be established.
      * \param bufferSize Buffer size for sending / receiving network data.
      * \param maxUdpPacketSize Maximum allowed size of a UDP packet when sending data.
+     * \param autoReconnectDelay Auto-reconnection behavior, see setAutoReconnect
      */
-    AsyncTransfer(const DeviceInfo& device, int bufferSize = 16*1048576, int maxUdpPacketSize = 1472);
+    AsyncTransfer(const DeviceInfo& device, int bufferSize = 16*1048576, int maxUdpPacketSize = 1472,
+            int autoReconnectDelay=1);
 
     ~AsyncTransfer();
 
@@ -150,6 +158,36 @@ public:
      * \return Remote address or "" if no connection has been established.
      */
     std::string getRemoteAddress() const;
+
+    /**
+     * \brief Install a handler that will be called when the connection
+     *  state changes (e.g. socket is disconnected).
+     */
+    void setConnectionStateChangeCallback(void(*callback)(ImageTransfer::ConnectionStateChange));
+
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
+    /**
+     * \brief Install a handler that will be called when the connection
+     *  state changes (e.g. socket is disconnected).
+     */
+    void setConnectionStateChangeCallback(std::function<void(ImageTransfer::ConnectionStateChange)> callback);
+#endif
+
+    /*
+     * \brief Configure automatic reconnection behavior (for TCP client mode).
+     *
+     * When enabled, this functionality is initiated whenever a disconnection
+     * is detected, instead of just reporting the disconnection.
+     * By default, automatic reconnection is active with a 1-second wait time.
+     *
+     * In AsyncTransfer, this behavior runs in the background and does not
+     * block the user-accessible functionality. For being informed of the
+     * current connection state, see setConnectionStateChangeCallback.
+     *
+     * \param secondsBetweenRetries Number of seconds to wait between
+     *   consecutive reconnection attempts, or 0 to disable auto-reconnection.
+     */
+    void setAutoReconnect(int secondsBetweenRetries=1);
 
 private:
     // We follow the pimpl idiom

@@ -149,22 +149,24 @@ cdef extern from "visiontransfer/imageset.h" namespace "visiontransfer":
 
 cdef extern from "visiontransfer/imagetransfer.h" namespace "visiontransfer":
     cdef cppclass ImageTransfer:
-        ImageTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize) except +
-        ImageTransfer(const char* address, const char* service, ProtocolType protType, bool server, int bufferSize, int maxUdpPacketSize) except +
+        ImageTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize, int autoReconnectDelay) except +
+        ImageTransfer(const char* address, const char* service, ProtocolType protType, bool server, int bufferSize, int maxUdpPacketSize, int autoReconnectDelay) except +
         bool receiveImageSet(ImageSet& imageSet) except +
         int getNumDroppedFrames() except +
         bool isConnected() except +
         void disconnect() except +
+        void setAutoReconnect(int autoReconnectDelay) except +
         string getRemoteAddress() except +
 
 cdef extern from "visiontransfer/asynctransfer.h" namespace "visiontransfer":
     cdef cppclass AsyncTransfer:
-        AsyncTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize) except +
-        AsyncTransfer(const char* address, const char* service, ProtocolType protType, bool server, int bufferSize, int maxUdpPacketSize) except +
+        AsyncTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize, int autoReconnectDelay) except +
+        AsyncTransfer(const char* address, const char* service, ProtocolType protType, bool server, int bufferSize, int maxUdpPacketSize, int autoReconnectDelay) except +
         bool collectReceivedImageSet(ImageSet& imageSet, double timeout) except +
         int getNumDroppedFrames() except +
         bool isConnected() except +
         void disconnect() except +
+        void setAutoReconnect(int autoReconnectDelay) except +
         string getRemoteAddress() except +
 
 cdef extern from "visiontransfer/reconstruct3d.h" namespace "visiontransfer":
