@@ -718,7 +718,7 @@ void ImageTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(C
 }
 
 void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
-    tcpReconnectSecondsBetweenRetries = std::max(0, secondsBetweenRetries);
+    tcpReconnectSecondsBetweenRetries = secondsBetweenRetries;
 }
 
 } // namespace
