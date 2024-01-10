@@ -55,9 +55,9 @@ ConnectionDialog::ConnectionDialog(QWidget *parent) :
     ui->hostsList->header()->resizeSection(COLUMN_IP, 130);
     ui->hostsList->header()->resizeSection(COLUMN_PROTO, 80);
     ui->hostsList->header()->resizeSection(COLUMN_MODEL, 130);
-    ui->hostsList->header()->resizeSection(COLUMN_SERIAL, 100);
+    ui->hostsList->header()->resizeSection(COLUMN_SERIAL, 130);
     ui->hostsList->header()->resizeSection(COLUMN_FW, 80);
-    ui->hostsList->header()->resizeSection(COLUMN_STATUS, 250);
+    ui->hostsList->header()->resizeSection(COLUMN_STATUS, 270);
 
     updateTimer.start(0);
 }
