@@ -56,6 +56,7 @@ DataBlockProtocol::DataBlockProtocol(bool server, ProtocolType protType, int max
         clientConnectionPending(false), resendMessagePending(false),
         lastRemoteHostActivity(), lastSentHeartbeat(),
         lastReceivedHeartbeat(std::chrono::steady_clock::now()),
+        lastReceivedAnything(std::chrono::steady_clock::now()),
         heartbeatReplyQueued(false),
         finishedReception(false), droppedReceptions(0),
         completedReceptions(0), lostSegmentRate(0.0), lostSegmentBytes(0),
@@ -363,6 +364,10 @@ void DataBlockProtocol::processReceivedMessage(int length, bool& transferComplet
         // First reset for next frame
         resetReception(false);
     }
+
+    // Track last successful reception, UDP client tracks this
+    // (lastRemoteHostActivity also includes sent data)
+    lastReceivedAnything = std::chrono::steady_clock::now();
 
     if(protType == PROTOCOL_UDP) {
         processReceivedUdpMessage(length, transferComplete);
@@ -744,9 +749,18 @@ bool DataBlockProtocol::isConnected() const {
         // Connection is handled by TCP and not by us
         return true;
     } else if(connectionConfirmed) {
-        return /*!isServer ||*/ std::chrono::duration_cast<std::chrono::milliseconds>( // NOTE RYT: extended to client as well!!
-            std::chrono::steady_clock::now() - lastReceivedHeartbeat).count()
-        < (isServer?2:3)*HEARTBEAT_INTERVAL_MS; // Client has 3, more robust wrt. message timing
+        auto now = std::chrono::steady_clock::now();
+        if (isServer) {
+            // Original server-side client disconnection heuristic
+            return std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - lastReceivedHeartbeat).count()
+            < 2*HEARTBEAT_INTERVAL_MS;
+        } else {
+            // Client counts any data and has multiplier 3: robust wrt. message timing
+            return (std::chrono::duration_cast<std::chrono::milliseconds>(
+                 now - lastReceivedAnything).count()
+            < 3*HEARTBEAT_INTERVAL_MS);
+        }
     } else return false;
 }
 

@@ -360,6 +360,7 @@ private:
     std::chrono::steady_clock::time_point lastRemoteHostActivity;
     std::chrono::steady_clock::time_point lastSentHeartbeat;
     std::chrono::steady_clock::time_point lastReceivedHeartbeat;
+    std::chrono::steady_clock::time_point lastReceivedAnything;
     bool heartbeatReplyQueued;
 
     // Reception related variables
