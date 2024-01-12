@@ -197,6 +197,11 @@ public:
      */
     void transactionCommitQueue();
 
+    /**
+     * \brief Requests to save the current values for the specified parameter UIDs to permanent storage
+     */
+    void persistParameters(const std::vector<std::string>& uids, bool synchronous=true);
+
 private:
     static constexpr int SOCKET_TIMEOUT_MS = 500;
     static constexpr int SOCKET_RECONNECT_INTERVAL_MS = 2000;
@@ -281,6 +286,7 @@ private:
     void writeParameterTransactionUnguardedImpl(const char* id, const T& value);
 
     void sendNetworkCommand(const std::string& cmdline);
+
 };
 
 }} // namespace

@@ -57,6 +57,8 @@ public:
     void transactionStartQueue();
     void transactionCommitQueue();
 
+    void persistParameters(const std::vector<std::string>& uids, bool blocking=true);
+
 private:
     std::map<std::string, ParameterInfo> serverSideEnumeration;
 
@@ -197,6 +199,29 @@ std::unique_ptr<DeviceParameters::TransactionLock> DeviceParameters::transaction
     return std::make_unique<DeviceParameters::TransactionLock>(pimpl);
 }
 
+void DeviceParameters::saveParameter(const char* uid, bool blockingCall) {
+    pimpl->persistParameters({uid}, blockingCall);
+}
+void DeviceParameters::saveParameter(const std::string& uid, bool blockingCall) {
+    pimpl->persistParameters({uid}, blockingCall);
+}
+void DeviceParameters::saveParameter(const visiontransfer::param::Parameter& param, bool blockingCall) {
+    pimpl->persistParameters({param.getUid()}, blockingCall);
+}
+void DeviceParameters::saveParameters(const std::vector<std::string>& uids, bool blockingCall) {
+    pimpl->persistParameters(uids, blockingCall);
+}
+void DeviceParameters::saveParameters(const std::set<std::string>& uids, bool blockingCall) {
+    std::vector<std::string> uidvec;
+    for (auto const& u: uids) uidvec.push_back(u);
+    pimpl->persistParameters(uidvec, blockingCall);
+}
+void DeviceParameters::saveParameters(std::initializer_list<std::string> uids, bool blockingCall) {
+    std::vector<std::string> uidvec;
+    for (auto const& u: uids) uidvec.push_back(u);
+    pimpl->persistParameters(uidvec, blockingCall);
+}
+
 #endif
 
 /******************** Implementation in pimpl class *******************/
@@ -270,6 +295,10 @@ void DeviceParameters::Pimpl::transactionStartQueue() {
 
 void DeviceParameters::Pimpl::transactionCommitQueue() {
     paramTrans.transactionCommitQueue();
+}
+
+void DeviceParameters::Pimpl::persistParameters(const std::vector<std::string>& uids, bool blocking) {
+    paramTrans.persistParameters(uids, blocking);
 }
 
 } // namespace

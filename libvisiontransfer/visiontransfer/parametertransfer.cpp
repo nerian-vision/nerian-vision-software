@@ -136,7 +136,7 @@ void ParameterTransfer::writeParameter(const char* id, const T& value, bool sync
     ss << "S" << "\t" << (synchronous ? getThreadId() : -1) << "\t" << id << "\t" << value << "\n";
 
     if (synchronous) {
-        blockingCallThisThread([this, &id, &value, &ss](){
+        blockingCallThisThread([this, &ss](){
             sendNetworkCommand(ss.str());
         });
         auto result = lastSetRequestResult[getThreadId()];
@@ -680,6 +680,44 @@ void ParameterTransfer::transactionCommitQueue() {
     }
 
     transactionInProgress = false;
+}
+
+void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, bool synchronous) {
+    waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
+
+    std::stringstream ss;
+    ss << "p" << "\t" << (synchronous ? getThreadId() : -1) << "\t";   // "p" -> persist request
+    bool first = true;
+    for (auto& id: uids) {
+        if (first) {
+            first=false;
+        } else {
+            ss << ",";
+        }
+        ss << id;
+        if (!paramSet.count(id)) {
+            throw ParameterException("Invalid parameter: " + std::string(id));
+        }
+    }
+    ss << "\n";
+
+    if (synchronous) {
+        blockingCallThisThread([this, &ss](){
+            sendNetworkCommand(ss.str());
+        });
+        auto result = lastSetRequestResult[getThreadId()];
+        if (result.first == false) {
+            // There was a remote error, append its info to the exception
+            throw ParameterException("Remote parameter error: " + result.second);
+        }
+    } else {
+        // 'Fire and forget' immediate-return mode, e.g. for sending a trigger
+        sendNetworkCommand(ss.str());
+    }
 }
 
 }} // namespace

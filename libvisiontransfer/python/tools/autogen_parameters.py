@@ -43,7 +43,9 @@ cdef extern from "visiontransfer/deviceparameters.h" namespace "visiontransfer":
         ParameterSet getParameterSet() except +
         bool hasParameter(const string& uid) except +
         Parameter getParameter(const string& uid) except +
-        void setParameter(const string& uid, string value) except +'''.split('\n')
+        void setParameter(const string& uid, string value) except +
+        void saveParameter(const string& uid, bool blocking) except +
+        void saveParameters(const vector[string]& uids, bool blocking) except +'''.split('\n')
 
         ##### Code for the .pyx file (docstring appended to by autogenerator) #####
         self.pyxcode = \
@@ -138,6 +140,38 @@ Emit a software trigger event to perform a single acquisition.
 This only has effect when the External Trigger mode is set to Software.
         \'\'\'
         self.c_obj.setParameter('trigger_now'.encode('utf-8'), '1'.encode('utf-8'))
+
+    def save_parameter(self, uid_or_param, blocking=True):
+        \'\'\'
+Save the specified parameter to persistent device storage
+
+Args:
+    uid_or_param: The parameter UID or Parameter to save
+    blocking: If true, block until the request is accepted
+        or denied by the device (actual write can take slightly longer).
+        If denied, this throws a ParameterException. In non-blocking mode,
+        no such diagnosis is possible.
+
+Note:
+    Caution - this operation writes to permanent storage and
+    flushes the file system on the remote device. You should use it
+    only when required, to avoid increased wear of the flash memory
+    inside the device.
+        \'\'\'
+        self.c_obj.saveParameter(uid_or_param.get_uid().encode('utf-8') if isinstance(uid_or_param, Parameter) else uid_or_param.encode('utf-8'), blocking)
+
+    def save_parameters(self, uid_or_param_list, blocking=True):
+        \'\'\'
+Saves all specified UIDs / Parameters to persistent device storage
+
+See save_parameter() for more information.
+
+This saves all UIDs / Parameters in the specified iterable at once.
+If any error occurs, none of the parameters are saved.
+        \'\'\'
+        uidlist = [ (p.get_uid().encode('utf-8')) if isinstance(p, Parameter) else (p.encode('utf-8')) for p in uid_or_param_list ]
+        cdef vector[string] uids = uidlist
+        self.c_obj.saveParameters(uids, blocking)
 
 '''.split('\n')
 

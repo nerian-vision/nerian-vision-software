@@ -22,6 +22,7 @@
 #include "visiontransfer/parameter.h"
 #include "visiontransfer/parameterset.h"
 #include <functional>
+#include <set>
 #endif
 
 #include <map>
@@ -1024,6 +1025,22 @@ public:
     DEPRECATED("Use getParameter() instead")
     T getNamedParameter(const std::string& name);
 
+    /**
+     * \brief Save the specified parameter to persistent device storage
+     *
+     * \param uid The parameter UID of the parameter to save
+     * \param blockingCall If true, block until the request is accepted
+     *  or denied by the device (actual write can take slightly longer).
+     *  If denied, this throws a ParameterException. In non-blocking mode,
+     *  no such diagnosis is possible.
+     *
+     * NOTE: Caution - this operation writes to permanent storage and
+     * flushes the file system on the remote device. You should use it
+     * only when required, to avoid increased wear of the flash memory
+     * inside the device.
+     */
+    void saveParameter(const char* uid, bool blockingCall=true);
+
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 
     /**
@@ -1087,6 +1104,37 @@ public:
 
     /// Obtain a scoped TransactionLock for the current thread
     std::unique_ptr<TransactionLock> transactionLock();
+
+    /**
+     * \brief See saveParameter(const char*)
+     */
+    void saveParameter(const std::string& uid, bool blockingCall=true);
+
+    /**
+     * \brief See saveParameter(const char*); this uses the specified Parameter reference
+     */
+    void saveParameter(const visiontransfer::param::Parameter& param, bool blockingCall=true);
+
+    /**
+     * \brief See saveParameter(const char*)
+     *
+     * This saves all specified parameters at once. If any error occurs, none are saved.
+     */
+    void saveParameters(const std::vector<std::string>& uids, bool blockingCall=true);
+
+    /**
+     * \brief See saveParameter(const char*)
+     *
+     * This saves all specified parameters at once. If any error occurs, none are saved.
+     */
+    void saveParameters(const std::set<std::string>& uids, bool blockingCall=true);
+
+    /**
+     * \brief See saveParameter(const char*)
+     *
+     * This saves all specified parameters at once. If any error occurs, none are saved.
+     */
+    void saveParameters(std::initializer_list<std::string> uids, bool blockingCall=true);
 
 #endif
 
