@@ -888,6 +888,23 @@ public:
         writeIntParameter("trigger_input", static_cast<int>(mode));
     }
 
+    /**
+     * \brief Returns the number of skipped (unhandled) trigger pulses.
+     *
+     * An increasing counter indicates that the trigger frequency is set
+     * too high for the current image size, processing settings, or network
+     * connection bandwidth.
+     *
+     * This counter is reset to 0 when setTriggerInputMode is used (or the
+     * "trigger_input" parameter value is set).
+     *
+     * \note This is not informative with cameras that are in free running mode
+     * or use an external trigger that is not emitted from the Nerian stereo device.
+     */
+    int getSkippedTriggerCount() {
+        return readIntParameter("RT_skipped_trigger_count");
+    }
+
     // Auto calibration parameters
 
     /**
