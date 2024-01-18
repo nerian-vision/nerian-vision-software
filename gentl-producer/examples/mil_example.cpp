@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -13,15 +13,16 @@
 *******************************************************************************/
 
 /*******************************************************************************
-* Example for using Nerian devices with Matrox MIL. For more information about MIL
-* please see:
-* https://www.matrox.com/imaging/en/products/software/mil/
-/*******************************************************************************/
+* Example for using Nerian devices with the Aurora Imaging Library by Zebra
+* (formerly Matrox MIL). For more information about the library please see:
+*
+* https://www.zebra.com/us/en/software/machine-vision-and-fixed-industrial-scanning-software/aurora-imaging-library.html
+********************************************************************************/
+
 
 #include <mil.h>
-#include <MdispD3D.h>
-#include <windows.h>
 #include <map>
+#include <limits>
 
 #define BUFFERING_SIZE  20
 
@@ -32,21 +33,21 @@ struct Display2d {
     MIL_ID lut;
     double maxValue;
 
-    Display2d(): milDisplay(NULL), buffer(NULL), lut(NULL), maxValue(0) {
+    Display2d(): milDisplay(0), buffer(0), lut(0), maxValue(0) {
     }
 
     ~Display2d() {
-        if(lut != NULL) {
+        if(lut != 0) {
             MbufFree(lut);
-            lut = NULL;
+            lut = 0;
         }
-        if(buffer != NULL) {
+        if(buffer != 0) {
             MbufFree(buffer);
-            buffer = NULL;
+            buffer = 0;
         }
-        if(milDisplay != NULL) {
+        if(milDisplay != 0) {
             MdispFree(milDisplay);
-            milDisplay = NULL;
+            milDisplay = 0;
         }
     }
 };
@@ -54,19 +55,18 @@ struct Display2d {
 // Data structure for storing 3D display related objects
 struct Display3d {
     MIL_ID container;
-    MIL_DISP_D3D_HANDLE display3d;
+    MIL_UNIQUE_3DDISP_ID display3d;
 
-    Display3d(): container(NULL), display3d(NULL) {
+    Display3d(): container(0), display3d(0) {
     }
 
     ~Display3d() {
-        if(container != NULL) {
+        if(container != 0) {
             M3dmapFree(container);
-            container = NULL;
+            container = 0;
         }
-        if(display3d != NULL) {
-            MdispD3DFree(display3d);
-            display3d = NULL;
+        if(display3d != 0) {
+            display3d = 0;
         }
     }
 };
@@ -113,31 +113,37 @@ void alloc2dDisplay(MIL_ID milSystem, Display2d& display, MIL_TEXT_PTR title, in
 
 // Allocates a 3D display for the point cloud
 void alloc3dDisplay(MIL_ID milSystem, Display3d& display, int width, int height) {
-    // Allocate point cloud container
-    M3dmapAllocResult(milSystem, M_POINT_CLOUD_CONTAINER, M_DEFAULT, &display.container);
+    // Allocate displayable point cloud container
+    MbufAllocContainer(milSystem, M_DISP, M_DEFAULT, &display.container);
 
     // Allocate a 3D view
-    display.display3d = MPtCldD3DAlloc(display.container, M_DEFAULT, true, width, height, 0);
+    display.display3d = M3ddispAlloc(M_DEFAULT_HOST, M_DEFAULT, MIL_TEXT("M_DEFAULT"), M_DEFAULT, M_UNIQUE_ID);
+    if(!display.display3d) {
+        MosPrintf(MIL_TEXT("Failed to initialize 3D view, <Enter> to terminate ... \n"));
+        MosGetch();
+        exit(1);
+    }
 
-    // Set default viewing position
-    MdispD3DControl(display.display3d, MD3D_ROTATE, MD3D_FALSE);
-    MdispD3DControl(display.display3d, MD3D_EYE_DIST, 3.0);
-    MdispD3DControl(display.display3d, MD3D_EYE_THETA, 90.0);
-    MdispD3DControl(display.display3d, MD3D_EYE_PHI, -10.0);
-    MdispD3DControl(display.display3d, MD3D_LOOK_AT_X, 0.2);
-    MdispD3DControl(display.display3d, MD3D_LOOK_AT_Y, 0.2);
-    MdispD3DControl(display.display3d, MD3D_LOOK_AT_Z, 3.0);
+    // Show the display.
+    MIL_ID MilGraphicList3d;
+    M3ddispInquire(display.display3d, M_3D_GRAPHIC_LIST_ID, &MilGraphicList3d);
 
-    // Print usage help
-    MdispD3DPrintHelp(display.display3d);
+    M3ddispControl(display.display3d, M_AUTO_ROTATE, M_DISABLE);
+
+    // Configure a view of the scene
+    M3ddispSetView(display.display3d, M_VIEWPOINT, 1.0, -1.0, -3.0, M_DEFAULT);
+    M3ddispSetView(display.display3d, M_INTEREST_POINT, 0.0, 0.0, 2.0, M_DEFAULT);
+    M3ddispSetView(display.display3d, M_UP_VECTOR, 0.0, -1.0, 0.0, M_DEFAULT);
+
+    // Empty at first
+    M3ddispSelect(display.display3d, M_NULL, M_OPEN, M_DEFAULT);
+
+    MosPrintf(MIL_TEXT("Rotate with left mouse button drag; pan with right mouse button drag.\n"));
 }
 
 // Displays a buffer in a 2d window
-void display2dBufferComponent(MIL_ID modifiedBufferId, Display2d& display, int component) {
-    MIL_ID componentId = NULL;
-    MbufInquire(modifiedBufferId, M_COMPONENT_ID_BY_INDEX(component), &componentId);
-
-    if (componentId && display.buffer != NULL) {
+void display2dBufferComponent(MIL_ID componentId, Display2d& display) {
+    if (display.buffer != 0) {
         if(display.maxValue <= 0) {
             double maxVal = 0.0;
             MbufInquire(componentId, M_MAX, &maxVal);
@@ -152,17 +158,15 @@ void display2dBufferComponent(MIL_ID modifiedBufferId, Display2d& display, int c
 }
 
 // Displays a 3d buffer in a 3d window
-void display3dBufferComponent(MIL_ID modifiedBufferId, Display3d& display, int component, double maxZ) {
-    MIL_ID componentId = NULL;
-    MbufInquire(modifiedBufferId, M_COMPONENT_ID_BY_INDEX(component), &componentId);
+void display3dBufferComponent(MIL_ID componentId, Display3d& display, double maxZ) {
+    if (display.container != 0 && display.display3d != 0) {
 
-    if (componentId && display.container != NULL && display.display3d != NULL) {
         // Get image size
         MIL_INT width, height;
         MbufInquire(componentId, M_SIZE_X, &width);
         MbufInquire(componentId, M_SIZE_Y, &height);
 
-        // Get the raw point cloud data
+        // Get the raw point cloud data (from the GenTL 'Range' component)
         float* cloudData = (float*)MbufInquire(componentId, M_HOST_ADDRESS, M_NULL);
 
         // Remove all points with z > maxZ by setting them to NaN
@@ -177,20 +181,18 @@ void display3dBufferComponent(MIL_ID modifiedBufferId, Display3d& display, int c
             }
         }
 
-        // Put the point cloud in the container.
-        M3dmapPut(display.container, M_POINT_CLOUD_LABEL(1), M_XYZ, 32 + M_FLOAT, width*height*3,
-            cloudData, M_NULL, M_NULL, M_NULL, M_DEFAULT);
+        // Convert range component buffer to displayable point cloud object
+        MbufConvert3d(componentId, display.container, M_NULL, M_DEFAULT, M_DEFAULT);
 
-        // Show 3D view
-        MPtCldD3DSetPointCloud(display.display3d, display.container, M_POINT_CLOUD_LABEL(1), true);
-        MdispD3DShow(display.display3d);
+        // Show point cloud in 3D view
+        MIL_INT64 gfx = M3ddispSelect(display.display3d, display.container, M_DEFAULT, M_DEFAULT);
     }
 }
 
 // Opens the GenTL device
 void openGenTLDevice(MIL_ID &milSystem, MIL_ID& digitizer) {
     // Allocate a GenTL system
-    MsysAlloc(M_SYSTEM_GENTL, M_DEV0 + M_GENTL_PRODUCER(2), M_DEFAULT, &milSystem);
+    MsysAlloc(M_SYSTEM_GENTL, M_DEV0 + M_GENTL_PRODUCER(0), M_DEFAULT, &milSystem);
 
     // Get the GenTL Producer info via the GenTL System module XML.
     MIL_STRING Vendor, Model, Version, Type;
@@ -233,13 +235,30 @@ MIL_INT MFTYPE processingFunction(MIL_INT hookType, MIL_ID hookId, void* hookDat
     MdigGetHookInfo(hookId, M_MODIFIED_BUFFER + M_BUFFER_ID, &modifiedBufferId);
     MbufInquire(modifiedBufferId, M_EXTENDED_ATTRIBUTE, &attribute);
 
-    if (M_IS_3D_SCENE(attribute)) {
-        display2dBufferComponent(modifiedBufferId, userHookDataPtr->leftDisplay, 0);
-        display2dBufferComponent(modifiedBufferId, userHookDataPtr->disparityDisplay, 1);
-        display3dBufferComponent(modifiedBufferId, userHookDataPtr->pointCloudDisplay, 2, 3.0);
-    }
-    else {
-        MosPrintf(MIL_TEXT("Error in ProcessingFunction: Expected a M_3D_SCENE.\n"));
+    // Process each component contained in the container and display it
+    std::vector<MIL_ID> components;
+    MbufInquireContainer(modifiedBufferId, M_CONTAINER, M_COMPONENT_LIST, components);
+
+    for (size_t i = 0; i < components.size(); i++) {
+        MIL_INT64 componentType = 0;
+        MIL_STRING componentName;
+        MbufInquire(components[i], M_COMPONENT_TYPE, &componentType);
+        MbufInquire(components[i], M_COMPONENT_TYPE_NAME, componentName);
+
+        switch(componentType) {
+            case 1: // Intensity
+                display2dBufferComponent(components[i], userHookDataPtr->leftDisplay);
+                break;
+            case 8: // Disparity
+                display2dBufferComponent(components[i], userHookDataPtr->disparityDisplay);
+                break;
+            case 4: // Range
+                display3dBufferComponent(components[i], userHookDataPtr->pointCloudDisplay, 3.0);
+                break;
+            default:
+                // M_COMPONENT_METADATA (or otherwise unhandled for this example)
+                break;
+        }
     }
 
     return 0;
@@ -247,14 +266,14 @@ MIL_INT MFTYPE processingFunction(MIL_INT hookType, MIL_ID hookId, void* hookDat
 
 int main(int argc, char** argv) {
     // Initialize MIL
-    MIL_ID milApplication = NULL;
+    MIL_ID milApplication = 0;
     MappAlloc (M_DEFAULT, &milApplication);
 
     // Open GenTL device
-    MIL_ID milSystem = NULL;
-    MIL_ID digitizer = NULL;
+    MIL_ID milSystem = 0;
+    MIL_ID digitizer = 0;
     openGenTLDevice(milSystem, digitizer);
-    if(digitizer == NULL) {
+    if(digitizer == 0) {
         return -1;
     }
 
@@ -271,8 +290,10 @@ int main(int argc, char** argv) {
     {
         // Initialize the user's processing function data structure.
         HookDataStruct userHookData;
-        alloc2dDisplay(milSystem, userHookData.leftDisplay, MIL_TEXT("Left"), width, height, false);
-        alloc2dDisplay(milSystem, userHookData.disparityDisplay, MIL_TEXT("Disparity"), width, height, true);
+        char txt_left[] = "Left";
+        char txt_disp[] = "Disparity";
+        alloc2dDisplay(milSystem, userHookData.leftDisplay, MIL_TEXT(txt_left), width, height, false);
+        alloc2dDisplay(milSystem, userHookData.disparityDisplay, MIL_TEXT(txt_disp), width, height, true);
         alloc3dDisplay(milSystem, userHookData.pointCloudDisplay, 800, 600);
 
         // Start the processing. The processing function is called with every frame grabbed.
@@ -309,3 +330,4 @@ int main(int argc, char** argv) {
     MsysFree(milSystem);
     MappFree(milApplication);
 }
+
