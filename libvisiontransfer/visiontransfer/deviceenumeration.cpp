@@ -156,7 +156,7 @@ DeviceEnumeration::DeviceList DeviceEnumeration::Pimpl::collectDiscoverResponses
         }
 
         // Fallback for undefined fields
-        std::string serial = "Need_FW_Update_For_Serial";
+        std::string serial = "N/A";
 
         if (!(isLegacy||isLegacyWithStatusInfo)) {
             // Parse extension fields up to maximum supported reported version
