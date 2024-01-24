@@ -35,17 +35,17 @@ public:
     /**
      * \brief Returns the major version of visiontransfer library
      */
-    static int getLibraryVersionMajor() { return VISIONTRANSFER_MAJOR_VERSION; }
+    static int getLibraryVersionMajor();
 
     /**
      * \brief Returns the minor version of visiontransfer library
      */
-    static int getLibraryVersionMinor() { return VISIONTRANSFER_MINOR_VERSION; }
+    static int getLibraryVersionMinor();
 
     /**
      * \brief Returns the patch version of visiontransfer library
      */
-    static int getLibraryVersionPatch() { return VISIONTRANSFER_PATCH_VERSION; }
+    static int getLibraryVersionPatch();
 };
 
 } // namespace

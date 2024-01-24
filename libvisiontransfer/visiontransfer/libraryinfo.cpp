@@ -29,6 +29,20 @@ const char* LibraryInfo::getLibraryVersionString() {
     return ver.c_str();
 }
 
+/* static */
+int LibraryInfo::getLibraryVersionMajor() {
+    return VISIONTRANSFER_MAJOR_VERSION;
+}
+
+/* static */
+int LibraryInfo::getLibraryVersionMinor() {
+    return VISIONTRANSFER_MINOR_VERSION;
+}
+
+/* static */
+int LibraryInfo::getLibraryVersionPatch() {
+    return VISIONTRANSFER_PATCH_VERSION;
+}
 
 } // namespace
 
