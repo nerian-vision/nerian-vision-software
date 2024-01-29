@@ -154,6 +154,16 @@ template<>
 void VT_EXPORT DeviceParameters::setParameter(const std::string& name, std::string value) {
     pimpl->writeParameter(name.c_str(), value);
 }
+template<>
+void VT_EXPORT DeviceParameters::setParameter(const std::string& name, std::vector<double> tensorValues) {
+    std::stringstream ss;
+    int i=0;
+    for (const auto& v: tensorValues) {
+        if (i++) ss << " ";
+        ss << v;
+    }
+    pimpl->writeParameter(name.c_str(), ss.str());
+}
 
 template<>
 int VT_EXPORT DeviceParameters::getNamedParameter(const std::string& name) {

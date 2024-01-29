@@ -235,6 +235,7 @@ private:
     std::shared_ptr<std::thread> receiverThread;
 
     Tokenizer tabTokenizer;
+    Tokenizer spaceTokenizer;
 
     param::ParameterSet paramSet;
 

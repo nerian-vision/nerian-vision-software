@@ -43,6 +43,7 @@ ParameterTransfer::ParameterTransfer(const char* address, const char* service)
     : socket(INVALID_SOCKET), address(address), service(service), networkReady(false), featureDisabledTransactions(false) {
 
     tabTokenizer.collapse(false).separators({"\t"});
+    spaceTokenizer.collapse(true).separators({" "});
 
     Networking::initNetworking();
     attemptConnection();
@@ -147,7 +148,16 @@ void ParameterTransfer::writeParameter(const char* id, const T& value, bool sync
             // Local preliminary value update - the (successful!) async remote update may need additional time.
             // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
             // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
-            paramSet[id].setCurrent<T>(value);
+            auto& param = paramSet[id];
+            if (param.isScalar()) {
+                param.setCurrent<T>(value);
+            } else {
+                // Should not be required here (only for the std::string specialization below)
+                auto toks = spaceTokenizer.tokenize(std::to_string(value));
+                std::vector<double> vs;
+                for (auto& t: toks) vs.push_back(atof(t.c_str()));
+                param.setTensorData(vs);
+            }
         }
     } else {
         // 'Fire and forget' immediate-return mode, e.g. for sending a trigger
@@ -184,7 +194,15 @@ void ParameterTransfer::writeParameter(const char* id, const std::string& value,
             // Local preliminary value update - the (successful!) async remote update may need additional time.
             // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
             // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
-            paramSet[id].setCurrent<std::string>(value);
+            auto& param = paramSet[id];
+            if (param.isScalar()) {
+                param.setCurrent<std::string>(value);
+            } else {
+                auto toks = spaceTokenizer.tokenize(value);
+                std::vector<double> vs;
+                for (auto& t: toks) vs.push_back(atof(t.c_str()));
+                param.setTensorData(vs);
+            }
         }
     } else {
         // 'Fire and forget' immediate-return mode, e.g. for sending a trigger
