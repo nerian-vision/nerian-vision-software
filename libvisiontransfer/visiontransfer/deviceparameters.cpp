@@ -55,7 +55,7 @@ public:
     void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
 
     void transactionStartQueue();
-    void transactionCommitQueue();
+    void transactionCommitQueue(int maxWaitMilliseconds);
 
     void persistParameters(const std::vector<std::string>& uids, bool blocking=true);
 
@@ -202,7 +202,11 @@ DeviceParameters::TransactionLock::TransactionLock(DeviceParameters::Pimpl* pimp
 }
 
 DeviceParameters::TransactionLock::~TransactionLock() {
-    pimpl->transactionCommitQueue();
+    pimpl->transactionCommitQueue(-1); // non-blocking
+}
+
+void DeviceParameters::TransactionLock::commitAndWait(int waitMaxMilliseconds) {
+    pimpl->transactionCommitQueue(waitMaxMilliseconds);
 }
 
 std::unique_ptr<DeviceParameters::TransactionLock> DeviceParameters::transactionLock() {
@@ -303,8 +307,8 @@ void DeviceParameters::Pimpl::transactionStartQueue() {
     paramTrans.transactionStartQueue();
 }
 
-void DeviceParameters::Pimpl::transactionCommitQueue() {
-    paramTrans.transactionCommitQueue();
+void DeviceParameters::Pimpl::transactionCommitQueue(int maxWaitMilliseconds) {
+    paramTrans.transactionCommitQueue(maxWaitMilliseconds);
 }
 
 void DeviceParameters::Pimpl::persistParameters(const std::vector<std::string>& uids, bool blocking) {

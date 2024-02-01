@@ -1055,6 +1055,11 @@ public:
      * flushes the file system on the remote device. You should use it
      * only when required, to avoid increased wear of the flash memory
      * inside the device.
+     *
+     * NOTE: Calling this with a TransactionLock active will throw
+     * a TransferException. Saving must occur after the transaction
+     * has been ended.
+     *
      */
     void saveParameter(const char* uid, bool blockingCall=true);
 
@@ -1109,6 +1114,9 @@ public:
      * This ensures coordinated setting and uniform calculation of dependent parameters.
      * All parameter write operations (setParameter etc.) are transparently queued until the
      * TransactionLock object leaves scope, and then written as a batch in its destructor.
+     * The actually caused update operations are asynchronous.
+     * You can use commitAndWait() to explicitly wait synchronously for all direct dependencies.
+     *
      */
     class VT_EXPORT TransactionLock {
         private:
@@ -1116,6 +1124,32 @@ public:
         public:
             TransactionLock(Pimpl* pimpl);
             ~TransactionLock();
+            /**
+             * \brief Send and commit the batch transaction and wait for direct(*)
+             * parameter dependencies to be reported as settled by the device.
+             *
+             * After a successful call, the ParameterSet will contain up-to-date
+             * metadata and values for all directly(*) affected parameters.
+             *
+             * Throws an exception if the remote operation signaled failure
+             * or the selected wait interval for a reply is exceeded.
+             *
+             * The TransactionLock object is no longer operational after this call,
+             * and no subsequent parameter operations should be initiated inside
+             * its scope.
+             *
+             * If you do not call this function, the batch transaction will be
+             * completed asynchronously when the TransactionLock leaves scope.
+             *
+             * (*) Please note that some parameters may be affected by post-hoc
+             * constraints even after the transaction proper is complete, in
+             * particular parameters that can only be resolved after an internal
+             * or peripheral image sensor reset.
+             * You should use setParameterUpdateCallback() to always be informed
+             * of the current device parameters in real time.
+             *
+             */
+            void commitAndWait(int maxWaitMilliseconds=1000);
     };
     friend class TransactionLock;
 

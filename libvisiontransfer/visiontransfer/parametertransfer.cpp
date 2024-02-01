@@ -44,6 +44,7 @@ ParameterTransfer::ParameterTransfer(const char* address, const char* service)
 
     tabTokenizer.collapse(false).separators({"\t"});
     spaceTokenizer.collapse(true).separators({" "});
+    slashTokenizer.collapse(false).separators({"/"});
 
     Networking::initNetworking();
     attemptConnection();
@@ -109,14 +110,14 @@ void ParameterTransfer::readParameter(unsigned char messageType, const char* id,
     for (int i=0; i<length; ++i) { dest[i] = '\0'; } // PLACEHOLDER
 }
 
-void ParameterTransfer::sendNetworkCommand(const std::string& cmdline) {
+void ParameterTransfer::sendNetworkCommand(const std::string& cmdline, const std::string& diagStr) {
     std::unique_lock<std::mutex> localLock(socketModificationMutex);
     if (socket == INVALID_SOCKET) {
         throw TransferException("Connection has been closed and not reconnected so far");
     }
     size_t written = send(socket, cmdline.c_str(), (int) cmdline.size(), 0);
     if(written != cmdline.size()) {
-        throw TransferException("Error sending parameter set request: " + Networking::getLastErrorString());
+        throw TransferException("Error sending "+diagStr+" request: " + Networking::getLastErrorString());
     }
 }
 
@@ -138,7 +139,7 @@ void ParameterTransfer::writeParameter(const char* id, const T& value, bool sync
 
     if (synchronous) {
         blockingCallThisThread([this, &ss](){
-            sendNetworkCommand(ss.str());
+            sendNetworkCommand(ss.str(), "parameter set");
         });
         auto result = lastSetRequestResult[getThreadId()];
         if (result.first == false) {
@@ -161,7 +162,7 @@ void ParameterTransfer::writeParameter(const char* id, const T& value, bool sync
         }
     } else {
         // 'Fire and forget' immediate-return mode, e.g. for sending a trigger
-        sendNetworkCommand(ss.str());
+        sendNetworkCommand(ss.str(), "parameter set");
     }
 }
 
@@ -184,7 +185,7 @@ void ParameterTransfer::writeParameter(const char* id, const std::string& value,
 
     if (synchronous) {
         blockingCallThisThread([this, &id, &value, &ss](){
-            sendNetworkCommand(ss.str());
+            sendNetworkCommand(ss.str(), "parameter set");
         });
         auto result = lastSetRequestResult[getThreadId()];
         if (result.first == false) {
@@ -206,7 +207,7 @@ void ParameterTransfer::writeParameter(const char* id, const std::string& value,
         }
     } else {
         // 'Fire and forget' immediate-return mode, e.g. for sending a trigger
-        sendNetworkCommand(ss.str());
+        sendNetworkCommand(ss.str(), "parameter set");
     }
 }
 
@@ -415,6 +416,7 @@ void ParameterTransfer::receiverRoutine() {
                 unsigned char c = recvBuf[i];
                 if (c=='\n') {
                     std::string currentLine((const char*) recvBuf+start, i-start);
+                    //std::cout << "PARAM RECV: " << currentLine << std::endl;
                     auto toks = tabTokenizer.tokenize(currentLine);
                     if (toks.size()>0) {
                         const std::string& cmd = toks[0];
@@ -513,15 +515,21 @@ void ParameterTransfer::receiverRoutine() {
                                 throw TransferException("Received malformed reply for parameter set request");
                             }
                             std::unique_lock<std::mutex> globalLock(mapMutex);
-                            int replyThreadId = atol(toks[1].c_str());
-                            if (waitConds.count(replyThreadId)) {
+                            auto subToks = slashTokenizer.tokenize(toks[1]);
+                            int replyThreadId = atol(subToks[0].c_str());
+                            std::string unblockClass = ""; // filter by block class so we can ignore non-matching replies
+                            if (subToks.size() > 1) {
+                                unblockClass = subToks[1];
+                            }
+                            bool hasCond = waitConds.count(replyThreadId);
+                            if (hasCond && (waitCondClasses[replyThreadId]==unblockClass)) {
                                 // Reanimating the waiting thread - it will clean up after itself
                                 std::lock_guard<std::mutex> localLock(waitCondMutexes[replyThreadId]);
                                 lastSetRequestResult[replyThreadId] = {toks[2] == "1", toks[3]};
                                 waitConds[replyThreadId].notify_all();
                             } else {
                                 if (replyThreadId != -1) { // dummy ID -1 for fire-and-forget command (no reply expected)
-                                    std::cerr << "Ignoring unexpected request result for thread " << replyThreadId << std::endl;
+                                    std::cerr << "Ignoring unexpected request result " << toks[1] << " for thread " << replyThreadId << std::endl;
                                 }
                             }
                         } else if (cmd=="E") {
@@ -562,7 +570,7 @@ int ParameterTransfer::getThreadId() {
     return threadId;
 }
 
-void ParameterTransfer::blockingCallThisThread(std::function<void()> fn, int waitMaxMilliseconds) {
+void ParameterTransfer::blockingCallThisThread(std::function<void()> fn, int waitMaxMilliseconds, const std::string& waitClass) {
     bool timeout = false;
     auto tid = getThreadId();
     {
@@ -570,6 +578,7 @@ void ParameterTransfer::blockingCallThisThread(std::function<void()> fn, int wai
         // Populate maps
         auto& localWaitCond = waitConds[tid];
         auto& localWaitCondMutex = waitCondMutexes[tid];
+        waitCondClasses[tid] = waitClass;
         std::unique_lock<std::mutex> localLock(localWaitCondMutex);
         // First do the actual handshake setup, like emitting the network message
         // (The current thread is protected against a reply race at this point)
@@ -585,6 +594,7 @@ void ParameterTransfer::blockingCallThisThread(std::function<void()> fn, int wai
         std::unique_lock<std::mutex> globalLock(mapMutex);
         waitConds.erase(tid);
         waitCondMutexes.erase(tid);
+        waitCondClasses.erase(tid);
     }
     // Outcome
     if (timeout) {
@@ -626,11 +636,15 @@ void ParameterTransfer::transactionStartQueue() {
     // We are now in batch-write mode
 }
 
-void ParameterTransfer::transactionCommitQueue() {
+void ParameterTransfer::transactionCommitQueue(int maxWaitMilliseconds) {
+    static int nextTransactionId = 0;
     if (featureDisabledTransactions) {
         // Fallback mode for outdated firmware versions -> ignore transaction batching
         return;
     }
+
+    if (!transactionInProgress) return; // Already released
+
     // Send queued parameter transactions
     waitNetworkReady();
     if (networkError) {
@@ -645,29 +659,25 @@ void ParameterTransfer::transactionCommitQueue() {
         for (auto& kv: transactionQueuedWrites) {
             affectedUids.insert(kv.first);
         }
+
         // Start transaction on server, incorporating all affected UIDs
-        std::string transactionId = std::to_string(getThreadId());
-        // (Note: could use a one-time UUID instead of getThreadId(), but it is amended on the remote side)
-        {
-            std::stringstream ss;
-            ss << "TS" << "\t" << transactionId << "\t";
-            bool first = true;
-            for (auto& uid: affectedUids) {
-                if (first) first=false; else ss << ",";
-                ss << uid;
-            }
-            ss << "\n";
-            {
-                std::unique_lock<std::mutex> localLock(socketModificationMutex);
-                if (socket == INVALID_SOCKET) {
-                    throw TransferException("Connection has been closed and not reconnected so far");
-                }
-                size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
-                if(written != ss.str().size()) {
-                    throw TransferException("Error sending transaction start request: " + Networking::getLastErrorString());
-                }
-            }
+        std::string uniqueTransactionId = std::to_string(nextTransactionId++);
+        std::string transactionId;
+        if (maxWaitMilliseconds > 0) {
+            transactionId = std::to_string(getThreadId()) + "/" + uniqueTransactionId; // use unique ID as unblock filter
+        } else {
+            // Marked as fire-and-forget (ignore later committed message)
+            transactionId = std::to_string(-1) + "/" + uniqueTransactionId; // use unique ID as unblock filter
         }
+        std::stringstream ss;
+        ss << "TS" << "\t" << transactionId << "\t";
+        bool first = true;
+        for (auto& uid: affectedUids) {
+            if (first) first=false; else ss << ",";
+            ss << uid;
+        }
+        ss << "\n";
+        sendNetworkCommand(ss.str(), "transaction start");
 
         // Play back queued writes
         for (auto& kv: transactionQueuedWrites) {
@@ -676,21 +686,29 @@ void ParameterTransfer::transactionCommitQueue() {
             writeParameter(uid.c_str(), value);
         }
 
-        // Finish transaction on server - automatic updates are then applied (and resumed)
-        {
-            std::stringstream ss;
-            ss << "TE" << "\t" << transactionId << "\n";
-            {
-                std::unique_lock<std::mutex> localLock(socketModificationMutex);
-                if (socket == INVALID_SOCKET) {
-                    throw TransferException("Connection has been closed and not reconnected so far");
-                }
-                size_t written = send(socket, ss.str().c_str(), (int) ss.str().size(), 0);
-                if(written != ss.str().size()) {
-                    throw TransferException("Error sending transaction end request: " + Networking::getLastErrorString());
-                }
-                // The transaction will be finalized anyway on the server, but only after its timeout
+        // Finish transaction on server - automatic updates are then applied (and resumed).
+        // The transaction will be finalized anyway on the server, but only after a timeout.
+        std::stringstream ssEnd;
+        ssEnd << "TE" << "\t" << transactionId << "\n";
+
+        // Block for the returning 'completed' signal, if requested
+        if (maxWaitMilliseconds > 0) {
+            try {
+                blockingCallThisThread([this, &ssEnd](){
+                    sendNetworkCommand(ssEnd.str(), "transaction end");
+                }, maxWaitMilliseconds, uniqueTransactionId); // timeout and unblock class
+            } catch(...) {
+                transactionQueuedWrites.clear();
+                transactionInProgress = false; // May not retry
+                throw;
             }
+            auto result = lastSetRequestResult[getThreadId()];
+            if (result.first == false) {
+                // There was a remote error, append its info to the exception
+                throw ParameterException("Remote transaction error: " + result.second);
+            }
+        } else {
+            sendNetworkCommand(ssEnd.str(), "transaction end");
         }
 
         // Cleanup
@@ -701,6 +719,11 @@ void ParameterTransfer::transactionCommitQueue() {
 }
 
 void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, bool synchronous) {
+
+    if (transactionInProgress) {
+        throw TransferException("Saving parameters is invalid with an open transaction");
+    }
+
     waitNetworkReady();
     if (networkError) {
         // collecting deferred error from background thread
@@ -725,7 +748,7 @@ void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, 
 
     if (synchronous) {
         blockingCallThisThread([this, &ss](){
-            sendNetworkCommand(ss.str());
+            sendNetworkCommand(ss.str(), "parameter persist");
         });
         auto result = lastSetRequestResult[getThreadId()];
         if (result.first == false) {
@@ -734,7 +757,7 @@ void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, 
         }
     } else {
         // 'Fire and forget' immediate-return mode, e.g. for sending a trigger
-        sendNetworkCommand(ss.str());
+        sendNetworkCommand(ss.str(), "parameter persist");
     }
 }
 

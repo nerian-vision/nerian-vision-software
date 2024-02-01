@@ -195,7 +195,7 @@ public:
      *
      * Bundles all queued writes into a single locked request and sends them.
      */
-    void transactionCommitQueue();
+    void transactionCommitQueue(int maxWaitMilliseconds);
 
     /**
      * \brief Requests to save the current values for the specified parameter UIDs to permanent storage
@@ -236,6 +236,7 @@ private:
 
     Tokenizer tabTokenizer;
     Tokenizer spaceTokenizer;
+    Tokenizer slashTokenizer;
 
     param::ParameterSet paramSet;
 
@@ -253,6 +254,8 @@ private:
     std::map<int, std::mutex> waitCondMutexes;
     /// Per-thread record for the last received asynchronous set request result
     std::map<int, std::pair<bool, std::string> > lastSetRequestResult;
+    /// Per-thread record of the active lock class
+    std::map<int, std::string> waitCondClasses;
 
     /// User-supplied callback function that is invoked for parameter updates (but not the initial enumeration)
     std::function<void(const std::string&)> parameterUpdateCallback;
@@ -270,7 +273,7 @@ private:
     int getThreadId();
 
     /// Block current thread, call the functor, and wait with timeout before throwing
-    void blockingCallThisThread(std::function<void()>, int waitMaxMilliseconds=1000);
+    void blockingCallThisThread(std::function<void()>, int waitMaxMilliseconds=1000, const std::string& waitClass="");
 
     void receiverRoutine();
     void process();
@@ -286,7 +289,7 @@ private:
     template<typename T>
     void writeParameterTransactionUnguardedImpl(const char* id, const T& value);
 
-    void sendNetworkCommand(const std::string& cmdline);
+    void sendNetworkCommand(const std::string& cmdline, const std::string& diagStr);
 
 };
 
