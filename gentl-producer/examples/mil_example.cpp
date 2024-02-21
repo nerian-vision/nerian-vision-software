@@ -19,6 +19,7 @@
 * https://www.zebra.com/us/en/software/machine-vision-and-fixed-industrial-scanning-software/aurora-imaging-library.html
 ********************************************************************************/
 
+// Please link with the mil, mil3d, mil3dmap and milim libraries.
 
 #include <mil.h>
 #include <map>
