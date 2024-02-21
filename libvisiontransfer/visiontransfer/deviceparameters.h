@@ -1066,12 +1066,12 @@ public:
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 
     /**
-     * \brief Tests whether a specific named parameter is available for this device.
+     * \brief Tests whether a specific named parameter is available for this device. *[C++>=11]*
      */
     bool hasParameter(const std::string& name) const;
 
     /**
-     *  \brief Returns a Parameter object for the named device parameter. ParameterException for invalid or inaccessible parameter names.
+     *  \brief Returns a Parameter object for the named device parameter. ParameterException for invalid or inaccessible parameter names. *[C++>=11]*
      *
      * The returned object is a detached copy of the internal parameter at invocation time; it is not updated when the device sends a new value.
      * Likewise, any modifications must be requested using setParameter or the various parameter-specific setters.
@@ -1081,7 +1081,7 @@ public:
     visiontransfer::param::Parameter getParameter(const std::string& name) const;
 
     /**
-     * \brief Returns all API-accessible parameters as reported by the device.
+     * \brief Returns all API-accessible parameters as reported by the device. *[C++>=11]*
      *
      * \return ParameterSet, which extends a std::map<std::string, visiontransfer::param::Parameter>
      *
@@ -1093,7 +1093,7 @@ public:
     visiontransfer::param::ParameterSet getParameterSet() const;
 
     /**
-     * \brief Sets the optional user parameter update callback. This is then called for all asynchronous value or metadata changes that the server sends.
+     * \brief Sets the optional user parameter update callback. This is then called for all asynchronous value or metadata changes that the server sends. *[C++>=11]*
      *
      * The callback is called with the parameter UID, which can be used with getParameter(uid) to obtain the data.
      *
@@ -1107,7 +1107,7 @@ public:
     void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
 
     /**
-     * \brief A (thread-local) parameter transaction lock for queued writes.
+     * \brief A (thread-local) parameter transaction lock for queued writes. *[C++>=11]*
      *
      * Obtain a lock using transactionLock() if you want to set several, possibly dependent,
      * parameters in one go. You can't go wrong by using this for any parameter setting operation.
@@ -1153,35 +1153,35 @@ public:
     };
     friend class TransactionLock;
 
-    /// Obtain a scoped TransactionLock for the current thread
+    /// Obtain a scoped TransactionLock for the current thread *[C++>=11]*
     std::unique_ptr<TransactionLock> transactionLock();
 
     /**
-     * \brief See saveParameter(const char*)
+     * \brief See saveParameter(const char*) *[C++>=11]*
      */
     void saveParameter(const std::string& uid, bool blockingCall=true);
 
     /**
-     * \brief See saveParameter(const char*); this uses the specified Parameter reference
+     * \brief See saveParameter(const char*); this uses the specified Parameter reference *[C++>=11]*
      */
     void saveParameter(const visiontransfer::param::Parameter& param, bool blockingCall=true);
 
     /**
-     * \brief See saveParameter(const char*)
+     * \brief See saveParameter(const char*) *[C++>=11]*
      *
      * This saves all specified parameters at once. If any error occurs, none are saved.
      */
     void saveParameters(const std::vector<std::string>& uids, bool blockingCall=true);
 
     /**
-     * \brief See saveParameter(const char*)
+     * \brief See saveParameter(const char*) *[C++>=11]*
      *
      * This saves all specified parameters at once. If any error occurs, none are saved.
      */
     void saveParameters(const std::set<std::string>& uids, bool blockingCall=true);
 
     /**
-     * \brief See saveParameter(const char*)
+     * \brief See saveParameter(const char*) *[C++>=11]*
      *
      * This saves all specified parameters at once. If any error occurs, none are saved.
      */
