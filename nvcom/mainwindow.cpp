@@ -50,7 +50,8 @@ MainWindow::MainWindow(QWidget *parent, QApplication& app): QMainWindow(parent),
     writeDirSelected(false), fpsLabel(nullptr), sizeLabel(nullptr), droppedLabel(nullptr),
     appSettings("nerian.com", "nvcom"), fpsTimer(this), scrollArea(nullptr),
     displayWidget(nullptr), open3dWidget(nullptr), closeAfterSend(false),
-    resizeWindow(false), lastDropped(0), lastNumPoints(0) {
+    resizeWindow(false), lastDropped(0), lastNumPoints(0),
+    connectionDialogActive(false) {
 
     QObject::connect(&app, &QApplication::lastWindowClosed, this,
         &MainWindow::writeApplicationSettings);
@@ -515,12 +516,16 @@ bool MainWindow::parseOptions(QApplication& app) {
 }
 
 void MainWindow::showConnectionDialog() {
+    // Show only one active connection dialog at a time despite any triggered events
+    if (connectionDialogActive) return;
+    connectionDialogActive = true;
     ConnectionDialog diag(this);
     if(diag.exec() == QDialog::Accepted && diag.getSelectedDevice().getIpAddress() != "") {
         settings.remoteHost = diag.getSelectedDevice().getIpAddress();
         settings.tcp = (diag.getSelectedDevice().getNetworkProtocol() == DeviceInfo::PROTOCOL_TCP);
         reinitNVCom();
     }
+    connectionDialogActive = false;
 }
 
 void MainWindow::displayException(const std::string& msg) {

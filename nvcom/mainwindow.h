@@ -93,6 +93,8 @@ private:
     int lastDropped;
     int lastNumPoints;
 
+    bool connectionDialogActive;
+
     std::deque<std::chrono::steady_clock::time_point> frameTimes;
 
     std::mutex displayMutex;
