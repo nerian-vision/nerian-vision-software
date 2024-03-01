@@ -635,7 +635,6 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
 
     std::string id = device->getId();
     const ImageSet& metaData = device->getPhysicalDevice()->getLatestMetaData();
-    bool hasIntensityStream = metaData.hasImageType(ImageSet::IMAGE_LEFT) || metaData.hasImageType(ImageSet::IMAGE_COLOR);
     bool hasDisparityStream = metaData.hasImageType(ImageSet::IMAGE_DISPARITY);
 
     // Possible values of the component selector
@@ -645,14 +644,12 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
         Range
     };
 
-    DataStream::StreamType streamType = device->getStream()->getStreamType();
-
     switch(featureId) {
         // Component selector specific info
         case 4:  // ComponentEnable
             {
-                const unsigned int INTENSITY_BIT = 1;
-                const unsigned int DISPARITY_BIT = 2;
+                //const unsigned int INTENSITY_BIT = 1;
+                //const unsigned int DISPARITY_BIT = 2;
                 const unsigned int RANGE_BIT     = 4;
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];

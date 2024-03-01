@@ -86,7 +86,7 @@ void Interface::updateDeviceMetadataCache() {
             default:
                 break;
         }
-        for (int i=0; i<deviceSuffixes.size(); ++i) {
+        for (int i=0; i<(int)deviceSuffixes.size(); ++i) {
             sz = 1024;
             (void) getDeviceID(iIndex*deviceSuffixes.size() + i, deviceID, &sz);
             std::string subName = modelName;
