@@ -39,6 +39,7 @@ set(EXAMPLES
 	imu_data_channel_example
 	input_transfer_example
 	software_trigger_example
+	all_events_example
 )
 
 foreach(example IN LISTS EXAMPLES)
@@ -57,6 +58,7 @@ if(NOT MSVC)
     set_target_properties(parameter_enumeration_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
     set_target_properties(parameter_set_batch_write_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
     set_target_properties(temperature_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
+    set_target_properties(all_events_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
 
     string(REPLACE "-std=c++98" "-std=c++14" COMPILE_FLAGS_CXX14 "${CMAKE_CXX_FLAGS}")
     set_target_properties(input_transfer_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX14}")

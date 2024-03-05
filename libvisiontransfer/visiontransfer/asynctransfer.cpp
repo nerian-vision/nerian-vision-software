@@ -159,10 +159,6 @@ bool AsyncTransfer::tryAccept() {
     return pimpl->tryAccept();
 }
 
-void AsyncTransfer::setConnectionStateChangeCallback(void(*callback)(ImageTransfer::ConnectionStateChange)) {
-    pimpl->setConnectionStateChangeCallback(callback);
-}
-
 void AsyncTransfer::setConnectionStateChangeCallback(std::function<void(ImageTransfer::ConnectionStateChange)> callback) {
     pimpl->setConnectionStateChangeCallback(callback);
 }

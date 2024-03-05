@@ -38,15 +38,16 @@ int main(int argc, const char** argv) {
             return -1;
         }
 
-        // Print devices
+        // Print devices (the first device is automatically used in this example)
         std::cout << "Discovered devices:" << std::endl;
         for(unsigned int i = 0; i< devices.size(); i++) {
             std::cout << devices[i].toString() << std::endl;
         }
         std::cout << std::endl;
 
-        // Create an image transfer object that receives data from
-        // the first detected Nerian stereo device
+        // Create a DeviceParameters object that connects to the parameter
+        // service on the device to set / receive current device parameters.
+        // This uses a TCP connection with auto-reconnect enabled by default.
         DeviceParameters parameters(devices[0]);
 
         // Output the current parameterization
@@ -63,7 +64,8 @@ int main(int argc, const char** argv) {
             auto transactionLock = parameters.transactionLock();
             parameters.setParameter("uniqueness_check_enabled", !uni);
             parameters.setParameter("texture_filter_enabled", !tex);
-        } // -> transaction will be automatically committed at scope exit
+            transactionLock->commitAndWait(1000); // Send transaction and block for reply
+        } // -> transaction will otherwise be automatically backgrounded at scope exit
         std::cout << "Transaction complete" << std::endl;
 
         // Output the updated parameterization

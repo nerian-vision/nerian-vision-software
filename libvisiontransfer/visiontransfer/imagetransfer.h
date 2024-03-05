@@ -247,20 +247,10 @@ public:
     std::string statusReport();
 #endif
 
-    /**
-     * \brief Install a handler that will be called when the connection
-     *  state changes (e.g. socket is disconnected).
-     *
-     * NOTE: This is only effective for TCP mode, UDP being connectionless.
-     */
-    void setConnectionStateChangeCallback(void(*callback)(ConnectionStateChange));
-
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
     /**
-     * \brief Install a handler that will be called when the connection
-     *  state changes (e.g. socket is disconnected).
-     *
-     * NOTE: This is only effective for TCP mode, UDP being connectionless.
+     * \brief Install a handler that will be called when the connection state changes
+     * (e.g. socket is disconnected). *[C++>=11]*
      */
     void setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback);
 #endif

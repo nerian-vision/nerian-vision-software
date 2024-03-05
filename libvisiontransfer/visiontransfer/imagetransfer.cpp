@@ -175,10 +175,6 @@ bool ImageTransfer::tryAccept() {
     return pimpl->tryAccept();
 }
 
-void ImageTransfer::setConnectionStateChangeCallback(void(*callback)(ConnectionStateChange)) {
-    pimpl->setConnectionStateChangeCallback(callback);
-}
-
 void ImageTransfer::setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback) {
     pimpl->setConnectionStateChangeCallback(callback);
 }
