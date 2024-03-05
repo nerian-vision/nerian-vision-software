@@ -23,12 +23,23 @@
 #include <stdlib.h>
 #include <thread>
 #include <chrono>
+#include <string>
+#include <map>
 
 using namespace visiontransfer;
 using namespace visiontransfer::param;
 
 int main(int argc, const char** argv) {
     try {
+        std::map<std::string, std::string> additionalParams;
+        // Add optional extra key-value pairs from the arguments to the transaction, for testing
+        // Usage: parameter_set_batch_write_example [key1 "value1" [key2 "value2" ...]]
+        int argidx=1;
+        if (argidx+1 < argc) {
+            additionalParams[argv[argidx]] = argv[argidx+1];
+            argidx += 2;
+        }
+
         // Search for Nerian stereo devices
         DeviceEnumeration deviceEnum;
 
@@ -64,6 +75,9 @@ int main(int argc, const char** argv) {
             auto transactionLock = parameters.transactionLock();
             parameters.setParameter("uniqueness_check_enabled", !uni);
             parameters.setParameter("texture_filter_enabled", !tex);
+            for (auto kv: additionalParams) {
+                parameters.setParameter(kv.first, kv.second);
+            }
             transactionLock->commitAndWait(1000); // Send transaction and block for reply
         } // -> transaction will otherwise be automatically backgrounded at scope exit
         std::cout << "Transaction complete" << std::endl;
