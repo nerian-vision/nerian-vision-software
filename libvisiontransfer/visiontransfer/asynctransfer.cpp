@@ -55,7 +55,7 @@ public:
     void disconnect();
     std::string getRemoteAddress() const;
     bool tryAccept();
-    void setConnectionStateChangeCallback(std::function<void(ImageTransfer::ConnectionStateChange)> callback);
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
     void setAutoReconnect(int secondsBetweenRetries);
 
 private:
@@ -159,7 +159,7 @@ bool AsyncTransfer::tryAccept() {
     return pimpl->tryAccept();
 }
 
-void AsyncTransfer::setConnectionStateChangeCallback(std::function<void(ImageTransfer::ConnectionStateChange)> callback) {
+void AsyncTransfer::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback) {
     pimpl->setConnectionStateChangeCallback(callback);
 }
 
@@ -454,7 +454,7 @@ bool AsyncTransfer::Pimpl::tryAccept() {
     return imgTrans.tryAccept();
 }
 
-void AsyncTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(ImageTransfer::ConnectionStateChange)> callback) {
+void AsyncTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback) {
     imgTrans.setConnectionStateChangeCallback(callback);
 }
 

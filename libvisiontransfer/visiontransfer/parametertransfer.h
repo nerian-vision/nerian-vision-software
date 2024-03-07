@@ -182,7 +182,7 @@ public:
      */
     param::ParameterSet const& getParameterSet() const;
 
-    void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
+    void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded);
 
     /**
      * \brief Start batch parameter transaction.
@@ -201,6 +201,11 @@ public:
      * \brief Requests to save the current values for the specified parameter UIDs to permanent storage
      */
     void persistParameters(const std::vector<std::string>& uids, bool synchronous=true);
+
+    /**
+     * \brief Sets the callback function to inform of background disconnection / reconnection
+     */
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
 
 private:
     static constexpr int SOCKET_TIMEOUT_MS = 500;
@@ -259,9 +264,15 @@ private:
 
     /// User-supplied callback function that is invoked for parameter updates (but not the initial enumeration)
     std::function<void(const std::string&)> parameterUpdateCallback;
+    bool parameterUpdateCallbackThreaded;
 
     thread_local static bool transactionInProgress;
     thread_local static std::vector<std::pair<std::string, std::string> > transactionQueuedWrites;
+
+    thread_local static bool writingProhibited;
+
+    /// User-supplied callback function that is invoked for disconnections and reconnections
+    std::function<void(visiontransfer::ConnectionStateChange)> connectionStateChangeCallback;
 
     /// Attempt to connect to configured server (or reconnect in case of dropped connection)
     void attemptConnection();

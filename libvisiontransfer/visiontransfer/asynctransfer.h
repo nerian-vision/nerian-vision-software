@@ -23,6 +23,7 @@
 
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include <functional>
+#include "visiontransfer/networking.h"
 #endif
 
 namespace visiontransfer {
@@ -162,9 +163,9 @@ public:
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
     /**
      * \brief Install a handler that will be called when the connection state changes
-     * (e.g. socket is disconnected). *[C++>=11]*
+     * (e.g. socket is disconnected). *[C++11]*
      */
-    void setConnectionStateChangeCallback(std::function<void(ImageTransfer::ConnectionStateChange)> callback);
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
 #endif
 
     /*

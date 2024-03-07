@@ -21,6 +21,7 @@
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include "visiontransfer/parameter.h"
 #include "visiontransfer/parameterset.h"
+#include "visiontransfer/networking.h"
 #include <functional>
 #include <set>
 #endif
@@ -999,7 +1000,8 @@ public:
     }
 
     /**
-     * \brief Emit a software trigger event to perform a single acquisition. This only has effect when the External Trigger mode is set to Software.
+     * \brief Emit a software trigger event to perform a single acquisition.
+     * This only has effect when the External Trigger mode is set to Software.
      */
     void triggerNow() {
         writeBoolParameterUnguarded("trigger_now", true);
@@ -1011,7 +1013,8 @@ public:
      *
      * \return A map associating available parameter names with visiontransfer::ParameterInfo entries
      *
-     * \note This function, as well as ParameterInfo, are deprecated and slated to be removed; please use getParameterSet() instead. This function omits all parameters that are not scalar numbers.
+     * \note This function, as well as ParameterInfo, are deprecated and slated to be removed;
+     * please use getParameterSet() instead. This function omits all parameters that are not scalar numbers.
      */
     DEPRECATED("Use getParameterSet() instead")
     std::map<std::string, ParameterInfo> getAllParameters();
@@ -1020,7 +1023,8 @@ public:
      * \brief Set a parameter by name. ParameterException for invalid names.
      * @deprecated since 10.0
      *
-     * \note This function is deprecated and slated to be removed; please use setParameter() instead. This function only supports parameters that are scalar numbers.
+     * \note This function is deprecated and slated to be removed; please use setParameter() instead.
+     * This function only supports parameters that are scalar numbers.
      */
     template<typename T>
     DEPRECATED("Use setParameter() instead")
@@ -1033,10 +1037,12 @@ public:
     void setParameter(const std::string& name, T value);
 
     /**
-     * \brief Get a parameter by name, specifying the return type (int, double or bool). ParameterException for invalid names. [DEPRECATED]
+     * \brief Get a parameter by name, specifying the return type (int, double or bool).
+     * Throws ParameterException for invalid names. [DEPRECATED]
      * @deprecated since 10.0
      *
-     * \note This function is deprecated and slated to be removed; please use getParameter(name).getCurrent<T>() instead. This function only supports parameters that are scalar numbers.
+     * \note This function is deprecated and slated to be removed; please use getParameter(name).getCurrent<T>() instead.
+     * This function only supports parameters that are scalar numbers.
      */
     template<typename T>
     DEPRECATED("Use getParameter() instead")
@@ -1066,14 +1072,16 @@ public:
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 
     /**
-     * \brief Tests whether a specific named parameter is available for this device. *[C++>=11]*
+     * \brief Tests whether a specific named parameter is available for this device. *[C++11]*
      */
     bool hasParameter(const std::string& name) const;
 
     /**
-     *  \brief Returns a Parameter object for the named device parameter. ParameterException for invalid or inaccessible parameter names. *[C++>=11]*
+     *  \brief Returns a Parameter object for the named device parameter.
+     *  Throws ParameterException for invalid or inaccessible parameter names. *[C++11]*
      *
-     * The returned object is a detached copy of the internal parameter at invocation time; it is not updated when the device sends a new value.
+     * The returned object is a detached copy of the internal parameter at invocation time;
+     * it is not updated when the device sends a new value.
      * Likewise, any modifications must be requested using setParameter or the various parameter-specific setters.
      *
      * \note This function is available for C++11 and newer.
@@ -1081,11 +1089,12 @@ public:
     visiontransfer::param::Parameter getParameter(const std::string& name) const;
 
     /**
-     * \brief Returns all API-accessible parameters as reported by the device. *[C++>=11]*
+     * \brief Returns all API-accessible parameters as reported by the device. *[C++11]*
      *
      * \return ParameterSet, which extends a std::map<std::string, visiontransfer::param::Parameter>
      *
-     * Returned map entries are detached copies of the internal parameters at invocation time; they are not updated when the device sends new values.
+     * Returned map entries are detached copies of the internal parameters at invocation time;
+     * they are not updated when the device sends new values.
      * Likewise, any modifications must be requested using setParameter or the various parameter-specific setters.
      *
      * \note This function is available for C++11 and newer.
@@ -1093,21 +1102,39 @@ public:
     visiontransfer::param::ParameterSet getParameterSet() const;
 
     /**
-     * \brief Sets the optional user parameter update callback. This is then called for all asynchronous value or metadata changes that the server sends. *[C++>=11]*
+     * \brief Sets the optional user parameter update callback.
+     * This is then called for all asynchronous value or metadata changes that the server sends. *[C++11]*
      *
-     * The callback is called with the parameter UID, which can be used with getParameter(uid) to obtain the data.
+     * The callback is called with the parameter UID; use getParameter(uid) to obtain the data.
      *
-     * Caution:
-     * The callback is called by the background receiver thread. Please queue the data suitably for consumption and perform costly operations outside this thread!
-     * You must not perform parameter write operations directly inside the callback (or the receiver thread)!
+     * \param callback The callback function to call on parameter change events
+     *
+     * \param threaded Whether to dispatch every handler in a dedicated thread.
+     * If threaded==true (default), parameter write operations are valid inside the callback,
+     * at the expense of threading overhead.
+     * If threaded==false (legacy), the callback is invoked by the background receiver thread.
+     * In that case, please queue the data suitably for consumption and perform costly operations
+     * outside this thread; any parameter write attempt will fail with a ParameterExeception.
      *
      * Note:
-     * In the event that the parameter server connection was lost and is then re-established by the background thread, a callback will be invoked for all existing parameters.
+     * In the event that the parameter server connection was lost and is then re-established
+     * by the background thread, a callback will be invoked for all existing parameters.
      */
-    void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
+    void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded=true);
 
     /**
-     * \brief A (thread-local) parameter transaction lock for queued writes. *[C++>=11]*
+     * \brief Install a handler that will be called when the connection state changes
+     * (e.g. socket is disconnected). *[C++11]*
+     *
+     * \param callback The callback function to call on connection state change events
+     *
+     * \note Callback function invocation is dispatched in a dedicated thread; it is
+     * allowed to make parameter-modifying requests (setParameter, saveParameter).
+     */
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
+
+    /**
+     * \brief A (thread-local) parameter transaction lock for queued writes. *[C++11]*
      *
      * Obtain a lock using transactionLock() if you want to set several, possibly dependent,
      * parameters in one go. You can't go wrong by using this for any parameter setting operation.
@@ -1153,35 +1180,35 @@ public:
     };
     friend class TransactionLock;
 
-    /// Obtain a scoped TransactionLock for the current thread *[C++>=11]*
+    /// Obtain a scoped TransactionLock for the current thread *[C++11]*
     std::unique_ptr<TransactionLock> transactionLock();
 
     /**
-     * \brief See saveParameter(const char*) *[C++>=11]*
+     * \brief See saveParameter(const char*) *[C++11]*
      */
     void saveParameter(const std::string& uid, bool blockingCall=true);
 
     /**
-     * \brief See saveParameter(const char*); this uses the specified Parameter reference *[C++>=11]*
+     * \brief See saveParameter(const char*); this uses the specified Parameter reference *[C++11]*
      */
     void saveParameter(const visiontransfer::param::Parameter& param, bool blockingCall=true);
 
     /**
-     * \brief See saveParameter(const char*) *[C++>=11]*
+     * \brief See saveParameter(const char*) *[C++11]*
      *
      * This saves all specified parameters at once. If any error occurs, none are saved.
      */
     void saveParameters(const std::vector<std::string>& uids, bool blockingCall=true);
 
     /**
-     * \brief See saveParameter(const char*) *[C++>=11]*
+     * \brief See saveParameter(const char*) *[C++11]*
      *
      * This saves all specified parameters at once. If any error occurs, none are saved.
      */
     void saveParameters(const std::set<std::string>& uids, bool blockingCall=true);
 
     /**
-     * \brief See saveParameter(const char*) *[C++>=11]*
+     * \brief See saveParameter(const char*) *[C++11]*
      *
      * This saves all specified parameters at once. If any error occurs, none are saved.
      */

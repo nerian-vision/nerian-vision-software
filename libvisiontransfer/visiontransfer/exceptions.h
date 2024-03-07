@@ -43,6 +43,14 @@ public:
     ParameterException(std::string msg): std::runtime_error(msg) {}
 };
 
+/**
+ * \brief Exception class that indicates an unexpected timeout of a request.
+ */
+class TimeoutException: public std::runtime_error {
+public:
+    TimeoutException(std::string msg): std::runtime_error(msg) {}
+};
+
 } // namespace
 
 #endif

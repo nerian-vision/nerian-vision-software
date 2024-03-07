@@ -20,6 +20,7 @@
 #include "visiontransfer/imageprotocol.h"
 #include "visiontransfer/imageset.h"
 #include "visiontransfer/deviceinfo.h"
+#include "visiontransfer/networking.h"
 
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include <functional>
@@ -60,17 +61,6 @@ public:
 
         /// No network connection has been established
         NOT_CONNECTED
-    };
-
-    /**
-     * \brief Reported connection state changes (after successful initial connection)
-     *
-     * If auto-reconnection behavior is enabled, you can track the state of the
-     * connection (see setConnectionStateChangeCallback).
-     */
-    enum ConnectionStateChange {
-        DISCONNECTED,
-        CONNECTED
     };
 
     /**
@@ -250,9 +240,9 @@ public:
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
     /**
      * \brief Install a handler that will be called when the connection state changes
-     * (e.g. socket is disconnected). *[C++>=11]*
+     * (e.g. socket is disconnected). *[C++11]*
      */
-    void setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback);
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
 #endif
 
     /*

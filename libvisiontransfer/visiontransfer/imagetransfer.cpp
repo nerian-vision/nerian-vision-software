@@ -52,7 +52,7 @@ public:
     void disconnect();
     std::string getRemoteAddress() const;
     bool tryAccept();
-    void setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback);
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
     void establishConnection();
     void setAutoReconnect(int secondsBetweenRetries);
 
@@ -87,7 +87,7 @@ private:
     const unsigned char* currentMsg;
 
     // User callback for connection state changes
-    std::function<void(ConnectionStateChange)> connectionStateChangeCallback;
+    std::function<void(visiontransfer::ConnectionStateChange)> connectionStateChangeCallback;
 
     // Socket configuration
     void setSocketOptions();
@@ -175,7 +175,7 @@ bool ImageTransfer::tryAccept() {
     return pimpl->tryAccept();
 }
 
-void ImageTransfer::setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback) {
+void ImageTransfer::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback) {
     pimpl->setConnectionStateChangeCallback(callback);
 }
 
@@ -227,9 +227,8 @@ void ImageTransfer::Pimpl::establishConnection() {
 
     previousConnectedState = true;
     if (connectionStateChangeCallback) {
-        connectionStateChangeCallback(ConnectionStateChange::CONNECTED);
+        std::thread([&](){connectionStateChangeCallback(visiontransfer::ConnectionStateChange::CONNECTED);}).detach();
     }
-    
 }
 
 ImageTransfer::Pimpl::~Pimpl() {
@@ -543,7 +542,7 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
     bool currentConnectedState = isConnected();
     if (currentConnectedState != previousConnectedState) {
         if (connectionStateChangeCallback) {
-            connectionStateChangeCallback(currentConnectedState ? CONNECTED : DISCONNECTED);
+            std::thread([&, currentConnectedState](){ connectionStateChangeCallback(currentConnectedState ? visiontransfer::ConnectionStateChange::CONNECTED : visiontransfer::ConnectionStateChange::DISCONNECTED); }).detach();
         }
         previousConnectedState = currentConnectedState;
     }
@@ -557,7 +556,7 @@ void ImageTransfer::Pimpl::disconnect() {
     unique_lock<recursive_mutex> recvLock(receiveMutex);
     unique_lock<recursive_mutex> sendLock(sendMutex);
 
-    if (connectionStateChangeCallback) connectionStateChangeCallback(ConnectionStateChange::DISCONNECTED);
+    if (connectionStateChangeCallback) connectionStateChangeCallback(visiontransfer::ConnectionStateChange::DISCONNECTED);
 
     if(clientSocket != INVALID_SOCKET && protType == ImageProtocol::PROTOCOL_TCP) {
         Networking::closeSocket(clientSocket);
@@ -709,7 +708,7 @@ std::string ImageTransfer::Pimpl::statusReport() {
     return protocol->statusReport();
 }
 
-void ImageTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback) {
+void ImageTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback) {
     connectionStateChangeCallback = callback;
 }
 
