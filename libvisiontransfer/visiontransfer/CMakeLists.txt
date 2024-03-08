@@ -34,6 +34,7 @@ set(HEADERS
     sensordata.h
     conversionhelpers.h
     libraryinfo.h
+    types.h
 )
 
 set(SOURCES

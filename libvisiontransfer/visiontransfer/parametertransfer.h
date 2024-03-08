@@ -16,10 +16,11 @@
 #define VISIONTRANSFER_PARAMETERTRANSFER_H
 
 #include "visiontransfer/common.h"
-#include "visiontransfer/networking.h"
+#include "visiontransfer/types.h"
 #include "visiontransfer/parameterinfo.h"
 #include "visiontransfer/tokenizer.h"
 #include "visiontransfer/parameterset.h"
+#include "visiontransfer/networking.h"
 
 #include <map>
 #include <set>

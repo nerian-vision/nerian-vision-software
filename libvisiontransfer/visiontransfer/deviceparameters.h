@@ -16,12 +16,12 @@
 #define VISIONTRANSFER_DEVICEPARAMETERS_H
 
 #include "visiontransfer/common.h"
+#include "visiontransfer/types.h"
 #include "visiontransfer/deviceinfo.h"
 #include "visiontransfer/parameterinfo.h"
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include "visiontransfer/parameter.h"
 #include "visiontransfer/parameterset.h"
-#include "visiontransfer/networking.h"
 #include <functional>
 #include <set>
 #endif

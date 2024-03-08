@@ -17,10 +17,10 @@
 
 #include <string>
 #include "visiontransfer/common.h"
+#include "visiontransfer/types.h"
 #include "visiontransfer/imageprotocol.h"
 #include "visiontransfer/imageset.h"
 #include "visiontransfer/deviceinfo.h"
-#include "visiontransfer/networking.h"
 
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include <functional>

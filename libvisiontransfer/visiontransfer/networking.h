@@ -106,22 +106,6 @@
 #endif
 
 namespace visiontransfer {
-
-// External use
-
-
-#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
-/**
-  * \brief Reported connection state for various device channel
-  *  connection state callbacks (after successful initial connection)
-  */
-enum class ConnectionState {
-    DISCONNECTED = 0,  // A connection has been lost
-    CONNECTED = 1      // A connection has been re-established
-};
-#endif
-
-// API-internal use
 namespace internal {
 
 /**

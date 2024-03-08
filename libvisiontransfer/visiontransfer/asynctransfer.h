@@ -16,6 +16,7 @@
 #define VISIONTRANSFER_ASYNCTRANSFER_H
 
 #include "visiontransfer/common.h"
+#include "visiontransfer/types.h"
 #include "visiontransfer/imagetransfer.h"
 #include "visiontransfer/imageset.h"
 #include "visiontransfer/imageprotocol.h"
@@ -23,7 +24,6 @@
 
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include <functional>
-#include "visiontransfer/networking.h"
 #endif
 
 namespace visiontransfer {
