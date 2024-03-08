@@ -20,6 +20,8 @@
 #ifndef VISIONTRANSFER_NETWORKING_H
 #define VISIONTRANSFER_NETWORKING_H
 
+#include <visiontransfer/common.h>
+
 // Network headers
 #ifdef _WIN32
     #ifndef _WIN32_WINNT
@@ -108,14 +110,16 @@ namespace visiontransfer {
 // External use
 
 
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 /**
-  * \brief Reported connection state changes for various device channel
+  * \brief Reported connection state for various device channel
   *  connection state callbacks (after successful initial connection)
   */
-enum class ConnectionStateChange {
+enum class ConnectionState {
     DISCONNECTED = 0,  // A connection has been lost
     CONNECTED = 1      // A connection has been re-established
 };
+#endif
 
 // API-internal use
 namespace internal {

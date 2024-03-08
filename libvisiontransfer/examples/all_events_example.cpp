@@ -59,10 +59,10 @@ int main() {
         // service on the device to set / receive current device parameters.
         // This uses a TCP connection with auto-reconnect enabled by default.
         DeviceParameters parameters(devices[0]);
-        parameters.setConnectionStateChangeCallback([&parameters](visiontransfer::ConnectionStateChange state){
-            std::cout << "DeviceParameters connection state change: " << ((state==ConnectionStateChange::CONNECTED)?"CONNECTED":"DISCONNECTED") << std::endl;
+        parameters.setConnectionStateChangeCallback([&parameters](visiontransfer::ConnectionState state){
+            std::cout << "DeviceParameters connection state change: " << ((state==ConnectionState::CONNECTED)?"CONNECTED":"DISCONNECTED") << std::endl;
             // Debug / testing: toggle a parameter when connection comes back up
-            if (state==ConnectionStateChange::CONNECTED) {
+            if (state==ConnectionState::CONNECTED) {
                 try {
                     auto transactionLock = parameters.transactionLock();
                     auto val = parameters.getParameter("texture_filter_enabled").getCurrent<int>();
@@ -105,8 +105,8 @@ int main() {
 
         // Connection state change handler: use this to be informed of any network
         // disconnection and subsequent automatic background reconnection.
-        asyncTransfer.setConnectionStateChangeCallback([](visiontransfer::ConnectionStateChange state){
-                std::cout << "AsyncTransfer connection state change: " << ((state==ConnectionStateChange::CONNECTED)?"CONNECTED":"DISCONNECTED") << std::endl;
+        asyncTransfer.setConnectionStateChangeCallback([](visiontransfer::ConnectionState state){
+                std::cout << "AsyncTransfer connection state change: " << ((state==ConnectionState::CONNECTED)?"CONNECTED":"DISCONNECTED") << std::endl;
                 });
 
         // Receive 100 images

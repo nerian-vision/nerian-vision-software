@@ -59,7 +59,7 @@ public:
 
     void persistParameters(const std::vector<std::string>& uids, bool blocking=true);
 
-    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
 
 private:
     std::map<std::string, ParameterInfo> serverSideEnumeration;
@@ -238,7 +238,7 @@ void DeviceParameters::saveParameters(std::initializer_list<std::string> uids, b
     pimpl->persistParameters(uidvec, blockingCall);
 }
 
-void DeviceParameters::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback) {
+void DeviceParameters::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback) {
     pimpl->setConnectionStateChangeCallback(callback);
 }
 
@@ -321,7 +321,7 @@ void DeviceParameters::Pimpl::persistParameters(const std::vector<std::string>& 
     paramTrans.persistParameters(uids, blocking);
 }
 
-void DeviceParameters::Pimpl::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback) {
+void DeviceParameters::Pimpl::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback) {
     paramTrans.setConnectionStateChangeCallback(callback);
 }
 

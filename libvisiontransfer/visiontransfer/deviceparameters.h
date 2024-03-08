@@ -1131,7 +1131,7 @@ public:
      * \note Callback function invocation is dispatched in a dedicated thread; it is
      * allowed to make parameter-modifying requests (setParameter, saveParameter).
      */
-    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
 
     /**
      * \brief A (thread-local) parameter transaction lock for queued writes. *[C++11]*

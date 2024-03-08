@@ -408,7 +408,7 @@ void ParameterTransfer::receiverRoutine() {
                     networkError = true;
                     networkErrorString = std::string("Error receiving network packet: ") + Networking::getLastErrorString();
                     if (connectionStateChangeCallback) {
-                        std::thread([&](){connectionStateChangeCallback(ConnectionStateChange::DISCONNECTED);}).detach();
+                        std::thread([&](){connectionStateChangeCallback(ConnectionState::DISCONNECTED);}).detach();
                     }
                     continue;
                 }
@@ -423,7 +423,7 @@ void ParameterTransfer::receiverRoutine() {
                 networkError = true;
                 networkErrorString = "Connection closed";
                 if (connectionStateChangeCallback) {
-                    std::thread([&](){connectionStateChangeCallback(ConnectionStateChange::DISCONNECTED);}).detach();
+                    std::thread([&](){connectionStateChangeCallback(ConnectionState::DISCONNECTED);}).detach();
                 }
                 continue;
             } else {
@@ -583,7 +583,7 @@ void ParameterTransfer::receiverRoutine() {
                             readyCond.notify_all();
                             // The actual ready state is the user-visible connected state
                             if (connectionStateChangeCallback) {
-                                std::thread([&](){connectionStateChangeCallback(ConnectionStateChange::CONNECTED);}).detach();
+                                std::thread([&](){connectionStateChangeCallback(ConnectionState::CONNECTED);}).detach();
                             }
                         } else if (cmd=="HB") {
                             // Heartbeat
@@ -812,7 +812,7 @@ void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, 
     }
 }
 
-void ParameterTransfer::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback) {
+void ParameterTransfer::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback) {
     connectionStateChangeCallback = callback;
 }
 

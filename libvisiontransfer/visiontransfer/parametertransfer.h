@@ -15,6 +15,7 @@
 #ifndef VISIONTRANSFER_PARAMETERTRANSFER_H
 #define VISIONTRANSFER_PARAMETERTRANSFER_H
 
+#include "visiontransfer/common.h"
 #include "visiontransfer/networking.h"
 #include "visiontransfer/parameterinfo.h"
 #include "visiontransfer/tokenizer.h"
@@ -205,7 +206,7 @@ public:
     /**
      * \brief Sets the callback function to inform of background disconnection / reconnection
      */
-    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
 
 private:
     static constexpr int SOCKET_TIMEOUT_MS = 500;
@@ -272,7 +273,7 @@ private:
     thread_local static bool writingProhibited;
 
     /// User-supplied callback function that is invoked for disconnections and reconnections
-    std::function<void(visiontransfer::ConnectionStateChange)> connectionStateChangeCallback;
+    std::function<void(visiontransfer::ConnectionState)> connectionStateChangeCallback;
 
     /// Attempt to connect to configured server (or reconnect in case of dropped connection)
     void attemptConnection();

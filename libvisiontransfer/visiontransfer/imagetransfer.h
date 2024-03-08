@@ -242,7 +242,7 @@ public:
      * \brief Install a handler that will be called when the connection state changes
      * (e.g. socket is disconnected). *[C++11]*
      */
-    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionStateChange)> callback);
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
 #endif
 
     /*
