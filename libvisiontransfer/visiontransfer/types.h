@@ -31,7 +31,7 @@ namespace visiontransfer {
   * \brief Reported connection state for various device channel
   *  connection state callbacks (after successful initial connection)
   */
-enum class ConnectionState {
+enum class VT_EXPORT ConnectionState {
     DISCONNECTED = 0,  // A connection has been lost
     CONNECTED = 1      // A connection has been re-established
 };

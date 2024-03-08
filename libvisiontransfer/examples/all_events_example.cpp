@@ -94,11 +94,6 @@ int main() {
             }
         }, /* threaded = */ true);
 
-        for (;;) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-        exit(0);
-
         // Create an image transfer object that receives data from
         // the first detected device
         AsyncTransfer asyncTransfer(devices[0]);
