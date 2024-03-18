@@ -100,8 +100,9 @@ int main() {
 
         // Connection state change handler: use this to be informed of any network
         // disconnection and subsequent automatic background reconnection.
-        asyncTransfer.setConnectionStateChangeCallback([](visiontransfer::ConnectionState state){
+        asyncTransfer.setConnectionStateChangeCallback([&asyncTransfer](visiontransfer::ConnectionState state){
                 std::cout << "AsyncTransfer connection state change: " << ((state==ConnectionState::CONNECTED)?"CONNECTED":"DISCONNECTED") << std::endl;
+                std::cout << "  -> AsyncTransfer.isConnected() = " << asyncTransfer.isConnected() << std::endl;
                 });
 
         // Receive 100 images

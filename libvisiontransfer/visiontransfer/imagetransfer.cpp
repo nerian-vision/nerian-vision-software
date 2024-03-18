@@ -76,7 +76,7 @@ private:
     addrinfo* addressInfo;
 
     int tcpReconnectSecondsBetweenRetries;
-    bool previousConnectedState;
+    bool knownConnectedState; // see Pimpl::isConnected() for info
 
     // Object for encoding and decoding the network protocol
     std::unique_ptr<ImageProtocol> protocol;
@@ -191,7 +191,7 @@ ImageTransfer::Pimpl::Pimpl(const char* address, const char* service,
         maxUdpPacketSize(maxUdpPacketSize),
         clientSocket(INVALID_SOCKET), tcpServerSocket(INVALID_SOCKET),
         tcpReconnectSecondsBetweenRetries(autoReconnectDelay),
-        previousConnectedState(false),
+        knownConnectedState(false),
         currentMsgLen(0), currentMsgOffset(0), currentMsg(nullptr) {
 
     Networking::initNetworking();
@@ -225,7 +225,7 @@ void ImageTransfer::Pimpl::establishConnection() {
         throw;
     }
 
-    previousConnectedState = true;
+    knownConnectedState = true;
     if (connectionStateChangeCallback) {
         std::thread([&](){connectionStateChangeCallback(visiontransfer::ConnectionState::CONNECTED);}).detach();
     }
@@ -383,10 +383,13 @@ ImageTransfer::TransferStatus ImageTransfer::Pimpl::transferData() {
 
     // First receive data in case a control message arrives
     if(protType == ImageProtocol::PROTOCOL_UDP) {
+        // This also handles the UDP 'disconnection' tracking
         receiveNetworkData(false);
     }
 
-    if(remoteAddress.sin_family != AF_INET || !protocol->isConnected()) {
+    if(!isConnected()) {
+        // Cannot send while (temporarily) disconnected
+        // Note: TCP server mode is currently not auto-reconnecting
         return NOT_CONNECTED;
     }
 
@@ -538,13 +541,16 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
         }
     }
 
-    // Track and signal connection state (for UDP; TCP reacts to disconnect events instead)
-    bool currentConnectedState = isConnected();
-    if (currentConnectedState != previousConnectedState) {
-        if (connectionStateChangeCallback) {
-            std::thread([&, currentConnectedState](){ connectionStateChangeCallback(currentConnectedState ? visiontransfer::ConnectionState::CONNECTED : visiontransfer::ConnectionState::DISCONNECTED); }).detach();
+    if (protType == ImageProtocol::PROTOCOL_UDP) {
+        // UDP-only: Track and signal connection state by checking protocol
+        // (TCP uses socket-level disconnect/reconnect events instead)
+        bool newConnectedState = protocol->isConnected();
+        if (newConnectedState != knownConnectedState) {
+            knownConnectedState = newConnectedState;
+            if (connectionStateChangeCallback) {
+                std::thread([&, newConnectedState](){ connectionStateChangeCallback(newConnectedState ? visiontransfer::ConnectionState::CONNECTED : visiontransfer::ConnectionState::DISCONNECTED); }).detach();
+            }
         }
-        previousConnectedState = currentConnectedState;
     }
 
     return bytesReceived > 0;
@@ -556,6 +562,7 @@ void ImageTransfer::Pimpl::disconnect() {
     unique_lock<recursive_mutex> recvLock(receiveMutex);
     unique_lock<recursive_mutex> sendLock(sendMutex);
 
+    knownConnectedState = false;
     if (connectionStateChangeCallback) connectionStateChangeCallback(visiontransfer::ConnectionState::DISCONNECTED);
 
     if(clientSocket != INVALID_SOCKET && protType == ImageProtocol::PROTOCOL_TCP) {
@@ -583,7 +590,11 @@ void ImageTransfer::Pimpl::disconnect() {
 bool ImageTransfer::Pimpl::isConnected() const {
     unique_lock<recursive_mutex> lock(const_cast<recursive_mutex&>(sendMutex)); //either mutex will work
 
-    return remoteAddress.sin_family == AF_INET && protocol->isConnected();
+    // This tracks the most up-to-date connection state. For TCP, this simply means socket-level
+    // disconnects or [re]connects. For UDP, which is connectionless, this means tracking whether
+    // the heartbeat replies (and/or payload data) currently arrive (this is established internally
+    // on the level of the DataBlockProtocol).
+    return knownConnectedState;
 }
 
 bool ImageTransfer::Pimpl::sendNetworkMessage(const unsigned char* msg, int length) {

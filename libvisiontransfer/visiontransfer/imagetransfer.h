@@ -214,7 +214,8 @@ public:
     bool tryAccept();
 
     /**
-     * \brief Returns true if a remote connection is established
+     * \brief Returns true if a remote connection is established (and not temporarily disconnected).
+     * For event-driven signaling of this state, see also setConnectionStateChangeCallback()
      */
     bool isConnected() const;
 
