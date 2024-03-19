@@ -693,74 +693,85 @@ void ParameterTransfer::transactionCommitQueue(int maxWaitMilliseconds) {
 
     if (!transactionInProgress) return; // Already released
 
-    // Send queued parameter transactions
-    waitNetworkReady();
-    if (networkError) {
-        // collecting deferred error from background thread
-        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    if (std::uncaught_exceptions() > 0) {
+        // Transaction is NOT finalized during exception unwind
+        transactionInProgress = false; // and cannot retry
+        return;
     }
 
-    // If there are no actual changes, do not send anything
-    if (transactionQueuedWrites.size() > 0) {
-        // Collect affected UIDs for transaction
-        std::set<std::string> affectedUids;
-        for (auto& kv: transactionQueuedWrites) {
-            affectedUids.insert(kv.first);
+    // Send queued parameter transactions
+    try {
+        waitNetworkReady();
+        if (networkError) {
+            // collecting deferred error from background thread
+            throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
         }
 
-        // Start transaction on server, incorporating all affected UIDs
-        std::string uniqueTransactionId = std::to_string(nextTransactionId++);
-        std::string transactionId;
-        if (maxWaitMilliseconds > 0) {
-            transactionId = std::to_string(getThreadId()) + "/" + uniqueTransactionId; // use unique ID as unblock filter
-        } else {
-            // Marked as fire-and-forget (ignore later committed message)
-            transactionId = std::to_string(-1) + "/" + uniqueTransactionId; // use unique ID as unblock filter
-        }
-        std::stringstream ss;
-        ss << "TS" << "\t" << transactionId << "\t";
-        bool first = true;
-        for (auto& uid: affectedUids) {
-            if (first) first=false; else ss << ",";
-            ss << uid;
-        }
-        ss << "\n";
-        sendNetworkCommand(ss.str(), "transaction start");
-
-        // Play back queued writes
-        for (auto& kv: transactionQueuedWrites) {
-            auto& uid = kv.first;
-            auto& value = kv.second;
-            writeParameter(uid.c_str(), value);
-        }
-
-        // Finish transaction on server - automatic updates are then applied (and resumed).
-        // The transaction will be finalized anyway on the server, but only after a timeout.
-        std::stringstream ssEnd;
-        ssEnd << "TE" << "\t" << transactionId << "\n";
-
-        // Block for the returning 'completed' signal, if requested
-        if (maxWaitMilliseconds > 0) {
-            try {
-                blockingCallThisThread([this, &ssEnd](){
-                    sendNetworkCommand(ssEnd.str(), "transaction end");
-                }, maxWaitMilliseconds, uniqueTransactionId); // timeout and unblock class
-            } catch(...) {
-                transactionQueuedWrites.clear();
-                transactionInProgress = false; // May not retry
-                throw;
+        // If there are no actual changes, do not send anything
+        if (transactionQueuedWrites.size() > 0) {
+            // Collect affected UIDs for transaction
+            std::set<std::string> affectedUids;
+            for (auto& kv: transactionQueuedWrites) {
+                affectedUids.insert(kv.first);
             }
-            auto result = lastSetRequestResult[getThreadId()];
-            if (result.first == false) {
-                // There was a remote error, append its info to the exception
-                throw ParameterException("Remote transaction error: " + result.second);
-            }
-        } else {
-            sendNetworkCommand(ssEnd.str(), "transaction end");
-        }
 
-        // Cleanup
-        transactionQueuedWrites.clear();
+            // Start transaction on server, incorporating all affected UIDs
+            std::string uniqueTransactionId = std::to_string(nextTransactionId++);
+            std::string transactionId;
+            if (maxWaitMilliseconds > 0) {
+                transactionId = std::to_string(getThreadId()) + "/" + uniqueTransactionId; // use unique ID as unblock filter
+            } else {
+                // Marked as fire-and-forget (ignore later committed message)
+                transactionId = std::to_string(-1) + "/" + uniqueTransactionId; // use unique ID as unblock filter
+            }
+            std::stringstream ss;
+            ss << "TS" << "\t" << transactionId << "\t";
+            bool first = true;
+            for (auto& uid: affectedUids) {
+                if (first) first=false; else ss << ",";
+                ss << uid;
+            }
+            ss << "\n";
+            sendNetworkCommand(ss.str(), "transaction start");
+
+            // Play back queued writes
+            for (auto& kv: transactionQueuedWrites) {
+                auto& uid = kv.first;
+                auto& value = kv.second;
+                writeParameter(uid.c_str(), value);
+            }
+
+            // Finish transaction on server - automatic updates are then applied (and resumed).
+            // The transaction will be finalized anyway on the server, but only after a timeout.
+            std::stringstream ssEnd;
+            ssEnd << "TE" << "\t" << transactionId << "\n";
+
+            // Block for the returning 'completed' signal, if requested
+            if (maxWaitMilliseconds > 0) {
+                try {
+                    blockingCallThisThread([this, &ssEnd](){
+                        sendNetworkCommand(ssEnd.str(), "transaction end");
+                    }, maxWaitMilliseconds, uniqueTransactionId); // timeout and unblock class
+                } catch(...) {
+                    transactionQueuedWrites.clear();
+                    transactionInProgress = false; // May not retry
+                    throw;
+                }
+                auto result = lastSetRequestResult[getThreadId()];
+                if (result.first == false) {
+                    // There was a remote error, append its info to the exception
+                    throw ParameterException("Remote transaction error: " + result.second);
+                }
+            } else {
+                sendNetworkCommand(ssEnd.str(), "transaction end");
+            }
+
+            // Cleanup
+            transactionQueuedWrites.clear();
+        }
+    } catch(...) {
+        transactionInProgress = false; // May not retry
+        throw;
     }
 
     transactionInProgress = false;
