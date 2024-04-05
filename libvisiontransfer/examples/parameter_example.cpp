@@ -49,8 +49,9 @@ int main(int, char**) {
         }
         std::cout << std::endl;
 
-        // Create an image transfer object that receives data from
-        // the first detected Nerian stereo device
+        // Create a DeviceParameters object that connects to the parameter
+        // service on the device to set / receive current device parameters.
+        // This uses a TCP connection with auto-reconnect enabled by default.
         DeviceParameters parameters(devices[0]);
 
         // Output the current parameterization

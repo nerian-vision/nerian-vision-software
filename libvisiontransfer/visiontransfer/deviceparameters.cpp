@@ -52,12 +52,14 @@ public:
 
     ParameterSet const& getParameterSet() const;
 
-    void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback);
+    void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded);
 
     void transactionStartQueue();
     void transactionCommitQueue(int maxWaitMilliseconds);
 
     void persistParameters(const std::vector<std::string>& uids, bool blocking=true);
+
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
 
 private:
     std::map<std::string, ParameterInfo> serverSideEnumeration;
@@ -192,8 +194,8 @@ ParameterSet DeviceParameters::getParameterSet() const {
     return pimpl->getParameterSet(); // copied here
 }
 
-void DeviceParameters::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback) {
-    pimpl->setParameterUpdateCallback(callback);
+void DeviceParameters::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded) {
+    pimpl->setParameterUpdateCallback(callback, threaded);
 }
 
 DeviceParameters::TransactionLock::TransactionLock(DeviceParameters::Pimpl* pimpl)
@@ -234,6 +236,10 @@ void DeviceParameters::saveParameters(std::initializer_list<std::string> uids, b
     std::vector<std::string> uidvec;
     for (auto const& u: uids) uidvec.push_back(u);
     pimpl->persistParameters(uidvec, blockingCall);
+}
+
+void DeviceParameters::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback) {
+    pimpl->setConnectionStateChangeCallback(callback);
 }
 
 #endif
@@ -299,8 +305,8 @@ ParameterSet const& DeviceParameters::Pimpl::getParameterSet() const {
     return paramTrans.getParameterSet();
 }
 
-void DeviceParameters::Pimpl::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback) {
-    paramTrans.setParameterUpdateCallback(callback);
+void DeviceParameters::Pimpl::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded) {
+    paramTrans.setParameterUpdateCallback(callback, threaded);
 }
 
 void DeviceParameters::Pimpl::transactionStartQueue() {
@@ -314,6 +320,11 @@ void DeviceParameters::Pimpl::transactionCommitQueue(int maxWaitMilliseconds) {
 void DeviceParameters::Pimpl::persistParameters(const std::vector<std::string>& uids, bool blocking) {
     paramTrans.persistParameters(uids, blocking);
 }
+
+void DeviceParameters::Pimpl::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback) {
+    paramTrans.setConnectionStateChangeCallback(callback);
+}
+
 
 } // namespace
 

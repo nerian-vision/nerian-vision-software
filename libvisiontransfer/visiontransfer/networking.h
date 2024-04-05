@@ -20,6 +20,8 @@
 #ifndef VISIONTRANSFER_NETWORKING_H
 #define VISIONTRANSFER_NETWORKING_H
 
+#include <visiontransfer/common.h>
+
 // Network headers
 #ifdef _WIN32
     #ifndef _WIN32_WINNT

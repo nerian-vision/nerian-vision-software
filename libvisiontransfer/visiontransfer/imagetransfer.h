@@ -17,6 +17,7 @@
 
 #include <string>
 #include "visiontransfer/common.h"
+#include "visiontransfer/types.h"
 #include "visiontransfer/imageprotocol.h"
 #include "visiontransfer/imageset.h"
 #include "visiontransfer/deviceinfo.h"
@@ -60,17 +61,6 @@ public:
 
         /// No network connection has been established
         NOT_CONNECTED
-    };
-
-    /**
-     * \brief Reported connection state changes (after successful initial connection)
-     *
-     * If auto-reconnection behavior is enabled, you can track the state of the
-     * connection (see setConnectionStateChangeCallback).
-     */
-    enum ConnectionStateChange {
-        DISCONNECTED,
-        CONNECTED
     };
 
     /**
@@ -224,7 +214,8 @@ public:
     bool tryAccept();
 
     /**
-     * \brief Returns true if a remote connection is established
+     * \brief Returns true if a remote connection is established (and not temporarily disconnected).
+     * For event-driven signaling of this state, see also setConnectionStateChangeCallback()
      */
     bool isConnected() const;
 
@@ -247,22 +238,12 @@ public:
     std::string statusReport();
 #endif
 
-    /**
-     * \brief Install a handler that will be called when the connection
-     *  state changes (e.g. socket is disconnected).
-     *
-     * NOTE: This is only effective for TCP mode, UDP being connectionless.
-     */
-    void setConnectionStateChangeCallback(void(*callback)(ConnectionStateChange));
-
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
     /**
-     * \brief Install a handler that will be called when the connection
-     *  state changes (e.g. socket is disconnected).
-     *
-     * NOTE: This is only effective for TCP mode, UDP being connectionless.
+     * \brief Install a handler that will be called when the connection state changes
+     * (e.g. socket is disconnected). *[C++11]*
      */
-    void setConnectionStateChangeCallback(std::function<void(ConnectionStateChange)> callback);
+    void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
 #endif
 
     /*
