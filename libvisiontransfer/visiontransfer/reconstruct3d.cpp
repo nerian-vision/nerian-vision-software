@@ -27,6 +27,8 @@
 #include <immintrin.h>
 #elif __SSE2__
 #include <emmintrin.h>
+#elif __aarch64__
+#include <arm_neon.h>
 #endif
 
 #include <iostream>
@@ -74,6 +76,10 @@ private:
         unsigned short maxDisparity);
 
     float* createPointMapAVX2(const unsigned short* dispMap, int width, int height,
+        int rowStride, const float* q, unsigned short minDisparity, int subpixelFactor,
+        unsigned short maxDisparity);
+
+    float* createPointMapNEON(const unsigned short* dispMap, int width, int height,
         int rowStride, const float* q, unsigned short minDisparity, int subpixelFactor,
         unsigned short maxDisparity);
 };
@@ -151,6 +157,12 @@ float* Reconstruct3D::Pimpl::createPointMap(const unsigned short* dispMap, int w
 #   ifdef __SSE2__
         if(!angledCameraFallback && maxDisparity <= 0x1000 && width % 8 == 0 && (uintptr_t)dispMap % 16 == 0) {
             return createPointMapSSE2(dispMap, width, height, rowStride, q,
+                minDisparity, subpixelFactor, maxDisparity);
+        } else
+#   endif
+#   ifdef __aarch64__
+        if(!angledCameraFallback && maxDisparity <= 0x1000 && width % 8 == 0) {
+            return createPointMapNEON(dispMap, width, height, rowStride, q,
                 minDisparity, subpixelFactor, maxDisparity);
         } else
 #   endif
@@ -348,10 +360,10 @@ float* Reconstruct3D::Pimpl::createPointMapAVX2(const unsigned short* dispMap, i
                     x+1, y, dispArray[i+1], 1.0);
 
                 // Multiply with matrix
-                __m256 u1 = _mm256_shuffle_ps(vec,vec, _MM_SHUFFLE(0,0,0,0));
-                __m256 u2 = _mm256_shuffle_ps(vec,vec, _MM_SHUFFLE(1,1,1,1));
-                __m256 u3 = _mm256_shuffle_ps(vec,vec, _MM_SHUFFLE(2,2,2,2));
-                __m256 u4 = _mm256_shuffle_ps(vec,vec, _MM_SHUFFLE(3,3,3,3));
+                __m256 u1 = _mm256_shuffle_ps(vec, vec, _MM_SHUFFLE(0,0,0,0));
+                __m256 u2 = _mm256_shuffle_ps(vec, vec, _MM_SHUFFLE(1,1,1,1));
+                __m256 u3 = _mm256_shuffle_ps(vec, vec, _MM_SHUFFLE(2,2,2,2));
+                __m256 u4 = _mm256_shuffle_ps(vec, vec, _MM_SHUFFLE(3,3,3,3));
 
                 __m256 prod1 = _mm256_mul_ps(u1, qCol0);
                 __m256 prod2 = _mm256_mul_ps(u2, qCol1);
@@ -430,14 +442,11 @@ float* Reconstruct3D::Pimpl::createPointMapSSE2(const unsigned short* dispMap, i
 
             // Iterate over disparities and perform matrix multiplication for each
             for(int i=0; i<8; i++) {
-                // Create vector
-                __m128 vec = _mm_setr_ps(static_cast<float>(x), static_cast<float>(y), dispArray[i], 1.0);
-
-                // Multiply with matrix
-                __m128 u1 = _mm_shuffle_ps(vec,vec, _MM_SHUFFLE(0,0,0,0));
-                __m128 u2 = _mm_shuffle_ps(vec,vec, _MM_SHUFFLE(1,1,1,1));
-                __m128 u3 = _mm_shuffle_ps(vec,vec, _MM_SHUFFLE(2,2,2,2));
-                __m128 u4 = _mm_shuffle_ps(vec,vec, _MM_SHUFFLE(3,3,3,3));
+                // Create vectors and perform matrix multiplication
+                __m128 u1 = _mm_set1_ps(static_cast<float>(x));
+                __m128 u2 = _mm_set1_ps(static_cast<float>(y));
+                __m128 u3 = _mm_set1_ps(dispArray[i]);
+                __m128 u4 = _mm_set1_ps(1.0f);
 
                 __m128 prod1 = _mm_mul_ps(u1, qCol0);
                 __m128 prod2 = _mm_mul_ps(u2, qCol1);
@@ -452,6 +461,83 @@ float* Reconstruct3D::Pimpl::createPointMapSSE2(const unsigned short* dispMap, i
 
                 // Write result to memory
                 _mm_store_ps(outputPtr, point);
+
+                outputPtr += 4;
+                x++;
+            }
+        }
+    }
+
+    return &pointMap[0];
+}
+#endif
+
+#ifdef __aarch64__
+float* Reconstruct3D::Pimpl::createPointMapNEON(const unsigned short* dispMap, int width,
+        int height, int rowStride, const float* q, unsigned short minDisparity,
+        int subpixelFactor, unsigned short maxDisparity) {
+
+    // Create column vectors of q
+    float32x4_t qCol0 = {q[0], q[4], q[8], q[12]};
+    float32x4_t qCol1 = {q[1], q[5], q[9], q[13]};
+    float32x4_t qCol2 = {q[2], q[6], q[10], q[14]};
+    float32x4_t qCol3 = {q[3], q[7], q[11], q[15]};
+
+    // More constants that we need
+    uint16x8_t minDispVector = vdupq_n_u16(minDisparity);
+    uint16x8_t maxDispVector = vdupq_n_u16(maxDisparity);
+    float32x4_t scaleVector = vdupq_n_f32(1.0f / static_cast<float>(subpixelFactor));
+
+    float* outputPtr = &pointMap[0];
+
+    for(int y = 0; y < height; y++) {
+        const unsigned char* rowStart = &reinterpret_cast<const unsigned char*>(dispMap)[y*rowStride];
+        const unsigned char* rowEnd = &reinterpret_cast<const unsigned char*>(dispMap)[y*rowStride + 2*width];
+
+        int x = 0;
+        for(const unsigned char* ptr = rowStart; ptr != rowEnd; ptr += 16) {
+            uint16x8_t disparities = vld1q_u16(reinterpret_cast<const uint16_t*>(ptr));
+
+            // Find invalid disparities and set them to 0
+            uint16x8_t validMask = vcltq_u16(disparities, maxDispVector);
+            disparities = vandq_u16(validMask, disparities);
+
+            // Clamp to minimum disparity
+            disparities = vmaxq_u16(disparities, minDispVector);
+
+            // Convert to floats and scale with 1/subpixelFactor
+            float32x4_t floatDisp = vcvtq_f32_u32(vmovl_u16(vget_low_u16(disparities)));
+            float32x4_t dispScaled = vmulq_f32(floatDisp, scaleVector);
+
+            // Copy to array
+            float dispArray[8];
+            vst1q_f32(&dispArray[0], dispScaled);
+
+            // Same for other half
+            floatDisp = vcvtq_f32_u32(vmovl_u16(vget_high_u16(disparities)));
+            dispScaled = vmulq_f32(floatDisp, scaleVector);
+            vst1q_f32(&dispArray[4], dispScaled);
+
+            // Iterate over disparities and perform matrix multiplication for each
+            for(int i=0; i<8; i++) {
+                // Create vectors and perform matrix multiplication
+                float32x4_t u1 = vdupq_n_f32(static_cast<float>(x));
+                float32x4_t u2 = vdupq_n_f32(static_cast<float>(y));
+                float32x4_t u3 = vdupq_n_f32(dispArray[i]);
+                float32x4_t u4 = vdupq_n_f32(1.0f);
+
+                float32x4_t prod1 = vmulq_f32(u1, qCol0);
+                float32x4_t prod2 = vmulq_f32(u2, qCol1);
+                float32x4_t prod3 = vmulq_f32(u3, qCol2);
+                float32x4_t prod4 = vmulq_f32(u4, qCol3);
+
+                float32x4_t multResult = vaddq_f32(vaddq_f32(prod1, prod2), vaddq_f32(prod3, prod4));
+
+                // Divide by w to receive point coordinates
+                float32x4_t point = vdivq_f32(multResult, vdupq_laneq_f32(multResult, 3));
+
+                // Write result to memory
+                vst1q_f32(outputPtr, point);
 
                 outputPtr += 4;
                 x++;
