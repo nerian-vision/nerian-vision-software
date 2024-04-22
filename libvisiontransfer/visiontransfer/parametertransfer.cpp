@@ -62,6 +62,12 @@ ParameterTransfer::~ParameterTransfer() {
     }
 }
 
+bool ParameterTransfer::isConnected() const {
+    // This is technically 'more' than just being connected raw;
+    // when true, this connection has passed the full handshake and is operational.
+    return networkReady;
+}
+
 // Will attempt initial connection or reconnection after error
 void ParameterTransfer::attemptConnection() {
     std::unique_lock<std::mutex> localLock(socketModificationMutex);

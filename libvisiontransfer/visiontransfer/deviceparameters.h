@@ -79,6 +79,16 @@ public:
 
     ~DeviceParameters();
 
+    /**
+     * \brief Returns true if a remote connection is currently established and the full
+     *  host-device handshake has succeeded.
+     *
+     * May be temporarily false during a network disconnection and background re-connection phase.
+     *
+     * See also setConnectionStateChangeCallback for the event-driven account
+     */
+    bool isConnected() const;
+
     // Processing settings
 
     /**

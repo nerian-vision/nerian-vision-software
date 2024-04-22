@@ -30,6 +30,8 @@ public:
     Pimpl(const DeviceInfo& device);
     Pimpl(const char* address, const char* service);
 
+    bool isConnected() const;
+
     template<typename T>
     void writeParameter(const char* id, const T& value) {
         paramTrans.writeParameterTransactionGuarded(id, value);
@@ -86,6 +88,10 @@ DeviceParameters::DeviceParameters(const char* address, const char* service):
 
 DeviceParameters::~DeviceParameters() {
     delete pimpl;
+}
+
+bool DeviceParameters::isConnected() const {
+    return pimpl->isConnected();
 }
 
 int DeviceParameters::readIntParameter(const char* id) {
@@ -252,6 +258,10 @@ DeviceParameters::Pimpl::Pimpl(const char* address, const char* service)
 
 DeviceParameters::Pimpl::Pimpl(const DeviceInfo& device)
     : paramTrans(device.getIpAddress().c_str(), "7683") {
+}
+
+bool DeviceParameters::Pimpl::isConnected() const {
+    return paramTrans.isConnected();
 }
 
 int DeviceParameters::Pimpl::readIntParameter(const char* id) {

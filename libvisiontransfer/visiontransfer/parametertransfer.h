@@ -58,6 +58,12 @@ public:
     ~ParameterTransfer();
 
     /**
+     * \brief Returns whether the background connection is currently up and running
+     *  (it may be temporarily false during a disconnected/auto-reconnection phase).
+     */
+    bool isConnected() const;
+
+    /**
      * \brief Reads an integer value from the parameter server.
      *
      * \param id    Unique ID of the parameter to be read.
