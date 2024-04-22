@@ -36,10 +36,6 @@ namespace internal {
 
 constexpr int ParameterTransfer::SOCKET_TIMEOUT_MS;
 
-thread_local bool ParameterTransfer::transactionInProgress = false;
-thread_local std::vector<std::pair<std::string, std::string> > ParameterTransfer::transactionQueuedWrites = {};
-thread_local bool ParameterTransfer::writingProhibited = false;
-
 ParameterTransfer::ParameterTransfer(const char* address, const char* service)
     : socket(INVALID_SOCKET), address(address), service(service), networkReady(false), featureDisabledTransactions(false) {
 
@@ -221,15 +217,16 @@ void ParameterTransfer::writeParameter(const char* id, const std::string& value,
 
 template<typename T>
 void ParameterTransfer::writeParameterTransactionGuardedImpl(const char* id, const T& value) {
-    if (writingProhibited) {
+    if (isWritingProhibited()) {
         throw ParameterException("Writing parameters is not valid inside an unthreaded event handler");
     }
-    if (transactionInProgress) {
+    if (isTransactionInProgress()) {
         if (!paramSet.count(id)) {
             throw ParameterException("Invalid parameter: " + std::string(id));
         }
-        // Queue is thread_local
-        transactionQueuedWrites.push_back({std::string(id), std::to_string(value)});
+        std::unique_lock<std::mutex> lock(transactionMapMutex);
+        int threadId = getThreadId();
+        transactionQueuedWrites[threadId].push_back({std::string(id), std::to_string(value)});
     } else {
         // No transaction, immediate dispatch
         writeParameter(id, value);
@@ -245,15 +242,16 @@ void ParameterTransfer::writeParameterTransactionUnguardedImpl(const char* id, c
 // Explicit instantiation for std::string
 template<>
 void ParameterTransfer::writeParameterTransactionGuarded(const char* id, const std::string& value) {
-    if (writingProhibited) {
+    if (isWritingProhibited()) {
         throw ParameterException("Writing parameters is not valid inside an unthreaded event handler");
     }
-    if (transactionInProgress) {
+    if (isTransactionInProgress()) {
         if (!paramSet.count(id)) {
             throw ParameterException("Invalid parameter: " + std::string(id));
         }
-        // Queue is thread_local
-        transactionQueuedWrites.push_back({std::string(id), value});
+        std::unique_lock<std::mutex> lock(transactionMapMutex);
+        int threadId = getThreadId();
+        transactionQueuedWrites[threadId].push_back({std::string(id), value});
     } else {
         // No transaction, immediate dispatch
         writeParameter(id, value);
@@ -508,9 +506,9 @@ void ParameterTransfer::receiverRoutine() {
                                     if (parameterUpdateCallbackThreaded) {
                                         std::thread([&, uid](){parameterUpdateCallback(uid);}).detach();
                                     } else {
-                                        writingProhibited = true; // thread_local
+                                        setWritingProhibited(true);
                                         parameterUpdateCallback(uid);
-                                        writingProhibited = false;
+                                        setWritingProhibited(false);
                                     }
                                 }
                             }
@@ -526,9 +524,9 @@ void ParameterTransfer::receiverRoutine() {
                                         if (parameterUpdateCallbackThreaded) {
                                             std::thread([&, uid](){parameterUpdateCallback(uid);}).detach();
                                         } else {
-                                            writingProhibited = true; // thread_local
+                                            setWritingProhibited(true);
                                             parameterUpdateCallback(uid);
-                                            writingProhibited = false;
+                                            setWritingProhibited(false);
                                         }
                                     }
                                 }
@@ -549,9 +547,9 @@ void ParameterTransfer::receiverRoutine() {
                                         if (parameterUpdateCallbackThreaded) {
                                             std::thread([&, uid](){parameterUpdateCallback(uid);}).detach();
                                         } else {
-                                            writingProhibited = true; // thread_local
+                                            setWritingProhibited(true);
                                             parameterUpdateCallback(uid);
-                                            writingProhibited = false;
+                                            setWritingProhibited(false);
                                         }
                                     }
                                 }
@@ -616,7 +614,7 @@ void ParameterTransfer::receiverRoutine() {
     }
 }
 
-int ParameterTransfer::getThreadId() {
+int ParameterTransfer::getThreadId() const {
     // Always returns an int type (which may not be the case for std::thread::id)
     static std::atomic_int threadCount{0};
     thread_local int threadId = threadCount.fetch_add(1);
@@ -685,8 +683,8 @@ void ParameterTransfer::transactionStartQueue() {
         // Fallback mode for outdated firmware versions -> ignore transaction batching
         return;
     }
-    if (transactionInProgress) throw TransferException("Simultaneous and/or nested parameter transactions are not supported");
-    transactionInProgress = true;
+    if (isTransactionInProgress()) throw TransferException("Simultaneous and/or nested parameter transactions are not supported");
+    setTransactionInProgress(true);
     // We are now in batch-write mode
 }
 
@@ -697,11 +695,11 @@ void ParameterTransfer::transactionCommitQueue(int maxWaitMilliseconds) {
         return;
     }
 
-    if (!transactionInProgress) return; // Already released
+    if (!isTransactionInProgress()) return; // Already released
 
     if (std::uncaught_exceptions() > 0) {
         // Transaction is NOT finalized during exception unwind
-        transactionInProgress = false; // and cannot retry
+        setTransactionInProgress(false); // and cannot retry
         return;
     }
 
@@ -713,11 +711,13 @@ void ParameterTransfer::transactionCommitQueue(int maxWaitMilliseconds) {
             throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
         }
 
+        std::unique_lock<std::mutex> lock(transactionMapMutex);
+        int threadId = getThreadId();
         // If there are no actual changes, do not send anything
-        if (transactionQueuedWrites.size() > 0) {
+        if (transactionQueuedWrites.count(threadId) && (transactionQueuedWrites[threadId].size() > 0)) {
             // Collect affected UIDs for transaction
             std::set<std::string> affectedUids;
-            for (auto& kv: transactionQueuedWrites) {
+            for (auto& kv: transactionQueuedWrites[threadId]) {
                 affectedUids.insert(kv.first);
             }
 
@@ -741,7 +741,7 @@ void ParameterTransfer::transactionCommitQueue(int maxWaitMilliseconds) {
             sendNetworkCommand(ss.str(), "transaction start");
 
             // Play back queued writes
-            for (auto& kv: transactionQueuedWrites) {
+            for (auto& kv: transactionQueuedWrites[threadId]) {
                 auto& uid = kv.first;
                 auto& value = kv.second;
                 writeParameter(uid.c_str(), value);
@@ -759,8 +759,8 @@ void ParameterTransfer::transactionCommitQueue(int maxWaitMilliseconds) {
                         sendNetworkCommand(ssEnd.str(), "transaction end");
                     }, maxWaitMilliseconds, uniqueTransactionId); // timeout and unblock class
                 } catch(...) {
-                    transactionQueuedWrites.clear();
-                    transactionInProgress = false; // May not retry
+                    transactionQueuedWrites[threadId].clear();
+                    setTransactionInProgress(false); // May not retry
                     throw;
                 }
                 auto result = lastSetRequestResult[getThreadId()];
@@ -773,22 +773,22 @@ void ParameterTransfer::transactionCommitQueue(int maxWaitMilliseconds) {
             }
 
             // Cleanup
-            transactionQueuedWrites.clear();
+            transactionQueuedWrites[threadId].clear();
         }
     } catch(...) {
-        transactionInProgress = false; // May not retry
+        setTransactionInProgress(false); // May not retry
         throw;
     }
 
-    transactionInProgress = false;
+    setTransactionInProgress(false);
 }
 
 void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, bool synchronous) {
-    if (writingProhibited) {
+    if (isWritingProhibited()) {
         throw ParameterException("Saving parameters is not valid inside an unthreaded event handler");
     }
 
-    if (transactionInProgress) {
+    if (isTransactionInProgress()) {
         throw TransferException("Saving parameters is invalid with an open transaction");
     }
 
@@ -831,6 +831,30 @@ void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, 
 
 void ParameterTransfer::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback) {
     connectionStateChangeCallback = callback;
+}
+
+bool ParameterTransfer::isTransactionInProgress() const {
+    std::unique_lock<std::mutex> lock(transactionMapMutex);
+    int threadId = getThreadId();
+    return transactionInProgress.count(threadId) ? transactionInProgress.at(threadId) : false;
+}
+
+void ParameterTransfer::setTransactionInProgress(bool inProgress) {
+    std::unique_lock<std::mutex> lock(transactionMapMutex);
+    int threadId = getThreadId();
+    transactionInProgress[threadId] = inProgress;
+}
+
+bool ParameterTransfer::isWritingProhibited() const {
+    std::unique_lock<std::mutex> lock(transactionMapMutex);
+    int threadId = getThreadId();
+    return writingProhibited.count(threadId) ? writingProhibited.at(threadId) : false;
+}
+
+void ParameterTransfer::setWritingProhibited(bool prohibited) {
+    std::unique_lock<std::mutex> lock(transactionMapMutex);
+    int threadId = getThreadId();
+    writingProhibited[threadId] = prohibited;
 }
 
 }} // namespace

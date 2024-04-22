@@ -274,13 +274,21 @@ private:
     std::function<void(const std::string&)> parameterUpdateCallback;
     bool parameterUpdateCallbackThreaded;
 
-    thread_local static bool transactionInProgress;
-    thread_local static std::vector<std::pair<std::string, std::string> > transactionQueuedWrites;
-
-    thread_local static bool writingProhibited;
+    mutable std::mutex transactionMapMutex;
+    std::map<int, bool> transactionInProgress;
+    std::map<int, std::vector<std::pair<std::string, std::string> > > transactionQueuedWrites;
+    std::map<int, bool> writingProhibited;
 
     /// User-supplied callback function that is invoked for disconnections and reconnections
     std::function<void(visiontransfer::ConnectionState)> connectionStateChangeCallback;
+
+    /// Transaction state (thread-specific)
+    bool isTransactionInProgress() const;
+    void setTransactionInProgress(bool inProgress);
+
+    /// Write-prohibited state (thread-specific)
+    bool isWritingProhibited() const;
+    void setWritingProhibited(bool prohibited);
 
     /// Attempt to connect to configured server (or reconnect in case of dropped connection)
     void attemptConnection();
@@ -289,7 +297,7 @@ private:
     void waitNetworkReady() const;
 
     /// Obtain a basic type thread ID independent of platform / thread implementation
-    int getThreadId();
+    int getThreadId() const;
 
     /// Block current thread, call the functor, and wait with timeout before throwing
     void blockingCallThisThread(std::function<void()>, int waitMaxMilliseconds=1000, const std::string& waitClass="");
