@@ -1,6 +1,22 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
+10.?.? (2024-??-??)
+-------------------
+* NVCom / GenTL producer / API
+    * Added device serial number to device discovery
+* Image set reception
+    * Automatic reconnection for TCP (defaults to on)
+    * Echo-reply based connection state assurance for UDP
+* API
+    * Added callbacks for connection state changes (UDP and TCP)
+    * saveParameter[s] function for persistently saving parameters
+    * Parameter transactions
+        * Ability to block to wait for immediate side effects
+        * Stability improvements for threaded operation
+* Examples
+    * New multi-platform example for Aurora (formerly MIL)
+
 10.6.0 (2023-11-28)
 -------------------
 * GenTL producer
