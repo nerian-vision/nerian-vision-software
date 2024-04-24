@@ -333,6 +333,8 @@ bool ImageTransfer::Pimpl::tryAccept() {
     protocol->resetReception();
     currentMsg = nullptr;
 
+    knownConnectedState = true;
+
     return true;
 }
 
