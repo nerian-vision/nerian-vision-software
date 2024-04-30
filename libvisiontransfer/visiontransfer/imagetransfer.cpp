@@ -504,6 +504,22 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
         return false; // Not connected
     }
 
+    if (protType == ImageProtocol::PROTOCOL_UDP) {
+        // UDP-only: Track and signal connection state by checking protocol
+        // (TCP uses socket-level disconnect/reconnect events instead)
+        bool newConnectedState = protocol->isConnected();
+        if (newConnectedState != knownConnectedState) {
+            knownConnectedState = newConnectedState;
+            if (connectionStateChangeCallback) {
+                std::thread([&, newConnectedState](){ connectionStateChangeCallback(newConnectedState ? visiontransfer::ConnectionState::CONNECTED : visiontransfer::ConnectionState::DISCONNECTED); }).detach();
+            }
+            if (!newConnectedState) {
+                // Newly disconnected, abort
+                return false;
+            }
+        }
+    }
+
     // First send control messages if necessary
     sendPendingControlMessages();
 
@@ -540,18 +556,6 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
         if(protocol->newClientConnected()) {
             // We have just established a new connection
             memcpy(&remoteAddress, &fromAddress, sizeof(remoteAddress));
-        }
-    }
-
-    if (protType == ImageProtocol::PROTOCOL_UDP) {
-        // UDP-only: Track and signal connection state by checking protocol
-        // (TCP uses socket-level disconnect/reconnect events instead)
-        bool newConnectedState = protocol->isConnected();
-        if (newConnectedState != knownConnectedState) {
-            knownConnectedState = newConnectedState;
-            if (connectionStateChangeCallback) {
-                std::thread([&, newConnectedState](){ connectionStateChangeCallback(newConnectedState ? visiontransfer::ConnectionState::CONNECTED : visiontransfer::ConnectionState::DISCONNECTED); }).detach();
-            }
         }
     }
 
