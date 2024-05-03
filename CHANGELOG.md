@@ -1,7 +1,7 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
-10.?.? (2024-??-??)
+10.7.0 (2024-05-03)
 -------------------
 * NVCom / GenTL producer / API
     * Added device serial number to device discovery
