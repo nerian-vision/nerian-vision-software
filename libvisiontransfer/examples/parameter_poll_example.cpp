@@ -34,11 +34,11 @@ int main(int argc, const char** argv) {
         std::map<std::string, std::string> additionalParams;
         // Add optional extra key-value pairs from the arguments to the transaction, for testing
         // Usage: parameter_set_batch_write_example [key1 "value1" [key2 "value2" ...]]
-        int argidx=1;
-        if (argidx+1 < argc) {
-            additionalParams[argv[argidx]] = argv[argidx+1];
-            argidx += 2;
+        if (argc < 2) {
+            std::cerr << "Must provide a parameter UID argument to poll (list with parameter_enumeration_example)." << std::endl;
+            return 1;
         }
+        std::string pollUid = argv[1];
 
         // Search for Nerian stereo devices
         DeviceEnumeration deviceEnum;
@@ -61,45 +61,25 @@ int main(int argc, const char** argv) {
         // This uses a TCP connection with auto-reconnect enabled by default.
         DeviceParameters parameters(devices[0]);
 
-        // Output the current parameterization
-        bool uni = parameters.getParameter("uniqueness_check_enabled").getCurrent<bool>();
-        bool tex = parameters.getParameter("texture_filter_enabled").getCurrent<bool>();
-        std::cout << "Current values:" << std::endl;
-        std::cout << " uniqueness_check_enabled == " << (uni?"true":"false") << std::endl;
-        std::cout << " texture_filter_enabled   == " << (tex?"true":"false") << std::endl;
+        auto param = parameters.getParameter(pollUid); // does not contain up-to-date value for polled parameters!
+        if (! param.getIsPolled()) {
+            std::cerr << "Polling of UID " << pollUid << " is not possible (updated automatically)." << std::endl;
+            std::cout << "Current value for " << pollUid << ": " << param.getCurrent<std::string>() << std::endl;
+            return 1;
+        }
 
-        // Use a Transaction to guard any batch update (although for these two independent
-        //  parameters it could be fine without one). Only one active transaction per thread.
-        std::cout << "Starting transaction" << std::endl;
-        {
-            auto transactionLock = parameters.transactionLock();
-            parameters.setParameter("uniqueness_check_enabled", !uni);
-            parameters.setParameter("texture_filter_enabled", !tex);
-            for (auto kv: additionalParams) {
-                parameters.setParameter(kv.first, kv.second);
-            }
-            transactionLock->commitAndWait(1000); // Send transaction and block for reply
-        } // -> transaction will otherwise be automatically backgrounded at scope exit
-        std::cout << "Transaction complete" << std::endl;
-
-        // Output the updated parameterization
-        uni = parameters.getParameter("uniqueness_check_enabled").getCurrent<bool>();
-        tex = parameters.getParameter("texture_filter_enabled").getCurrent<bool>();
-        std::cout << "New values:" << std::endl;
-        std::cout << " uniqueness_check_enabled == " << (uni?"true":"false") << std::endl;
-        std::cout << " texture_filter_enabled   == " << (tex?"true":"false") << std::endl;
-
-        return 0;
+        try {
+            auto polledParam = parameters.pollParameter(pollUid);
+            std::cout << "Polled value for " << pollUid << ": " << polledParam.getCurrent<std::string>() << std::endl;
+            // value will remain for this UID until the next active poll operation
+        } catch(const std::exception& ex) {
+            std::cerr << "Polling of UID " << pollUid << " failed: " << ex.what() << std::endl;
+        }
     } catch(const std::exception& ex) {
-        // Note: for setting parameters, there are two relevant exceptions that
-        // should be handled. ParameterException indicates an invalid UID,
-        // lack of access rights, or unacceptable value, while
-        // TransferException likely means that the connection has been lost
-        // and could not yet be reconnected automatically in the background.
-        // You might want to retry the set operation later in the latter case.
         std::cerr << "Exception occurred: " << ex.what() << std::endl;
     }
 
     return 0;
 }
+
 

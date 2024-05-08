@@ -191,6 +191,9 @@ void ParameterSerialization::serializeParameterFullUpdate(std::stringstream& ss,
             }
         }
     }
+    ss << "\t";
+    // 19  isPolled flag
+    ss << (param.getIsModified() ? "1" : "0");
 }
 
 // expecting a tab-tokenization of a parameter info
@@ -304,6 +307,12 @@ Parameter ParameterSerialization::deserializeParameterFullUpdate(const std::vect
                 }
             }
         }
+    }
+    // 19 isPolled (if present; V7.2+ -- before that, polling-type parameters did not exist)
+    if ((toks.size()>19) && (toks[19]=="1")) {
+        param.setIsPolled(true);
+    } else {
+        param.setIsPolled(false);
     }
     return param;
 }

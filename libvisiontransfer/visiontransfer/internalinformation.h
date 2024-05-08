@@ -60,7 +60,7 @@ struct InternalInformation {
 
     static constexpr unsigned char CURRENT_PROTOCOL_VERSION = 0x06;
     static constexpr unsigned char CURRENT_PARAMETER_PROTOCOL_VERSION_MAJOR = 0x07;
-    static constexpr unsigned char CURRENT_PARAMETER_PROTOCOL_VERSION_MINOR = 0x01;
+    static constexpr unsigned char CURRENT_PARAMETER_PROTOCOL_VERSION_MINOR = 0x02;
 
     static constexpr unsigned char CURRENT_DISCOVERY_EXTENSION_VERSION = 0x01;
 };

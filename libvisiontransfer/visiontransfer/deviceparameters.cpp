@@ -54,6 +54,8 @@ public:
 
     ParameterSet const& getParameterSet() const;
 
+    Parameter const& pollParameter(const std::string& name, bool blockingCall);
+
     void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded);
 
     void transactionStartQueue();
@@ -200,6 +202,10 @@ ParameterSet DeviceParameters::getParameterSet() const {
     return pimpl->getParameterSet(); // copied here
 }
 
+Parameter DeviceParameters::pollParameter(const std::string& name, bool blockingCall) {
+    return pimpl->pollParameter(name, blockingCall); // copied here
+}
+
 void DeviceParameters::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded) {
     pimpl->setParameterUpdateCallback(callback, threaded);
 }
@@ -305,6 +311,16 @@ bool DeviceParameters::Pimpl::hasParameter(const std::string& name) const {
 Parameter const& DeviceParameters::Pimpl::getParameter(const std::string& name) const {
     auto const& paramSet = paramTrans.getParameterSet();
     if (paramSet.count(name)) {
+        return paramSet.at(name);
+    } else {
+        throw ParameterException(std::string("Invalid or inaccessible parameter name: ") + name);
+    }
+}
+
+Parameter const& DeviceParameters::Pimpl::pollParameter(const std::string& name, bool blockingCall) {
+    auto const& paramSet = paramTrans.getParameterSet();
+    if (paramSet.count(name)) {
+        paramTrans.pollParameter(name, blockingCall);
         return paramSet.at(name);
     } else {
         throw ParameterException(std::string("Invalid or inaccessible parameter name: ") + name);

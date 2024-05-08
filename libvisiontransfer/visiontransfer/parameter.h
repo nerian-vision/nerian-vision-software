@@ -64,8 +64,13 @@ public:
         INTERACTION_ACTIVE = 1
     };
 
+    enum GovernorFunction {
+        GOVERNOR_FN_CHANGE_VALUE = 0,
+        GOVERNOR_FN_POLL = 1
+    };
+
     /** Generate a new Parameter for manual filling */
-    Parameter(): uid("undefined"), name("undefined"), governorType(GOVERNOR_NONE), invokeGovernorOnInit(false), accessForConfig(ACCESS_NONE), accessForApi(ACCESS_NONE), interactionHint(INTERACTION_ACTIVE), isModified(false) {}
+    Parameter(): uid("undefined"), name("undefined"), governorType(GOVERNOR_NONE), invokeGovernorOnInit(false), accessForConfig(ACCESS_NONE), accessForApi(ACCESS_NONE), interactionHint(INTERACTION_ACTIVE), isModified(false), isPolledForUpdates(false) {}
     /** Generate a new Parameter with specified UID (preferred) for manual filling */
     Parameter(const std::string& uid);
     /** Return the current UID */
@@ -96,6 +101,10 @@ public:
     inline Parameter& setInteractionHint(ParameterInteractionHint hint) { interactionHint = hint; return *this; }
     /** Returns whether the Parameter has unsaved (and unreverted) run-time modifications to its previously saved value, according to the parameter server. */
     bool getIsModified() const { return isModified; }
+    /** Returns true iff the tensor is only updated when polled. Such parameters are not synchronized in the background and must be polled (in the backend outside this class) to obtain their up-to-date values. */
+    bool getIsPolled() const { return isPolledForUpdates; }
+    /** Sets the polled-updates-only flag. This is controlled by the device; changing it has no effect in client-side code. */
+    inline Parameter& setIsPolled(bool mod) { isPolledForUpdates = isCommand() ? false : mod; return *this; }
     /** Sets the runtime-modified flag. This is controlled by the device; changing it has no effect in client-side code. */
     inline Parameter& setIsModified(bool mod) { isModified = isCommand() ? false : mod; return *this; }
     /** Return the governor type (whether setting the parameter is controlled by a script, D-Bus, or nothing yet) */
@@ -104,6 +113,8 @@ public:
     std::string getGovernorString() const { return governorString; }
     /** Sets the parameter governor, a script or D-Bus name that controls setting the parameter */
     inline Parameter& setGovernor(GovernorType govType, const std::string& govStr) { governorType = govType; governorString = govStr; return *this; }
+    /** Sets the governor, a script or D-Bus name that controls setting the parameter */
+    inline Parameter& setGovernorPollString(const std::string& govStr) { governorPollString = govStr; return *this; }
     /** Gets the oninit action (after first load). False = do nothing; true = perform the same action as on change. Used for calling governor scripts immediately when the parameter daemon initializes. */
     bool getInvokeGovernorOnInit() const { return invokeGovernorOnInit; }
     /** Sets the oninit action (see getInvokeGovernorOnInit). */
@@ -111,7 +122,7 @@ public:
     /** Perform a substition of %-initiated placeholders with correctly
         quoted parameter [meta-]data (for compiling shell commandlines).
     */
-    std::string interpolateCommandLine(const ParameterValue& newVal);
+    std::string interpolateCommandLine(const ParameterValue& newVal, GovernorFunction fn = GOVERNOR_FN_CHANGE_VALUE);
     /** Returns true iff the value type of the Parameter is TENSOR */
     bool isTensor() const { return type == ParameterValue::ParameterType::TYPE_TENSOR; }
     /** Returns true iff the value type of the Parameter is scalar, i.e. neither TENSOR nor COMMAND */
@@ -459,6 +470,7 @@ private:
     // The following fields are used in nvparamd (the master) and not set elsewhere
     GovernorType governorType;
     std::string governorString; // D-Bus address or shell command line, respectively
+    std::string governorPollString; //                    '' (for polling)
     // 'oninit' action - ignore, or the same as on a change.
     // This is only used in the parameter daemon, this variable need not be relayed.
     bool invokeGovernorOnInit;
@@ -468,6 +480,8 @@ private:
 
     ParameterInteractionHint interactionHint;
     bool isModified;
+    bool isPolledForUpdates;
+    bool isPollResult;
 };
 
 } // namespace param
