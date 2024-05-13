@@ -193,7 +193,7 @@ void ParameterSerialization::serializeParameterFullUpdate(std::stringstream& ss,
     }
     ss << "\t";
     // 19  isPolled flag
-    ss << (param.getIsModified() ? "1" : "0");
+    ss << (param.getIsPolled() ? "1" : "0");
 }
 
 // expecting a tab-tokenization of a parameter info
