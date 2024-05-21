@@ -191,6 +191,11 @@ void ParameterSerialization::serializeParameterFullUpdate(std::stringstream& ss,
             }
         }
     }
+    ss << "\t";
+    // 19  isPolled / special access flags flag
+    //   Higher bits reserved for extensions
+    int specialFlags = (param.getIsPolled() ? 0x01 : 0);
+    ss << specialFlags;
 }
 
 // expecting a tab-tokenization of a parameter info
@@ -304,6 +309,14 @@ Parameter ParameterSerialization::deserializeParameterFullUpdate(const std::vect
                 }
             }
         }
+    }
+    // 19 isPolled / extra access flags (if present; V7.2+ -- before that, polling-type parameters did not exist)
+    if (toks.size()>19) {
+        // Higher bits reserved for extensions
+        int specialFlags = atol(toks[19].c_str());
+        param.setIsPolled(specialFlags & 0x01);
+    } else {
+        param.setIsPolled(false);
     }
     return param;
 }

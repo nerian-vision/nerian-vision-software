@@ -215,6 +215,11 @@ public:
      */
     void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
 
+    /**
+     * \brief Requests to poll for an updated value of the specified parameter UID
+     */
+    void pollParameter(const std::string& uid, bool synchronous=true);
+
 private:
     static constexpr int SOCKET_TIMEOUT_MS = 500;
     static constexpr int SOCKET_RECONNECT_INTERVAL_MS = 2000;

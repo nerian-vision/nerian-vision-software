@@ -829,6 +829,40 @@ void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, 
     }
 }
 
+void ParameterTransfer::pollParameter(const std::string& uid, bool synchronous) {
+    if (writingProhibited) {
+        throw ParameterException("Polling parameters is not valid inside an unthreaded event handler");
+    }
+
+    if (transactionInProgress) {
+        throw TransferException("Polling parameters is invalid within an open transaction");
+    }
+
+    waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
+
+    std::stringstream ss;
+    // cmd "O" -> pOll for update
+    ss << "O" << "\t" << (synchronous ? getThreadId() : -1) << "\t" << uid << "\n";
+
+    if (synchronous) {
+        blockingCallThisThread([this, &ss](){
+            sendNetworkCommand(ss.str(), "parameter poll");
+        });
+        auto result = lastSetRequestResult[getThreadId()];
+        if (result.first == false) {
+            // There was a remote error, append its info to the exception
+            throw ParameterException("Remote parameter error: " + result.second);
+        }
+    } else {
+        // 'Fire and forget' immediate-return mode (force update, do not wait for new value)
+        sendNetworkCommand(ss.str(), "parameter poll");
+    }
+}
+
 void ParameterTransfer::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback) {
     connectionStateChangeCallback = callback;
 }

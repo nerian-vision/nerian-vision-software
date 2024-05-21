@@ -28,11 +28,11 @@ namespace param {
 using namespace internal;
 
 Parameter::Parameter(const std::string& uid)
-: uid(uid), name(uid), governorType(GOVERNOR_NONE), invokeGovernorOnInit(false), accessForConfig(ACCESS_NONE), accessForApi(ACCESS_NONE), interactionHint(INTERACTION_ACTIVE), isModified(false) {
+: uid(uid), name(uid), governorType(GOVERNOR_NONE), invokeGovernorOnInit(false), accessForConfig(ACCESS_NONE), accessForApi(ACCESS_NONE), interactionHint(INTERACTION_ACTIVE), isModified(false), isPolledForUpdates(false) {
 }
 
-std::string Parameter::interpolateCommandLine(const ParameterValue& newVal) {
-    std::string result = governorString;
+std::string Parameter::interpolateCommandLine(const ParameterValue& newVal, GovernorFunction govFn) {
+    std::string result = (govFn==GOVERNOR_FN_CHANGE_VALUE) ? governorString : governorPollString;
     std::set<char> subst{'P', 'O', 'N', 'E', 'D'};
     std::ostringstream ss;
     char what;

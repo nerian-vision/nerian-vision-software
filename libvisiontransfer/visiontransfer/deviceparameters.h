@@ -1112,6 +1112,28 @@ public:
     visiontransfer::param::ParameterSet getParameterSet() const;
 
     /**
+     *  \brief Polls a parameter to report with updated internal values. Only
+     *  meaningful if parameter.isPolled()==true, otherwise works like getParameter.
+     *
+     *  Returns a Parameter object for the named device parameter after polling
+     *  and receiving an updated version.
+     *  Throws ParameterException for invalid or inaccessible parameter names. *[C++11]*
+     *
+     * The returned object is a detached copy of the internal parameter at invocation time;
+     * it is not updated when the device sends a new value.
+     * Likewise, any modifications must be requested using setParameter or the various parameter-specific setters.
+     *
+     * \param name         The parameter UID to query
+     *
+     * \param blockingCall Whether to block for the reply before returning (default true).
+     *   If false, this is the pure polling update request, and the returned Parameter
+     *   will not contain the updated value yet (use the update callbacks in this case).
+     *
+     * \note This function is available for C++11 and newer.
+     */
+    visiontransfer::param::Parameter pollParameter(const std::string& name, bool blockingCall=true);
+
+    /**
      * \brief Sets the optional user parameter update callback.
      * This is then called for all asynchronous value or metadata changes that the server sends. *[C++11]*
      *
