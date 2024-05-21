@@ -65,9 +65,9 @@ public:
                         toks.push_back(tmp);
                         ss.str("");
                     }
-                } else if (inp[i] == '"') {
+                } else if (_quoting && inp[i] == '"') {
                     quotemode = '"';
-                } else if (inp[i] == '\'') {
+                } else if (_quoting && inp[i] == '\'') {
                     quotemode = '\'';
                 } else {
                     ss << inp[i];

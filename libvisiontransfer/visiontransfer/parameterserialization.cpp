@@ -101,7 +101,7 @@ void ParameterSerialization::serializeParameterFullUpdate(std::stringstream& ss,
     ss << escapeString(param.getDescription()) << "\t";
     // 12  Default value
     if (!param.isTensor()) {
-        ss << param.getDefault<std::string>() << "\t";
+        ss << escapeString(param.getDefault<std::string>()) << "\t";
     } else {
         auto shape = param.getTensorShape();
         ss << param.getTensorDimension() << " ";
@@ -157,9 +157,9 @@ void ParameterSerialization::serializeParameterFullUpdate(std::stringstream& ss,
     // 18  Current value
     if (!param.isTensor()) {
         if (param.hasCurrent()) {
-            ss << param.getCurrent<std::string>();
+            ss << escapeString(param.getCurrent<std::string>());
         } else {
-            ss << param.getDefault<std::string>();
+            ss << escapeString(param.getDefault<std::string>());
         }
     } else {
         auto shape = param.getTensorShape();
@@ -260,7 +260,7 @@ Parameter ParameterSerialization::deserializeParameterFullUpdate(const std::vect
     param.setDescription(unescapeString(toks[11]));
     // 12  Default value
     if (!isTensor) {
-        param.setDefault<std::string>(toks[12]);
+        param.setDefault<std::string>(unescapeString(toks[12]));
     }
     // 13, 14, 15  Min, Max, Increment
     if (param.isScalar()) {
@@ -282,7 +282,7 @@ Parameter ParameterSerialization::deserializeParameterFullUpdate(const std::vect
     }
     // 18  Current value
     if (!isTensor) {
-        param.setCurrent<std::string>(toks[18]);
+        param.setCurrent<std::string>(unescapeString(toks[18]));
     } else {
         auto dataToks = tokr.tokenize(toks[18]);
         if (dataToks.size() < 1) {
@@ -324,7 +324,7 @@ Parameter ParameterSerialization::deserializeParameterFullUpdate(const std::vect
 // String serialization of current-value-only modification (line header "V")
 void ParameterSerialization::serializeParameterValueChange(std::stringstream& ss, const Parameter& param) {
     if (param.isScalar()) {
-        ss << "V" << "\t" << param.getUid() << "\t" << (param.getIsModified()?"1":"0") << "\t" << param.getCurrent<std::string>();
+        ss << "V" << "\t" << param.getUid() << "\t" << (param.getIsModified()?"1":"0") << "\t" << escapeString(param.getCurrent<std::string>());
     } else {
         // Tensor with current shape + data
         ss << "V" << "\t" << param.getUid() << "\t" << (param.getIsModified()?"1":"0") << "\t";
@@ -381,7 +381,7 @@ void ParameterSerialization::deserializeParameterValueChange(const std::vector<s
             }
         }
     } else {
-        param.setCurrent<std::string>(toks[3]);
+        param.setCurrent<std::string>(unescapeString(toks[3]));
     }
 }
 
