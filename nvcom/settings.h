@@ -15,6 +15,8 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
+#include <string>
+
 /*
  *  A collection of all available program settings
  */
@@ -55,6 +57,7 @@ struct Settings {
     bool convert12Bit;
     bool fileNameDateTime;
     double disparityOffset;
+    bool demoMode;
 
     Settings():
         readDir(""), writeDir(""), writeDirAlwaysAsk(false), writeDirSelected(false), readImages(false),
@@ -66,7 +69,7 @@ struct Settings {
         disableReception(false), printTimestamps(false),
         zoomPercent(100), displayCoordinate(false), writePgm(false),
         adaptiveColorScale(false), view3D(false), convert12Bit(false), fileNameDateTime(false),
-        disparityOffset(0.0) {
+        disparityOffset(0.0), demoMode(false) {
     }
 };
 

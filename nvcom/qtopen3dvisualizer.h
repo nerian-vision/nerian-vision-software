@@ -15,6 +15,8 @@
 #ifndef QTOPEN3DVISUALIZER_H
 #define QTOPEN3DVISUALIZER_H
 
+#include "settings.h"
+
 #ifndef WITH_OPEN3D
 // Dummy implementation if Open3D is not available
 #include <QLabel>
@@ -29,7 +31,7 @@ namespace open3d {
 
 class QtOpen3DVisualizer: public QLabel {
 public:
-    QtOpen3DVisualizer(QWidget *parent)
+    QtOpen3DVisualizer(QWidget *parent, const Settings& settings)
         :QLabel("3D display is not available!\nPlease re-compile NVCom with Open3D support.", parent) {
         setAlignment(Qt::AlignCenter);
     }
@@ -45,7 +47,7 @@ public:
 
 class QtOpen3DVisualizer: public QOpenGLWidget, private open3d::visualization::Visualizer {
 public:
-    QtOpen3DVisualizer(QWidget *parent);
+    QtOpen3DVisualizer(QWidget *parent, const Settings& settings);
     bool setDisplayCloud(std::shared_ptr<open3d::geometry::PointCloud> pointcloud, double fovHoriz);
     void setErrorCallback(const std::function<void()>& f) {
         errorCallback = f;
@@ -63,6 +65,7 @@ protected:
     void showEvent(QShowEvent *event) override;
 
 private:
+    Settings settings;
     std::function<void()> errorCallback;
     std::shared_ptr<open3d::geometry::PointCloud> cloud;
     std::mutex cloudMutex;

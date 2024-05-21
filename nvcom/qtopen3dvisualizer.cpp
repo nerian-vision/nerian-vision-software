@@ -37,8 +37,8 @@ using namespace std::chrono;
 #define DEMO_ROTATION_X_AMPLITUDE   80
 #define DEMO_ROTATION_Y_AMPLITUDE   35
 
-QtOpen3DVisualizer::QtOpen3DVisualizer(QWidget *parent)
-    :QOpenGLWidget(parent) {
+QtOpen3DVisualizer::QtOpen3DVisualizer(QWidget *parent, const Settings& settings)
+    :QOpenGLWidget(parent), settings(settings) {
     lastMouseX = 0;
     lastMouseY = 0;
     fov = 60 * M_PI / 180.0;
@@ -107,14 +107,12 @@ void QtOpen3DVisualizer::updateView(bool resetExtrinsic) {
     view_control_ptr_->SetConstantZFar(1000.0);
     view_control_ptr_->SetConstantZNear(0.01);
 
-#ifdef DEMO_MODE
-    if(resetExtrinsic) {
+    if(settings.demoMode && resetExtrinsic) {
         // Copying the view control object is dangerous if Open3D wasn't
         // built with the same compiler settings! Hence this is only
         // done for demo builds.
         defaultView = *view_control_ptr_;
     }
-#endif
 }
 
 void QtOpen3DVisualizer::paintGL() {
@@ -129,8 +127,7 @@ void QtOpen3DVisualizer::paintGL() {
     }
     Render();
 
-#ifdef DEMO_MODE
-    if(validCloud) {
+    if(validCloud && settings.demoMode) {
         static steady_clock::time_point startTime = steady_clock::now();
         long long microSecs = duration_cast<microseconds>(steady_clock::now() - startTime).count();
 
@@ -144,7 +141,6 @@ void QtOpen3DVisualizer::paintGL() {
         view_control_ptr_->SetConstantZFar(DEMO_FAR_LIMIT);
         update();
     }
-#endif
 
     pendingUpdate = false;
 }

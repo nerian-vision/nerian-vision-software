@@ -172,7 +172,7 @@ bool MainWindow::init(QApplication& app) {
     fpsTimer.start();
     QObject::connect(&fpsTimer, &QTimer::timeout, this, &MainWindow::displayFrameRate);
 
-    if(settings.remoteHost == "") {
+    if(settings.remoteHost == "" && !settings.demoMode) {
         showConnectionDialog();
     } else {
         reinitNVCom();
@@ -188,15 +188,15 @@ bool MainWindow::init(QApplication& app) {
         }
     }
 
-#ifdef DEMO_MODE
-    connect(&demoTimer, &QTimer::timeout, this, [this]{switchView(!settings.view3D);});
-    demoTimer.start(1000*DEMO_CYCLE_INTERVAL);
+    if(settings.demoMode) {
+        connect(&demoTimer, &QTimer::timeout, this, [this]{switchView(!settings.view3D);});
+        demoTimer.start(1000*DEMO_CYCLE_INTERVAL);
 
-    QPalette pal;
-    pal.setColor(QPalette::Background, QColor(64, 64, 64));
-    pal.setColor(QPalette::WindowText, QColor(255, 255, 255));
-    this->setPalette(pal);
-#endif
+        QPalette pal;
+        pal.setColor(QPalette::Background, QColor(64, 64, 64));
+        pal.setColor(QPalette::WindowText, QColor(255, 255, 255));
+        this->setPalette(pal);
+    }
 
     return true;
 }
@@ -434,6 +434,7 @@ bool MainWindow::parseOptions(QApplication& app) {
     settings.convert12Bit = appSettings.value("convert_12_bit", true).toBool();
     settings.fileNameDateTime = appSettings.value("file_name_date_time", true).toBool();
     settings.disparityOffset = 0.0;
+    settings.demoMode = false;
 
     QCommandLineOption optColCoding ("c",  "Select color coding scheme (0 = no color, 1 = red / blue, 2 = rainbow)",
         "VAL", QString::number((int)settings.colorScheme));
@@ -451,6 +452,7 @@ bool MainWindow::parseOptions(QApplication& app) {
     QCommandLineOption optFullscreen("F",  "Run in fullscreen mode");
     QCommandLineOption optBinCloud  ("b",  "Write point clouds in binary rather than text format", "on/off", (settings.binaryPointCloud ? "on" : "off"));
     QCommandLineOption optDispOffset("o",  "Apply constant offset to disparity values", "VAL", QString::number(settings.disparityOffset));
+    QCommandLineOption optDemo      ("D",  "Start in demo-mode");
 #ifdef _WIN32
     QCommandLineOption optConsole   ("C",  "Keep showing console on Windows");
 #endif
@@ -471,6 +473,7 @@ bool MainWindow::parseOptions(QApplication& app) {
     cmdParser.addOption(optFullscreen);
     cmdParser.addOption(optBinCloud);
     cmdParser.addOption(optDispOffset);
+    cmdParser.addOption(optDemo);
 #ifdef _WIN32
     cmdParser.addOption(optConsole);
 #endif
@@ -508,6 +511,10 @@ bool MainWindow::parseOptions(QApplication& app) {
     fullscreen = cmdParser.isSet(optFullscreen);
     settings.binaryPointCloud = (cmdParser.value(optBinCloud) == "on");
     settings.disparityOffset = cmdParser.value(optDispOffset).toDouble();
+    settings.demoMode = cmdParser.isSet(optDemo);
+    if(settings.demoMode) {
+        fullscreen = true;
+    }
 #ifdef _WIN32
     keepConsole = cmdParser.isSet(optConsole);
 #endif
@@ -674,7 +681,7 @@ void MainWindow::switchView(bool view3D) {
             scrollArea->setWidget(displayWidget);
         } else {
             // Create 3D View
-            open3dWidget = new QtOpen3DVisualizer(this);
+            open3dWidget = new QtOpen3DVisualizer(this, settings);
             open3dWidget->setErrorCallback([this]{
                 settings.view3D = false;});
             ui->clientWidget->layout()->addWidget(open3dWidget);

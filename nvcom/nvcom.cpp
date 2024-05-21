@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <string>
 #include <sstream>
+#include <visiontransfer/deviceenumeration.h>
 
 #ifdef WITH_OPEN3D
 #   include <open3d/Open3D.h>
@@ -88,9 +89,18 @@ void NVCom::mainLoop() {
         while(!terminateThreads) {
             // First establish network connection
             if(asyncTrans == nullptr) {
-                asyncTrans.reset(new AsyncTransfer(
-                    settings.remoteHost.c_str(), to_string(settings.remotePort).c_str(),
-                    settings.tcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP));
+                if(settings.demoMode) {
+                    // In demo mode we just connect to the first device
+                    DeviceEnumeration deviceEnum;
+                    DeviceEnumeration::DeviceList devices = deviceEnum.discoverDevices();
+                    if(devices.size() > 0) {
+                        asyncTrans.reset(new AsyncTransfer(devices[0]));
+                    }
+                } else {
+                    asyncTrans.reset(new AsyncTransfer(
+                        settings.remoteHost.c_str(), to_string(settings.remotePort).c_str(),
+                        settings.tcp ? ImageProtocol::PROTOCOL_TCP : ImageProtocol::PROTOCOL_UDP));
+                }
                 connectedCallback();
             }
 
