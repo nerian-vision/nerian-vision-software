@@ -319,6 +319,7 @@ private:
     static constexpr unsigned char RESEND_MESSAGE = 0x04;
     static constexpr unsigned char EOF_MESSAGE = 0x05;
     static constexpr unsigned char HEARTBEAT_MESSAGE = 0x06;
+    static constexpr unsigned char CONNECTION_REFUSED_MESSAGE = 0x07;
 
     bool isServer;
     ProtocolType protType;

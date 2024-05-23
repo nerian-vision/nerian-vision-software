@@ -77,6 +77,7 @@ private:
 
     int tcpReconnectSecondsBetweenRetries;
     bool knownConnectedState; // see Pimpl::isConnected() for info
+    bool gotAnyData; // to disambiguate 'connection refused'
 
     // Object for encoding and decoding the network protocol
     std::unique_ptr<ImageProtocol> protocol;
@@ -101,7 +102,7 @@ private:
     bool receiveNetworkData(bool block);
 
     // Data transmission
-    bool sendNetworkMessage(const unsigned char* msg, int length);
+    bool sendNetworkMessage(const unsigned char* msg, int length, sockaddr_in* destAddrUdp=nullptr);
     void sendPendingControlMessages();
 
     bool selectSocket(bool read, bool wait);
@@ -191,7 +192,7 @@ ImageTransfer::Pimpl::Pimpl(const char* address, const char* service,
         maxUdpPacketSize(maxUdpPacketSize),
         clientSocket(INVALID_SOCKET), tcpServerSocket(INVALID_SOCKET),
         tcpReconnectSecondsBetweenRetries(autoReconnectDelay),
-        knownConnectedState(false),
+        knownConnectedState(false), gotAnyData(false),
         currentMsgLen(0), currentMsgOffset(0), currentMsg(nullptr) {
 
     Networking::initNetworking();
@@ -310,7 +311,9 @@ bool ImageTransfer::Pimpl::tryAccept() {
     }
 
     // Accept one connection
-    SOCKET newSocket = Networking::acceptConnection(tcpServerSocket, remoteAddress);
+    sockaddr_in newRemoteAddress;
+    memset(&newRemoteAddress, 0, sizeof(newRemoteAddress));
+    SOCKET newSocket = Networking::acceptConnection(tcpServerSocket, newRemoteAddress);
     if(newSocket == INVALID_SOCKET) {
         // No connection
         return false;
@@ -321,8 +324,14 @@ bool ImageTransfer::Pimpl::tryAccept() {
     unique_lock<recursive_mutex> sendLock(sendMutex);
 
     if(clientSocket != INVALID_SOCKET) {
-        Networking::closeSocket(clientSocket);
+        // More robust TCP behavior: reject new connection.
+        // (We had to accept first so we can close now.)
+        // Remote client will detect that we closed immediately without sending data.
+        std::cerr << "DEBUG- Rejecting new TCP connection, we are busy already" << std::endl;
+        Networking::closeSocket(newSocket);
+        return false;
     }
+    memcpy(&remoteAddress, &newRemoteAddress, sizeof(remoteAddress));
     clientSocket = newSocket;
 
     // Set special socket options
@@ -547,15 +556,30 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
     if(bytesReceived == 0 || (protType == ImageProtocol::PROTOCOL_TCP && bytesReceived < 0 && err == WSAECONNRESET)) {
         // Connection closed
         disconnect();
+        if ((!isServer) && (!gotAnyData)) {
+            // TCP client connection was refused by the device because it had another connected client
+            setAutoReconnect(0);
+            throw ConnectionClosedException("Device is already connected to another client");
+        }
     } else if(bytesReceived < 0 && err != EWOULDBLOCK && err != EINTR &&
             err != ETIMEDOUT && err != WSA_IO_PENDING && err != WSAECONNRESET) {
         TransferException ex("Error reading from socket: " + Networking::getErrorString(err));
         throw ex;
     } else if(bytesReceived > 0) {
-        protocol->processReceivedMessage(bytesReceived);
-        if(protocol->newClientConnected()) {
-            // We have just established a new connection
-            memcpy(&remoteAddress, &fromAddress, sizeof(remoteAddress));
+        // Check whether this reception is from an unexpected new sender (for UDP server)
+        bool newSender = ((fromAddress.sin_addr.s_addr!=remoteAddress.sin_addr.s_addr) || (fromAddress.sin_port!=remoteAddress.sin_port));
+
+        if (newSender && protocol->isConnected()) {
+            // Reject interfering client
+            // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
+            std::cout << "Ignoring interfering UDP client, TODO send rejection" << std::endl;
+        } else {
+            gotAnyData = true;
+            protocol->processReceivedMessage(bytesReceived);
+            if(protocol->newClientConnected()) {
+                // We have just established a new connection
+                memcpy(&remoteAddress, &fromAddress, sizeof(remoteAddress));
+            }
         }
     }
 
@@ -603,23 +627,29 @@ bool ImageTransfer::Pimpl::isConnected() const {
     return knownConnectedState;
 }
 
-bool ImageTransfer::Pimpl::sendNetworkMessage(const unsigned char* msg, int length) {
+bool ImageTransfer::Pimpl::sendNetworkMessage(const unsigned char* msg, int length, sockaddr_in* destAddrUdp) {
     int written = 0;
     if(protType == ImageProtocol::PROTOCOL_UDP) {
-        sockaddr_in destAddr;
+        sockaddr_in* destAddr;
         SOCKET destSocket;
         {
             unique_lock<recursive_mutex> lock(sendMutex);
-            destAddr = remoteAddress;
+            if (destAddrUdp) {
+                // An overridden UDP destination (i.e. an interfering client)
+                destAddr = destAddrUdp;
+            } else {
+                // The correctly connected client
+                destAddr = &remoteAddress;
+            }
             destSocket = clientSocket;
         }
 
-        if(destAddr.sin_family != AF_INET) {
+        if(destAddr->sin_family != AF_INET) {
             return false; // Not connected
         }
 
         written = sendto(destSocket, reinterpret_cast<const char*>(msg), length, 0,
-            reinterpret_cast<sockaddr*>(&destAddr), sizeof(destAddr));
+            reinterpret_cast<sockaddr*>(destAddr), sizeof(*destAddr));
     } else {
         SOCKET destSocket;
         {

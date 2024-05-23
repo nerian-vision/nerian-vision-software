@@ -36,6 +36,14 @@ public:
 };
 
 /**
+ * \brief Exception class that is used for a busy server terminating a connection.
+ */
+class ConnectionClosedException: public std::runtime_error {
+public:
+    ConnectionClosedException(std::string msg): std::runtime_error(msg) {}
+};
+
+/**
  * \brief Exception class that is used for all parameter-related exceptions.
  */
 class ParameterException: public std::runtime_error {
