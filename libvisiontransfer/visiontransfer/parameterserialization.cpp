@@ -26,20 +26,41 @@ namespace internal {
 
 using namespace param;
 
-std::string escapeString(const std::string& str) {
+// Helpers to convert between unescaped and safely escaped newlines and tabs
+std::string ParameterSerialization::escapeString(const std::string& str) {
     auto s = str;
     s = std::regex_replace(s, std::regex("\\\\"), "\\\\");
     s = std::regex_replace(s, std::regex("\\n"), "\\n");
     s = std::regex_replace(s, std::regex("\\t"), "\\t");
+    s = std::regex_replace(s, std::regex("\""), "\\\"");
+    s = std::regex_replace(s, std::regex("\'"), "\\\'");
     return s;
 }
 
-std::string unescapeString(const std::string& str) {
+std::string ParameterSerialization::unescapeString(const std::string& str) {
+    std::ostringstream os;
     auto s = str;
-    s = std::regex_replace(s, std::regex("([^\\\\])\\\\t"), "$1\t");
-    s = std::regex_replace(s, std::regex("([^\\\\])\\\\n"), "$1\n");
-    s = std::regex_replace(s, std::regex("\\\\\\\\"), "\\\\");
-    return s;
+    bool esc = false;
+    for (auto& ch: s) {
+        if (esc) {
+            esc = false;
+            switch (ch) {
+                case '\\': os << '\\'; break;
+                case 'n': os << '\n'; break;
+                case 't': os << '\t'; break;
+                case '\"': os << '\"'; break;
+                case '\'': os << '\''; break;
+                default: os << ch; // An escape was silently stripped!
+            }
+        } else {
+            if (ch=='\\') esc=true;
+            else os << ch;
+        }
+    }
+    //s = std::regex_replace(s, std::regex("([^\\\\])\\\\t"), "$1\t");
+    //s = std::regex_replace(s, std::regex("([^\\\\])\\\\n"), "$1\n");
+    //s = std::regex_replace(s, std::regex("\\\\\\\\"), "\\\\");
+    return os.str();
 }
 
 // String serialization of full parameter info (line header "I") or metadata update (line header "M")

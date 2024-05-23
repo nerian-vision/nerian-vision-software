@@ -36,6 +36,9 @@ class ParameterSerialization {
         static void deserializeParameterValueChange(const std::vector<std::string>& toks, param::Parameter& param);
         static void serializeAsyncResult(std::stringstream& ss, const std::string& requestId, bool success, const std::string& message);
         static void deserializeAsyncResult(const std::vector<std::string>& toks, std::string& requestId, bool& success, std::string& message);
+
+        static std::string escapeString(const std::string& str);
+        static std::string unescapeString(const std::string& str);
 };
 
 } // namespace internal
