@@ -21,7 +21,8 @@
 #include "device/physicaldevice.h"
 #include <algorithm>
 
-#include <iostream> // DEBUG
+#include <iostream>
+#include <fstream>
 
 using namespace visiontransfer;
 
