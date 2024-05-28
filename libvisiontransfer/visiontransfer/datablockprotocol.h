@@ -299,6 +299,9 @@ public:
         return headerReceived;
     }
 
+    // Obtain a correctly formatted connection-rejected message for an interfering UDP client
+    static void getDisconnectionMessage(const unsigned char* &buf, int &sz);
+
 private:
     // The pimpl idiom is not necessary here, as this class is usually not
     // used directly
@@ -319,7 +322,7 @@ private:
     static constexpr unsigned char RESEND_MESSAGE = 0x04;
     static constexpr unsigned char EOF_MESSAGE = 0x05;
     static constexpr unsigned char HEARTBEAT_MESSAGE = 0x06;
-    static constexpr unsigned char CONNECTION_REFUSED_MESSAGE = 0x07;
+    static constexpr unsigned char DISCONNECTION_MESSAGE = 0x07;
 
     bool isServer;
     ProtocolType protType;

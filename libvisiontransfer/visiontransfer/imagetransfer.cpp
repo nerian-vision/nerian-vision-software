@@ -234,9 +234,8 @@ void ImageTransfer::Pimpl::establishConnection() {
 
 ImageTransfer::Pimpl::~Pimpl() {
 
-    if(addressInfo != nullptr) {
-        freeaddrinfo(addressInfo);
-    }
+    setAutoReconnect(0);
+    if (isConnected()) disconnect();
 
     if(clientSocket != INVALID_SOCKET) {
         Networking::closeSocket(clientSocket);
@@ -244,6 +243,10 @@ ImageTransfer::Pimpl::~Pimpl() {
     if(tcpServerSocket != INVALID_SOCKET) {
         Networking::closeSocket(tcpServerSocket);
     }
+    if(addressInfo != nullptr) {
+        freeaddrinfo(addressInfo);
+    }
+
 }
 
 void ImageTransfer::Pimpl::initTcpClient(const addrinfo* addressInfo) {
@@ -567,12 +570,18 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
         throw ex;
     } else if(bytesReceived > 0) {
         // Check whether this reception is from an unexpected new sender (for UDP server)
-        bool newSender = ((fromAddress.sin_addr.s_addr!=remoteAddress.sin_addr.s_addr) || (fromAddress.sin_port!=remoteAddress.sin_port));
+        bool newSender = (((fromAddress.sin_addr.s_addr!=remoteAddress.sin_addr.s_addr) || (fromAddress.sin_port!=remoteAddress.sin_port)) && (remoteAddress.sin_port != 0));
 
-        if (newSender && protocol->isConnected()) {
+        if (isServer && newSender && protocol->isConnected()) {
             // Reject interfering client
             // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
-            std::cout << "Ignoring interfering UDP client, TODO send rejection" << std::endl;
+            std::cout << "Rejecting interfering UDP client" << std::endl;
+            const unsigned char* disconnectionMsg;
+            int disconnectionMsgLen;
+            DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
+            if (disconnectionMsgLen > 0) {
+                sendNetworkMessage(disconnectionMsg, disconnectionMsgLen, &fromAddress);
+            }
         } else {
             gotAnyData = true;
             protocol->processReceivedMessage(bytesReceived);
@@ -591,6 +600,23 @@ void ImageTransfer::Pimpl::disconnect() {
     // disconnect
     unique_lock<recursive_mutex> recvLock(receiveMutex);
     unique_lock<recursive_mutex> sendLock(sendMutex);
+
+    if(clientSocket != INVALID_SOCKET) {
+        if ((!isServer) && isConnected() && protType == ImageProtocol::PROTOCOL_UDP) {
+            // Send a final client-side disconnection request instead of
+            // needing to wait for UDP heartbeat timeout on the device
+            try {
+                const unsigned char* disconnectionMsg;
+                int disconnectionMsgLen;
+                DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
+                if (disconnectionMsgLen > 0) {
+                    sendNetworkMessage(disconnectionMsg, disconnectionMsgLen, &remoteAddress);
+                }
+            } catch(...) {
+                // Server will see a disconnection (through heartbeat timeout) anyway
+            }
+        }
+    }
 
     knownConnectedState = false;
     if (connectionStateChangeCallback) connectionStateChangeCallback(visiontransfer::ConnectionState::DISCONNECTED);
