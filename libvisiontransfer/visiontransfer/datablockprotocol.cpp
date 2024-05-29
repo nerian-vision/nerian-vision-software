@@ -736,6 +736,15 @@ bool DataBlockProtocol::processControlMessage(int length) {
                 heartbeatReplyQueued = true;
             }
             break;
+        case DISCONNECTION_MESSAGE:
+            if (isServer) {
+                // Disconnection event in server sent by client: orderly disconnect (instead of heartbeat timeout)
+                connectionConfirmed = false; // => isConnected()==false
+            } else {
+                // Disconnection event in client sent by server: rejected!
+                throw ConnectionClosedException("Device is already connected to another client");
+            }
+            break;
         default:
             throw ProtocolException("Received invalid control message!");
             break;
@@ -951,6 +960,18 @@ void DataBlockProtocol::resizeReceiveBuffer() {
             blockReceiveBuffers[i].resize(blockReceiveSize[i]);
         }
     }
+}
+
+// static
+void DataBlockProtocol::getDisconnectionMessage(const unsigned char* &buf, int &sz) {
+    // A single disconnection message in the correct control message UDP wire format.
+    // A UDP client should send this in its connection teardown to signal to the server
+    // its intent to disconnect, so that the heartbeat timeout can be cut short.
+    // This is also the only message sent back to a new UDP client that connects to a
+    // busy server, explicitly rejecting the interfering client.
+    static const unsigned char DISCONNECTION_MESSAGE_BUFFER[] = { DISCONNECTION_MESSAGE, 0xff, 0xff, 0xff, 0xff };
+    buf = DISCONNECTION_MESSAGE_BUFFER;
+    sz = sizeof(DISCONNECTION_MESSAGE_BUFFER);
 }
 
 }} // namespace
