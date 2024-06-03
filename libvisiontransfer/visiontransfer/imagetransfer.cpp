@@ -106,6 +106,7 @@ private:
     void sendPendingControlMessages();
 
     bool selectSocket(bool read, bool wait);
+    bool isTcpClientClosed(SOCKET sock);
 };
 
 /******************** Stubs for all public members ********************/
@@ -330,7 +331,7 @@ bool ImageTransfer::Pimpl::tryAccept() {
         // More robust TCP behavior: reject new connection.
         // (We had to accept first so we can close now.)
         // Remote client will detect that we closed immediately without sending data.
-        std::cerr << "DEBUG- Rejecting new TCP connection, we are busy already" << std::endl;
+        //std::cerr << "DEBUG- Rejecting new TCP connection, we are busy already" << std::endl;
         Networking::closeSocket(newSocket);
         return false;
     }
@@ -399,6 +400,15 @@ ImageTransfer::TransferStatus ImageTransfer::Pimpl::transferData() {
     if(protType == ImageProtocol::PROTOCOL_UDP) {
         // This also handles the UDP 'disconnection' tracking
         receiveNetworkData(false);
+    } else if (isServer) {
+        if (isConnected()) {
+            // Test if TCP pipe closed remotely (even when we have nothing to send)
+            bool disconnected = isTcpClientClosed(clientSocket);
+            if (disconnected) {
+                // The connection has been closed
+                disconnect();
+            }
+        }
     }
 
     if(!isConnected()) {
@@ -575,7 +585,7 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
         if (isServer && newSender && protocol->isConnected()) {
             // Reject interfering client
             // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
-            std::cout << "Rejecting interfering UDP client" << std::endl;
+            //std::cerr << "DEBUG- Rejecting interfering UDP client" << std::endl;
             const unsigned char* disconnectionMsg;
             int disconnectionMsgLen;
             DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
@@ -596,7 +606,6 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
 }
 
 void ImageTransfer::Pimpl::disconnect() {
-    // We just need to forget the remote address in order to
     // disconnect
     unique_lock<recursive_mutex> recvLock(receiveMutex);
     unique_lock<recursive_mutex> sendLock(sendMutex);
@@ -735,6 +744,12 @@ void ImageTransfer::Pimpl::sendPendingControlMessages() {
 
 int ImageTransfer::Pimpl::getNumDroppedFrames() const {
     return protocol->getNumDroppedFrames();
+}
+
+bool ImageTransfer::Pimpl::isTcpClientClosed(SOCKET sock) {
+    char x;
+    ssize_t ret = recv(sock, &x, 1, MSG_DONTWAIT | MSG_PEEK);
+    return ret == 0;
 }
 
 bool ImageTransfer::Pimpl::selectSocket(bool read, bool wait) {
