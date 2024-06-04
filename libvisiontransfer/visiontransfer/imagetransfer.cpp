@@ -748,7 +748,7 @@ int ImageTransfer::Pimpl::getNumDroppedFrames() const {
 
 bool ImageTransfer::Pimpl::isTcpClientClosed(SOCKET sock) {
     char x;
-    ssize_t ret = recv(sock, &x, 1, MSG_DONTWAIT | MSG_PEEK);
+    auto ret = recv(sock, &x, 1, MSG_DONTWAIT | MSG_PEEK);
     return ret == 0;
 }
 
