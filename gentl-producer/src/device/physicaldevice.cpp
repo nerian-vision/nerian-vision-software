@@ -92,14 +92,12 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
 
 #ifndef DELIVER_TEST_DATA
         // Initialize network receiver
-        imageTf.reset(new ImageTransfer(host, "7681",
-            udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
+        imageTf.reset(new ImageTransfer(host, "7681", udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
+        //asyncTf.reset(new AsyncTransfer(host, "7681", udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
         // Initialize parameter server connection
         DEBUG_PHYS("Creating DeviceParameters");
         deviceParameters.reset(new DeviceParameters(host));
         deviceParameters->setParameterUpdateCallback(std::bind(&PhysicalDevice::remoteParameterChangeCallback, this, _1));
-
-        sendSoftwareTriggerRequest(); // force emission of initial trigger to get at least one set of metadata
 #endif
 
         // Initialize data streams
@@ -111,23 +109,59 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         logicalDevices[ID_DISPARITY].reset(new LogicalDevice(this, baseURL + "/disparity", DataStream::DISPARITY_STREAM));
         logicalDevices[ID_POINTCLOUD].reset(new LogicalDevice(this, baseURL + "/pointcloud", DataStream::POINTCLOUD_STREAM));
 
-        bool success = false;
-        {
+        // Infer initial metadata from nvparam (later overridden by incoming frames)
+        int numChannels = -1;
+        int channelIdx = 0;
+        try {
+            auto paramSet = deviceParameters->getParameterSet();
+            //std::cout << "get param " << std::endl;
+            auto imgSize = paramSet["RT_output_image_size"].getTensorData();
+            bool enabledLeft = paramSet["output_channel_left_enabled"].getCurrent<bool>();
+            bool enabledDisparity = paramSet["output_channel_disparity_enabled"].getCurrent<bool>();
+            bool enabledRight = paramSet["output_channel_right_enabled"].getCurrent<bool>();
+            int fmtInt = paramSet["RT_output_format"].getCurrent<int>();
+            // Note: when outputPixelFormat of FPGA is 12P, receive buffer is unpacked to 12 (in 16)
+            ImageSet::ImageFormat outputPixelFormat = (fmtInt==0x010C0047)?ImageSet::FORMAT_12_BIT_MONO:((fmtInt==0x02180014)?ImageSet::FORMAT_8_BIT_RGB:ImageSet::FORMAT_8_BIT_MONO);
+            bool enabledColor = paramSet.count("output_channel_color_enabled") && paramSet["output_channel_color_enabled"].getCurrent<bool>();
+            numChannels = (enabledLeft?1:0) + (enabledDisparity?1:0) + (enabledRight?1:0) + (enabledColor?1:0);
+
+            latestMetaData.setWidth(imgSize[0]);
+            latestMetaData.setHeight(imgSize[1]);
+            //std::cout << "Img " << imgSize[0] << "x" << imgSize[1] << std::endl;
+            latestMetaData.setNumberOfImages(numChannels);
+            if (enabledLeft) {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, channelIdx);
+                latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
+                channelIdx++;
+            }
+            if (enabledDisparity) {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, channelIdx);
+                latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_12_BIT_MONO);
+                channelIdx++;
+            }
+            if (enabledColor) {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, channelIdx);
+                latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_8_BIT_RGB);
+                channelIdx++;
+            }
+            if (enabledRight) {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, channelIdx);
+                latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
+                channelIdx++;
+            }
+        } catch(std::exception& ex) {
+            std::cerr << "Exception: " << ex.what() << std::endl;
+            throw;
+        }
+        bool valid = (channelIdx==numChannels) && (latestMetaData.getHeight() > 0);
+
+        if(!valid) {
+            threadRunning = false;
+            return GC_ERR_IO;
+        } else {
             std::unique_lock<std::mutex> lock(receiveMutex);
             threadRunning = true;
             receiveThread = std::thread(std::bind(&PhysicalDevice::deviceReceiveThread, this));
-
-            // Wait for first frame
-            std::chrono::milliseconds duration(1000);
-            initializedCondition.wait_for(lock, duration);
-            success = (latestMetaData.getHeight() > 0);
-        }
-
-        if(!success) {
-            threadRunning = false;
-            receiveThread.join();
-            return GC_ERR_IO;
-        } else {
             return GC_ERR_SUCCESS;
         }
     } catch(...) {
@@ -186,12 +220,16 @@ void PhysicalDevice::deviceReceiveThread() {
 #else
             // Receive new image
             if(!imageTf->receiveImageSet(receivedSet)) {
+            //if(!asyncTf->collectReceivedImageSet(receivedSet)) {
                 // No image available
                 continue;
             }
 #endif
 
             {
+                int sec, usec;
+                receivedSet.getTimestamp(sec, usec);
+                DEBUG_PHYS("Captured a new visiontransfer::ImageSet from " << (this->udp?"UDP":"TCP") << " host " << this->host << " - Timestamp " << ((long long) sec*1000000+usec));
                 std::unique_lock<std::mutex> lock(receiveMutex);
                 // Determine whether new image set is compatible to previous one
                 bool metadataChanged = false;
@@ -296,6 +334,7 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
 
         buffer->setMetaData(receivedSet);
         logicalDevices[id]->getStream()->queueOutputBuffer();
+        DEBUG_PHYS("Queued a single buffer");
 
         if(buffer->isIncomplete()) {
             logicalDevices[id]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);
@@ -425,6 +464,8 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
     }
     buffer->setMetaData(receivedSet);
     logicalDevices[ID_MULTIPART]->getStream()->queueOutputBuffer();
+
+    DEBUG_PHYS("Queued a multipart buffer");
 
     if(buffer->isIncomplete()) {
         logicalDevices[ID_MULTIPART]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);

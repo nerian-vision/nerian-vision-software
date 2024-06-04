@@ -22,6 +22,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <visiontransfer/asynctransfer.h>
 #include <visiontransfer/imagetransfer.h>
 #include <visiontransfer/reconstruct3d.h>
 #include <visiontransfer/deviceparameters.h>
@@ -130,6 +131,7 @@ public:
 private:
     Interface* interface; // Associated system object
     std::unique_ptr<visiontransfer::ImageTransfer> imageTf; // Object for receiving image data
+    //std::unique_ptr<visiontransfer::AsyncTransfer> asyncTf; // Object for receiving image data
     std::unique_ptr<visiontransfer::DeviceParameters> deviceParameters; // Parameter access for sending software trigger
 
     bool udp; // Indicates if UDP or TCP protocol is used
