@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
 #include <chrono>
 #include <deque>
 
-#include "visiontransfer/alignedallocator.h"
+#include "visiontransfer/internal/alignedallocator.h"
 #include "visiontransfer/exceptions.h"
 
 namespace visiontransfer {

@@ -1,17 +1,31 @@
+/*******************************************************************************
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *******************************************************************************/
+
 #include <sys/types.h>
 #include <cstring>
 #include <stdexcept>
 #include <fcntl.h>
 #include <fstream>
 
-#include <visiontransfer/internalinformation.h>
-#include <visiontransfer/networking.h>
-#include <visiontransfer/datachannelservicebase.h>
-#include <visiontransfer/datachannel-control.h>
+#include <visiontransfer/internal/internalinformation.h>
+#include <visiontransfer/internal/networking.h>
+#include <visiontransfer/internal/datachannelservicebase.h>
+#include <visiontransfer/internal/datachannel-control.h>
 #include <visiontransfer/datachannelservice.h>
 
-#include <visiontransfer/datachannel-imu-bno080.h>
-#include <visiontransfer/protocol-sh2-imu-bno080.h> // for sensor constants
+#include <visiontransfer/internal/datachannel-imu-bno080.h>
+#include <visiontransfer/internal/protocol-sh2-imu-bno080.h> // for sensor constants
 
 #include <iostream>
 

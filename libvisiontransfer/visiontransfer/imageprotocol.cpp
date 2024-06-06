@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,11 +19,11 @@
 #include <memory>
 #include <algorithm>
 #include "visiontransfer/imageprotocol.h"
-#include "visiontransfer/alignedallocator.h"
-#include "visiontransfer/datablockprotocol.h"
 #include "visiontransfer/exceptions.h"
-#include "visiontransfer/bitconversions.h"
-#include "visiontransfer/internalinformation.h"
+#include "visiontransfer/internal/alignedallocator.h"
+#include "visiontransfer/internal/datablockprotocol.h"
+#include "visiontransfer/internal/bitconversions.h"
+#include "visiontransfer/internal/internalinformation.h"
 
 // Network headers
 #ifdef _WIN32

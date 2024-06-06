@@ -2,8 +2,6 @@ set(HEADERS
     parametervalue.h
     parameter.h
     parameterset.h
-    parameterserialization.h
-    tokenizer.h
     asynctransfer.h
     imageprotocol.h
     imagetransfer.h
@@ -11,54 +9,56 @@ set(HEADERS
     reconstruct3d.h
     reconstruct3d-pcl.h
     reconstruct3d-open3d.h
-    alignedallocator.h
-    datablockprotocol.h
     imageset.h
     imageset-opencv.h
     imagepair.h
-    bitconversions.h
-    datachannelservicebase.h
     datachannelservice.h
-    datachannel-imu-bno080.h
-    protocol-sh2-imu-bno080.h
     deviceinfo.h
     deviceenumeration.h
-    internalinformation.h
     parameterinfo.h
-    parametertransfer.h
-    parametertransferdata.h
     deviceparameters.h
     scenescanparameters.h
-    networking.h
-    sensorringbuffer.h
     sensordata.h
-    conversionhelpers.h
     libraryinfo.h
     types.h
+    internal/alignedallocator.h
+    internal/bitconversions.h
+    internal/conversionhelpers.h
+    internal/datablockprotocol.h
+    internal/datachannel-imu-bno080.h
+    internal/datachannelservicebase.h
+    internal/internalinformation.h
+    internal/networking.h
+    internal/parameterserialization.h
+    internal/parametertransfer.h
+    internal/parametertransferdata.h
+    internal/protocol-sh2-imu-bno080.h
+    internal/sensorringbuffer.h
+    internal/tokenizer.h
 )
 
 set(SOURCES
     parametervalue.cpp
     parameter.cpp
     parameterset.cpp
-    parameterserialization.cpp
     asynctransfer.cpp
     imageprotocol.cpp
     imagetransfer.cpp
     reconstruct3d.cpp
-    datablockprotocol.cpp
     imageset.cpp
-    bitconversions.cpp
-    datachannelservicebase.cpp
     datachannelservice.cpp
-    datachannel-imu-bno080.cpp
     deviceenumeration.cpp
-    internalinformation.cpp
     parameterinfo.cpp
-    parametertransfer.cpp
     deviceparameters.cpp
-    networking.cpp
     libraryinfo.cpp
+    internal/bitconversions.cpp
+    internal/datablockprotocol.cpp
+    internal/datachannel-imu-bno080.cpp
+    internal/datachannelservicebase.cpp
+    internal/internalinformation.cpp
+    internal/networking.cpp
+    internal/parameterserialization.cpp
+    internal/parametertransfer.cpp
 )
 
 # Build static and shared version
@@ -91,3 +91,4 @@ endif()
 install(TARGETS visiontransfer${LIB_SUFFIX} DESTINATION lib)
 install(TARGETS visiontransfer-static${LIB_SUFFIX} DESTINATION lib)
 install(FILES ${HEADERS} DESTINATION include/visiontransfer)
+

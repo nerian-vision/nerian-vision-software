@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
 
 #include <visiontransfer/common.h>
 #include <visiontransfer/parametervalue.h>
-#include <visiontransfer/conversionhelpers.h>
+#include <visiontransfer/internal/conversionhelpers.h>
 
 namespace visiontransfer {
 namespace param {

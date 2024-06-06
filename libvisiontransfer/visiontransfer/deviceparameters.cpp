@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -13,7 +13,7 @@
  *******************************************************************************/
 
 #include "visiontransfer/deviceparameters.h"
-#include "visiontransfer/parametertransfer.h"
+#include "visiontransfer/internal/parametertransfer.h"
 #include "visiontransfer/exceptions.h"
 #include "visiontransfer/common.h"
 
