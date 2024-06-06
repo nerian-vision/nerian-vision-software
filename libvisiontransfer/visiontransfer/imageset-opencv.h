@@ -27,18 +27,18 @@ namespace visiontransfer {
 inline void ImageSet::toOpenCVImage(int imageNumber, cv::Mat& dest, bool convertRgbToBgr) {
     assert(imageNumber >= 0 && imageNumber < getNumberOfImages());
 
-    switch(formats[imageNumber]) {
+    switch(getPixelFormat(imageNumber)) {
         case ImageSet::FORMAT_12_BIT_MONO:
-            dest= cv::Mat_<unsigned short>(height, width,
-                reinterpret_cast<unsigned short*>(data[imageNumber]), rowStride[imageNumber]);
+            dest= cv::Mat_<unsigned short>(getHeight(), getWidth(),
+                reinterpret_cast<unsigned short*>(getPixelData(imageNumber)), getRowStride(imageNumber));
             break;
         case ImageSet::FORMAT_8_BIT_MONO:
-            dest = cv::Mat_<unsigned char>(height, width,
-                data[imageNumber], rowStride[imageNumber]);
+            dest = cv::Mat_<unsigned char>(getHeight(), getWidth(),
+                getPixelData(imageNumber), getRowStride(imageNumber));
             break;
         case ImageSet::FORMAT_8_BIT_RGB:
-            dest = cv::Mat_<cv::Vec3b>(height, width,
-                reinterpret_cast<cv::Vec3b*>(data[imageNumber]), rowStride[imageNumber]);
+            dest = cv::Mat_<cv::Vec3b>(getHeight(), getWidth(),
+                reinterpret_cast<cv::Vec3b*>(getPixelData(imageNumber)), getRowStride(imageNumber));
             if(convertRgbToBgr) {
                 cv::cvtColor(dest, dest, cv::COLOR_RGB2BGR);
             }

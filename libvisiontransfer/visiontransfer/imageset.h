@@ -36,6 +36,12 @@ namespace visiontransfer {
  * data remains valid for as long as this object persists.
  */
 class VT_EXPORT ImageSet {
+
+private:
+    // We (mostly) follow the pimpl idiom here
+    class Pimpl;
+    Pimpl* pimpl;
+
 public:
     static const int MAX_SUPPORTED_IMAGES = 4;
     /**
@@ -90,12 +96,12 @@ public:
     /**
      * \brief Sets a new width for both images.
      */
-    void setWidth(int w) {width = w;}
+    void setWidth(int w);
 
     /**
      * \brief Sets a new width for both images.
      */
-    void setHeight(int h) {height = h;}
+    void setHeight(int h);
 
     /**
      * \brief Sets a new row stride for the pixel data of one image.
@@ -104,10 +110,7 @@ public:
      *        row stride (0 ... getNumberOfImages()-1).
      * \param stride The row stride that shall be set.
      */
-    void setRowStride(int imageNumber, int stride) {
-        assert(imageNumber >= 0 && imageNumber < getNumberOfImages());
-        rowStride[imageNumber] = stride;
-    }
+    void setRowStride(int imageNumber, int stride);
 
     /**
      * \brief Sets the pixel format for the given image.
@@ -116,10 +119,7 @@ public:
      *        pixel format (0 ... getNumberOfImages()-1).
      * \param format The pixel format that shall be set.
      */
-    void setPixelFormat(int imageNumber, ImageFormat format) {
-        assert(imageNumber >= 0 && imageNumber < getNumberOfImages());
-        formats[imageNumber] = format;
-    }
+    void setPixelFormat(int imageNumber, ImageFormat format);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
     DEPRECATED("Use setPixelFormat(int, ImageFormat) instead") void setPixelFormat(int imageNumber, ImageFormat_Deprecated format) {
@@ -134,10 +134,7 @@ public:
      *        pixel data (0 ... getNumberOfImages()-1).
      * \param pixelData The pixel data that shall be set.
      */
-    void setPixelData(int imageNumber, unsigned char* pixelData) {
-        assert(imageNumber >= 0 && imageNumber < getNumberOfImages());
-        data[imageNumber] = pixelData;
-    }
+    void setPixelData(int imageNumber, unsigned char* pixelData);
 
     /**
      * \brief Sets the pointer to the disparity-to-depth mapping matrix q.
@@ -145,16 +142,12 @@ public:
      * No data is copied. The data which q is pointing to has to remain valid
      * for as long as this object exists.
      */
-    void setQMatrix(const float* q) {
-        qMatrix = q;
-    }
+    void setQMatrix(const float* q);
 
     /**
      * \brief Sets the sequence number for this image set.
      */
-    void setSequenceNumber(unsigned int num) {
-        seqNum = num;
-    }
+    void setSequenceNumber(unsigned int num);
 
     /**
      * \brief Sets the time at which this image set has been captured.
@@ -163,10 +156,7 @@ public:
      * \param microsec The fractional seconds part of the time stamp with
      *        a resolution of 1 microsecond.
      */
-    void setTimestamp(int seconds, int microsec) {
-        timeSec = seconds;
-        timeMicrosec = microsec;
-    }
+    void setTimestamp(int seconds, int microsec);
 
     /**
      * \brief Sets the value range for the disparity map contained in this
@@ -175,17 +165,12 @@ public:
      * \param minimum Minimum disparity value.
      * \param maximum Maximum disparity value.
      */
-    void setDisparityRange(int minimum, int maximum) {
-        minDisparity = minimum;
-        maxDisparity = maximum;
-    }
+    void setDisparityRange(int minimum, int maximum);
 
     /**
      * \brief Sets the subpixel factor for this image set.
      */
-    void setSubpixelFactor(int subpixFact) {
-        subpixelFactor = subpixFact;
-    }
+    void setSubpixelFactor(int subpixFact);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
     /**
@@ -202,12 +187,12 @@ public:
     /**
      * \brief Returns the width of each image.
      */
-    int getWidth() const {return width;}
+    int getWidth() const;
 
     /**
      * \brief Returns the height of each image.
      */
-    int getHeight() const {return height;}
+    int getHeight() const;
 
     /**
      * \brief Returns the row stride for the pixel data of one image.
@@ -218,10 +203,7 @@ public:
      * Please use getRowStride(ImageSet::ImageType) to access the
      * data by their abstract role in lieu of their index in the set.
      */
-    int getRowStride(int imageNumber) const {
-        assert(imageNumber >= 0 && imageNumber < getNumberOfImages());
-        return rowStride[imageNumber];
-    }
+    int getRowStride(int imageNumber) const;
 
     /**
      * \brief Returns the row stride for the pixel data of one image.
@@ -231,10 +213,7 @@ public:
      * This function will throw an exception when the ImageType
      * is not present in this set (use hasImageType(what) to check).
      */
-    int getRowStride(ImageType what) const {
-        int idx = getIndexOf(what, true);
-        return getRowStride(idx);
-    }
+    int getRowStride(ImageType what) const;
 
     /**
      * \brief Returns the pixel format for the given image.
@@ -245,10 +224,7 @@ public:
      * Please use getPixelFormat(ImageSet::ImageType) to access the
      * data by their abstract role in lieu of their index in the set.
      */
-    ImageFormat getPixelFormat(int imageNumber) const {
-        assert(imageNumber >= 0 && imageNumber < getNumberOfImages());
-        return formats[imageNumber];
-    }
+    ImageFormat getPixelFormat(int imageNumber) const;
 
     /**
      * \brief Returns the pixel format for the given image.
@@ -258,10 +234,7 @@ public:
      * This function will throw an exception when the ImageType
      * is not present in this set (use hasImageType(what) to check).
      */
-    ImageFormat getPixelFormat(ImageType what) const {
-        int idx = getIndexOf(what, true);
-        return getPixelFormat(idx);
-    }
+    ImageFormat getPixelFormat(ImageType what) const;
 
     /**
      * \brief Returns the pixel data for the given image.
@@ -272,10 +245,7 @@ public:
      * Please use getPixelData(ImageSet::ImageType) to access the
      * data by their abstract role in lieu of their index in the set.
      */
-    unsigned char* getPixelData(int imageNumber) const {
-        assert(imageNumber >= 0 && imageNumber < getNumberOfImages());
-        return data[imageNumber];
-    }
+    unsigned char* getPixelData(int imageNumber) const;
 
     /**
      * \brief Returns the pixel data for the given image.
@@ -285,22 +255,17 @@ public:
      * This function will throw an exception when the ImageType
      * is not present in this set (use hasImageType(what) to check).
      */
-    unsigned char* getPixelData(ImageType what) const {
-        int idx = getIndexOf(what, true);
-        return getPixelData(idx);
-    }
+    unsigned char* getPixelData(ImageType what) const;
 
     /**
      * \brief Returns a pointer to the disparity-to-depth mapping matrix q.
      */
-    const float* getQMatrix() const {
-        return qMatrix;
-    }
+    const float* getQMatrix() const;
 
     /**
      * \brief Returns the sequence number for this image set.
      */
-    unsigned int getSequenceNumber() const {return seqNum;}
+    unsigned int getSequenceNumber() const;
 
     /**
      * \brief Returns the time at which this image set has been captured.
@@ -309,10 +274,7 @@ public:
      * \param microsec The fractional seconds part of the time stamp with
      *        a resolution of 1 microsecond.
      */
-    void getTimestamp(int& seconds, int& microsec) const {
-        seconds = timeSec;
-        microsec = timeMicrosec;
-    }
+    void getTimestamp(int& seconds, int& microsec) const;
 
     /**
      * \brief Gets the value range for the disparity map contained in this
@@ -322,17 +284,12 @@ public:
      * \param minimum Minimum disparity value.
      * \param maximum Maximum disparity value.
      */
-    void getDisparityRange(int& minimum, int& maximum) const {
-        minimum = minDisparity;
-        maximum = maxDisparity;
-    }
+    void getDisparityRange(int& minimum, int& maximum) const;
 
     /**
      * \brief Gets the subpixel factor for this image set.
      */
-    int getSubpixelFactor() const {
-        return subpixelFactor;
-    }
+    int getSubpixelFactor() const;
 
     /**
      * \brief Writes one image of the set to a PGM or PPM file.
@@ -372,10 +329,7 @@ public:
      *
      * \param imageNumber The number of the image (0 ... getNumberOfImages()-1).
      */
-    int getBytesPerPixel(int imageNumber) const {
-        assert(imageNumber >= 0 && imageNumber < getNumberOfImages());
-        return getBytesPerPixel(formats[imageNumber]);
-    }
+    int getBytesPerPixel(int imageNumber) const;
 
     /**
      * \brief Returns the number of bits that are required to store one
@@ -383,15 +337,9 @@ public:
      *
      * \param imageNumber The number of the image (0 ... getNumberOfImages()-1).
      */
-    int getBitsPerPixel(int imageNumber) const {
-        assert(imageNumber >= 0 && imageNumber < getNumberOfImages());
-        return getBitsPerPixel(formats[imageNumber]);
-    }
+    int getBitsPerPixel(int imageNumber) const;
 
-    int getBitsPerPixel(ImageType what) const {
-        int idx = getIndexOf(what, true);
-        return getBitsPerPixel(idx);
-    }
+    int getBitsPerPixel(ImageType what) const;
 
     static int getBitsPerPixel(ImageFormat format);
 
@@ -404,17 +352,12 @@ public:
     /**
      * \brief Returns the number of images in this set
      */
-    int getNumberOfImages() const {
-        return numberOfImages;
-    }
+    int getNumberOfImages() const;
 
     /**
      * \brief Sets the number of valid images in this set
      */
-    void setNumberOfImages(int number) {
-        assert(number >= 1 && number <= MAX_SUPPORTED_IMAGES);
-        numberOfImages = number;
-    }
+    void setNumberOfImages(int number);
 
     /**
      * \brief Returns the ImageType of the specified channel
@@ -434,10 +377,7 @@ public:
     /**
      * \brief Returns whether a left camera image is included in the enabled data
      */
-    bool hasImageType(ImageType what) const {
-        return getIndexOf(what) >= 0;
-    }
-
+    bool hasImageType(ImageType what) const;
 
     /**
      * \brief Assign an image index to a specified ImageType, -1 to disable
@@ -472,9 +412,7 @@ public:
      *
      * \param timeMicrosec Exposure time measured in microseconds
      */
-    void setExposureTime(int timeMicrosec) {
-        exposureTime = timeMicrosec;
-    }
+    void setExposureTime(int timeMicrosec);
 
     /**
      * \brief Gets the exposure time in microseconds that was used for
@@ -482,9 +420,7 @@ public:
      *
      * \return Exposure time in microseconds
      */
-    int getExposureTime() const {
-        return exposureTime;
-    }
+    int getExposureTime() const;
 
     /**
      * \brief Sets the timestamp of the last received sync pulse
@@ -493,10 +429,7 @@ public:
      * \param microsec The fractional seconds part of the time stamp with
      *        a resolution of 1 microsecond.
      */
-    void setLastSyncPulse(int seconds, int microsec) {
-        lastSyncPulseSec = seconds;
-        lastSyncPulseMicrosec = microsec;
-    }
+    void setLastSyncPulse(int seconds, int microsec);
 
     /**
      * \brief Gets the timestamp of the last received sync pulse
@@ -505,39 +438,8 @@ public:
      * \param microsec The fractional seconds part of the time stamp with
      *        a resolution of 1 microsecond.
      */
-    void getLastSyncPulse(int& seconds, int& microsec) const {
-        seconds = lastSyncPulseSec;
-        microsec = lastSyncPulseMicrosec;
-    }
+    void getLastSyncPulse(int& seconds, int& microsec) const;
 
-private:
-    // No pimpl idiom here as almost everything is inlined.
-    int width;
-    int height;
-    int rowStride[MAX_SUPPORTED_IMAGES];
-    ImageFormat formats[MAX_SUPPORTED_IMAGES];
-    unsigned char* data[MAX_SUPPORTED_IMAGES];
-    const float* qMatrix;
-    int timeSec;
-    int timeMicrosec;
-    unsigned int seqNum;
-    int minDisparity;
-    int maxDisparity;
-    int subpixelFactor;
-    int* referenceCounter;
-    int numberOfImages;
-
-    int indexLeftImage;
-    int indexRightImage;
-    int indexDisparityImage;
-    int indexColorImage;
-
-    int exposureTime;
-    int lastSyncPulseSec;
-    int lastSyncPulseMicrosec;
-
-    void copyData(ImageSet& dest, const ImageSet& src, bool countRef);
-    void decrementReference();
 };
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
