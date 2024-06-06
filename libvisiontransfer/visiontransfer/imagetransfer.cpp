@@ -580,8 +580,11 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
         throw ex;
     } else if(bytesReceived > 0) {
         // Check whether this reception is from an unexpected new sender (for UDP server)
-        bool newSender = (((fromAddress.sin_addr.s_addr!=remoteAddress.sin_addr.s_addr) || (fromAddress.sin_port!=remoteAddress.sin_port)) && (remoteAddress.sin_port != 0));
-
+        bool newSender = (
+                protType == ImageProtocol::PROTOCOL_UDP &&
+                ((fromAddress.sin_addr.s_addr!=remoteAddress.sin_addr.s_addr) || (fromAddress.sin_port!=remoteAddress.sin_port)) &&
+                (remoteAddress.sin_port != 0)
+            );
         if (isServer && newSender && protocol->isConnected()) {
             // Reject interfering client
             // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
