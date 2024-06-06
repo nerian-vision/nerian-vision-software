@@ -21,6 +21,8 @@
 #include <algorithm>
 
 #include <iostream> // DEBUG
+#include <iomanip>  // DEBUG
+#include <bitset>   // DEBUG
 #include <fstream>
 
 using namespace visiontransfer;
@@ -602,6 +604,38 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setUInt(num);
             }
             break;
+        case 0x4A: // InputPixelFormatsAvailable (selectable pixel formats for L/R cam acquisition)
+            {
+                // Encode available pixel formats in bit mask for XML to filter
+                auto param = device->getPhysicalDevice()->getParameter("capture_pixel_format");
+                if (param.hasOptions()) {
+                    auto opts = param.getOptions<int>();
+                    uint32_t mask;
+                    mask =
+                          ((std::find(opts.begin(), opts.end(), 0x01080001)!=opts.end())?(1<<0):0)  // Mono8
+                        | ((std::find(opts.begin(), opts.end(), 0x01100005)!=opts.end())?(1<<1):0)  // Mono12
+                        | ((std::find(opts.begin(), opts.end(), 0x010C0047)!=opts.end())?(1<<2):0)  // Mono12P
+                        | ((std::find(opts.begin(), opts.end(), 0x010C0006)!=opts.end())?(1<<3):0)  // Mono12Packed
+                        | ((std::find(opts.begin(), opts.end(), 0x02180014)!=opts.end())?(1<<4):0)  // RGB8
+                        | ((std::find(opts.begin(), opts.end(), 0x01080008)!=opts.end())?(1<<5):0)  // BayerGR8
+                        | ((std::find(opts.begin(), opts.end(), 0x01080009)!=opts.end())?(1<<6):0)  // BayerRG8
+                        | ((std::find(opts.begin(), opts.end(), 0x0108000A)!=opts.end())?(1<<7):0)  // BayerGB8
+                        | ((std::find(opts.begin(), opts.end(), 0x0108000B)!=opts.end())?(1<<8):0)  // BayerBG8
+                    ;
+                    info.setUInt(mask);
+                } else {
+                    // Parameter was not initialized with options yet - disable all for now
+                    //  (this cannot happen outside daemon restart)
+                    info.setUInt(0);
+                }
+            }
+            break;
+        case 0x4B: // InputPixelFormat (active pixel format for L/R cam acquisition)
+            {
+                int num = device->getPhysicalDevice()->getParameter("capture_pixel_format").getCurrent<int>();
+                info.setUInt(num);
+            }
+            break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
             {
                 auto dev = device->getPhysicalDevice();
@@ -1047,6 +1081,14 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
                 device->getPhysicalDevice()->setParameter("speckle_filter_iterations", newVal);
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x4B: // InputPixelFormat (active pixel format for L/R cam acquisition)
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter("capture_pixel_format", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;

@@ -114,7 +114,6 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         int channelIdx = 0;
         try {
             auto paramSet = deviceParameters->getParameterSet();
-            //std::cout << "get param " << std::endl;
             auto imgSize = paramSet["RT_output_image_size"].getTensorData();
             bool enabledLeft = paramSet["output_channel_left_enabled"].getCurrent<bool>();
             bool enabledDisparity = paramSet["output_channel_disparity_enabled"].getCurrent<bool>();
@@ -127,7 +126,6 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
 
             latestMetaData.setWidth(imgSize[0]);
             latestMetaData.setHeight(imgSize[1]);
-            //std::cout << "Img " << imgSize[0] << "x" << imgSize[1] << std::endl;
             latestMetaData.setNumberOfImages(numChannels);
             if (enabledLeft) {
                 latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, channelIdx);
@@ -149,6 +147,10 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
                 latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
                 channelIdx++;
             }
+            // Also set initial values for the Q matrix, so all features can be calculated
+            auto qMatData = paramSet["calib_Q_12"].getTensorData();
+            for (int i=0; i<16; ++i) initialQMatrixData[i] = (float) qMatData[i];
+            latestMetaData.setQMatrix(initialQMatrixData);
         } catch(std::exception& ex) {
             std::cerr << "Exception: " << ex.what() << std::endl;
             throw;

@@ -142,6 +142,7 @@ private:
     std::mutex receiveMutex; // Mutex for the image reception
 
     visiontransfer::ImageSet latestMetaData; // Image set object with meta data for the latest frame
+    float initialQMatrixData[16]; // Data for initial Q matrix (before updated from the last incoming frame)
     std::unique_ptr<LogicalDevice> logicalDevices[NUM_LOGICAL_DEVICES]; // The data streams associated with this device
 
     std::condition_variable_any initializedCondition; // Condition for signaling completed initialization

@@ -5,7 +5,7 @@ available standard feature names (unless specified as a custom feature)
 
 0x00 RW ComponentSelector
 
-== Device params in 0xC000'0000 range; reg no. 0x0a <-> 0xC000A000 etc. ==
+== Device params in 0xC00x'y000 range; reg no. 0x1a <-> 0xC001A000 etc. ==
 
 Idx Mode Feature-Name [(comments)]
 ---- -- --------------------------
@@ -83,6 +83,9 @@ Idx Mode Feature-Name [(comments)]
 0x47 RW NoiseReductionEnabled
 0x48 RW SpeckleFilterIterations
 0x49 RO  '' (max valid value)
+0x4A RO InputPixelFormatsAvailable (Bit mask for selectable L/R camera pixel formats)
+0x4B RW InputPixelFormat (Selected pixel format for the L/R sensors; not the output format)
+
 -----------------
 0xff RO Special: device-reported feature flags, for conditional XML (CUSTOM)
 

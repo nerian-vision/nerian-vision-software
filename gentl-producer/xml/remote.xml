@@ -96,6 +96,7 @@
     </Category>
 
     <Category Name="Nerian" NameSpace="Custom">
+        <pFeature>InputPixelFormat</pFeature>
         <pFeature>PatternProjectorPresent</pFeature>
         <pFeature>PatternProjectorBrightness</pFeature>
         <pFeature>QMatrixIndex</pFeature>
@@ -1005,6 +1006,113 @@
     </Enumeration>
 
     <!-- Nerian-specific features -->
+
+    <!-- Selection of camera (sensor) pixel format - this need not be the same as the post-FPGA output format -->
+    <IntReg Name="InputPixelFormatsAvailableReg" NameSpace="Custom">
+        <Address>0xC004A000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntSwissKnife Name="InputPixelFormatAvailableMono8" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 1</Formula> <!-- Bit 0: availability of MONO_8 input -->
+    </IntSwissKnife>
+    <IntSwissKnife Name="InputPixelFormatAvailableMono12" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 2</Formula> <!-- Bit 1: availability of MONO_12 input -->
+    </IntSwissKnife>
+    <IntSwissKnife Name="InputPixelFormatAvailableMono12P" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 4</Formula> <!-- Bit 2: availability of MONO_12P input -->
+    </IntSwissKnife>
+    <IntSwissKnife Name="InputPixelFormatAvailableMono12Packed" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 8</Formula> <!-- Bit 3: availability of MONO_12PACKED input -->
+    </IntSwissKnife>
+    <IntSwissKnife Name="InputPixelFormatAvailableRGB8" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 16</Formula> <!-- Bit 4: availability of RGB_8 input -->
+    </IntSwissKnife>
+    <IntSwissKnife Name="InputPixelFormatAvailableBayerGR8" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 32</Formula> <!-- Bit 6: availability of BAYER_GR8 input -->
+    </IntSwissKnife>
+    <IntSwissKnife Name="InputPixelFormatAvailableBayerRG8" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 64</Formula> <!-- Bit 7: availability of BAYER_RG8 input -->
+    </IntSwissKnife>
+    <IntSwissKnife Name="InputPixelFormatAvailableBayerGB8" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 128</Formula> <!-- Bit 8: availability of BAYER_GB8 input -->
+    </IntSwissKnife>
+    <IntSwissKnife Name="InputPixelFormatAvailableBayerBG8" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 256</Formula> <!-- Bit 9: availability of BAYER_BG8 input -->
+    </IntSwissKnife>
+    <!--IntSwissKnife Name="InputPixelFormatAvailableRGB8Packed" NameSpace="Custom">
+        <pVariable Name="bitmask">InputPixelFormatsAvailableReg</pVariable>
+        <Formula>bitmask &amp; 512</Formula--> <!-- Bit 5: availability of RGB_8PACKED input -->
+    <!--/IntSwissKnife-->
+
+    <Integer Name="InputPixelFormatValue" NameSpace="Custom">
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>InputPixelFormatReg</pValue>
+    </Integer>
+    <IntReg Name="InputPixelFormatReg" NameSpace="Custom">
+        <Address>0xC004B000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Enumeration Name="InputPixelFormat" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <EnumEntry Name="Mono8" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableMono8</pIsAvailable>
+            <Value>0x01080001</Value>
+        </EnumEntry>
+        <EnumEntry Name="Mono12" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableMono12</pIsAvailable>
+            <Value>0x01100005</Value>
+        </EnumEntry>
+        <EnumEntry Name="Mono12P" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableMono12P</pIsAvailable>
+            <Value>0x010C0047</Value>
+        </EnumEntry>
+        <EnumEntry Name="Mono12Packed" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableMono12Packed</pIsAvailable>
+            <Value>0x010C0006</Value>
+        </EnumEntry>
+        <EnumEntry Name="RGB8" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableRGB8</pIsAvailable>
+            <Value>0x02180014</Value>
+        </EnumEntry>
+        <EnumEntry Name="BayerGR8" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableBayerGR8</pIsAvailable>
+            <Value>0x01080008</Value>
+        </EnumEntry>
+        <EnumEntry Name="BayerRG8" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableBayerRG8</pIsAvailable>
+            <Value>0x01080009</Value>
+        </EnumEntry>
+        <EnumEntry Name="BayerGB8" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableBayerGB8</pIsAvailable>
+            <Value>0x0108000A</Value>
+        </EnumEntry>
+        <EnumEntry Name="BayerBG8" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableBayerBG8</pIsAvailable>
+            <Value>0x0108000B</Value>
+        </EnumEntry>
+        <!--EnumEntry Name="RGB8Packed" NameSpace="Standard">
+            <pIsAvailable>InputPixelFormatAvailableRGB8Packed</pIsAvailable>
+            <Value>?</Value>
+        </EnumEntry-->
+        <pValue>InputPixelFormatValue</pValue>
+    </Enumeration>
 
     <!-- Stereo algorithm parameters -->
 
