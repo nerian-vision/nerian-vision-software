@@ -17,7 +17,7 @@
  
 #include "visiontransfer/deviceparameters.h"
 
-#pragma message "DEPRECATION NOTICE: scenescanparameters.h and SceneScanParameters are deprecated in favor of deviceparameteres.h and DeviceParameters"
+#pragma message "DEPRECATION NOTICE: scenescanparameters.h and SceneScanParameters are deprecated in favor of deviceparameters.h and DeviceParameters"
 
 #endif
 
