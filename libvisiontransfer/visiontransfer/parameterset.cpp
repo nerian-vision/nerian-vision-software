@@ -25,6 +25,9 @@
 namespace visiontransfer {
 namespace param {
 
+class ParameterSet::Pimpl {
+    // Empty for now, reserved for extensibility of ParameterSet
+};
 
 Parameter& ParameterSet::setOrCreateSimpleScalar(const std::string& uid, int value) {
     auto it = find(uid);

@@ -33,6 +33,12 @@ namespace param {
 
 /** A raw castable variant value for parameters, used for several things internally in Parameter */
 class VT_EXPORT ParameterValue {
+
+private:
+    // We (mostly) follow the pimpl idiom here
+    class Pimpl;
+    Pimpl* pimpl;
+
 public:
     enum ParameterType {
         TYPE_INT,
@@ -46,6 +52,9 @@ public:
     };
 
     ParameterValue();
+    ParameterValue(const ParameterValue& other);
+    ~ParameterValue();
+    ParameterValue& operator= (const ParameterValue& other);
     ParameterValue& setType(ParameterType t);
     ParameterValue& setTensorShape(const std::vector<unsigned int>& shape);
     bool isDefined() const;
@@ -58,30 +67,19 @@ public:
     /// Return a copy of the internal tensor data
     std::vector<double> getTensorData() const;
     /// Return a reference to the internal tensor data (caution)
-    std::vector<double>& getTensorDataReference() { return tensorData; };
+    std::vector<double>& getTensorDataReference();
     ParameterValue& setTensorData(const std::vector<double>& data);
     unsigned int getTensorNumElements() const;
     unsigned int getTensorCurrentDataSize() const;
-    ParameterType getType() const { return type; }
+    ParameterType getType() const;
     double& tensorElementAt(unsigned int x);
     double& tensorElementAt(unsigned int y, unsigned int x);
     double& tensorElementAt(unsigned int z, unsigned int y, unsigned int x);
 
     template<typename T> ParameterValue& setValue(T t);
     template<typename T> T getValue() const;
-    template<typename T> T getWithDefault(const T& deflt) const { return (type==TYPE_UNDEFINED) ? deflt : getValue<T>(); }
+    template<typename T> T getWithDefault(const T& deflt) const;
 
-private:
-    double numVal;
-    std::string stringVal;
-    unsigned int tensorNumElements; // quick access to number of elements
-    std::vector<unsigned int> tensorShape;
-    std::vector<double> tensorData;
-
-    ParameterType type;
-
-    /// Parameters of TYPE_SAFESTRING enforce a safe character whitelist and max length
-    std::string sanitizeString(const std::string& s, unsigned int maxLength=4096);
 };
 
 } // namespace param

@@ -12,6 +12,9 @@
  * all copies or substantial portions of the Software.
  *******************************************************************************/
 
+#ifndef VISIONTRANSFER_INTERNAL_CONVERSIONHELPERS_H
+#define VISIONTRANSFER_INTERNAL_CONVERSIONHELPERS_H
+
 namespace visiontransfer {
 namespace internal {
 
@@ -48,3 +51,6 @@ template<typename T> inline double ConversionHelpers::anyToDouble(T val) { retur
 
 } // namespace internal
 } // namespace visiontransfer
+
+#endif
+
