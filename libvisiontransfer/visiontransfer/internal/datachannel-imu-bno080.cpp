@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -12,8 +12,8 @@
  * all copies or substantial portions of the Software.
  *******************************************************************************/
 
-#include <visiontransfer/datachannel-imu-bno080.h>
-#include <visiontransfer/protocol-sh2-imu-bno080.h>
+#include <visiontransfer/internal/datachannel-imu-bno080.h>
+#include <visiontransfer/internal/protocol-sh2-imu-bno080.h>
 
 namespace visiontransfer {
 namespace internal {

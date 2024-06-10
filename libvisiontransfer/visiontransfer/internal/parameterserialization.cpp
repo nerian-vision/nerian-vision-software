@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -18,8 +18,8 @@
 #include <regex>
 #include <iostream>
 
-#include <visiontransfer/parameterserialization.h>
-#include <visiontransfer/tokenizer.h>
+#include <visiontransfer/internal/parameterserialization.h>
+#include <visiontransfer/internal/tokenizer.h>
 
 namespace visiontransfer {
 namespace internal {

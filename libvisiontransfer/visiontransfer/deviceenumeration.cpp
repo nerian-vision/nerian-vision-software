@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -17,8 +17,8 @@
 
 #include "visiontransfer/deviceenumeration.h"
 #include "visiontransfer/exceptions.h"
-#include "visiontransfer/networking.h"
-#include "visiontransfer/internalinformation.h"
+#include "visiontransfer/internal/networking.h"
+#include "visiontransfer/internal/internalinformation.h"
 
 using namespace std;
 using namespace visiontransfer;
@@ -100,7 +100,7 @@ DeviceInfo* DeviceEnumeration::Pimpl::getDevicesPointer(int* numDevices) {
     deviceList = collectDiscoverResponses();
 
     // Convert vector to simple pointer
-    *numDevices = deviceList.size();
+    *numDevices = (int) deviceList.size();
     return deviceList.data();
 }
 

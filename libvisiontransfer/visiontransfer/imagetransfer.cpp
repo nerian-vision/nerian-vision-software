@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +22,8 @@
 #include <thread>
 #include "visiontransfer/imagetransfer.h"
 #include "visiontransfer/exceptions.h"
-#include "visiontransfer/datablockprotocol.h"
-#include "visiontransfer/networking.h"
+#include "visiontransfer/internal/datablockprotocol.h"
+#include "visiontransfer/internal/networking.h"
 
 using namespace std;
 using namespace visiontransfer;
@@ -773,7 +773,7 @@ bool ImageTransfer::Pimpl::selectSocket(bool read, bool wait) {
         tv.tv_usec = 0;
     }
 
-    if(select(sock+1, (read ? &fds : nullptr), (!read ? &fds : nullptr), nullptr, &tv) <= 0) {
+    if(select(((int)sock)+1, (read ? &fds : nullptr), (!read ? &fds : nullptr), nullptr, &tv) <= 0) {
         // The socket is currently not ready
         return false;
     }

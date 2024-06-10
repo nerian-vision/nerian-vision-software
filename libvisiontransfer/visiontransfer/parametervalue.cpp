@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,14 +21,60 @@
 #include <iostream>
 
 #include <visiontransfer/parametervalue.h>
-#include <visiontransfer/conversionhelpers.h>
+#include <visiontransfer/internal/conversionhelpers.h>
 
 namespace visiontransfer {
 namespace param {
 
 using namespace internal;
 
-std::string ParameterValue::sanitizeString(const std::string& s, unsigned int maxLength /* = 4096 */ ) {
+/** A raw castable variant value for parameters, used for several things internally in Parameter */
+class ParameterValue::Pimpl {
+public:
+    Pimpl();
+    Pimpl(const Pimpl& other);
+    ~Pimpl();
+    static void copyData(ParameterValue::Pimpl& dst, const ParameterValue::Pimpl& src);
+    Pimpl& setType(ParameterValue::ParameterType t);
+    Pimpl& setTensorShape(const std::vector<unsigned int>& shape);
+    bool isDefined() const;
+    bool isUndefined() const;
+    bool isTensor() const;
+    bool isScalar() const;
+    bool isCommand() const;
+    unsigned int getTensorDimension() const;
+    std::vector<unsigned int> getTensorShape() const;
+    /// Return a copy of the internal tensor data
+    std::vector<double> getTensorData() const;
+    /// Return a reference to the internal tensor data (caution)
+    std::vector<double>& getTensorDataReference() { return tensorData; };
+    Pimpl& setTensorData(const std::vector<double>& data);
+    unsigned int getTensorNumElements() const;
+    unsigned int getTensorCurrentDataSize() const;
+    ParameterValue::ParameterType getType() const { return type; }
+    double& tensorElementAt(unsigned int x);
+    double& tensorElementAt(unsigned int y, unsigned int x);
+    double& tensorElementAt(unsigned int z, unsigned int y, unsigned int x);
+
+    template<typename T> Pimpl& setValue(T t);
+    template<typename T> T getValue() const;
+    template<typename T> T getWithDefault(const T& deflt) const { return (type==TYPE_UNDEFINED) ? deflt : getValue<T>(); }
+
+private:
+    double numVal;
+    std::string stringVal;
+    unsigned int tensorNumElements; // quick access to number of elements
+    std::vector<unsigned int> tensorShape;
+    std::vector<double> tensorData;
+
+    ParameterValue::ParameterType type;
+
+    /// Parameters of TYPE_SAFESTRING enforce a safe character whitelist and max length
+    static std::string sanitizeString(const std::string& s, unsigned int maxLength=4096);
+};
+
+//static
+std::string ParameterValue::Pimpl::sanitizeString(const std::string& s, unsigned int maxLength /* = 4096 */ ) {
     std::ostringstream ss;
     const std::string whitelist("-+_,.:@/ "); // plus all alnums
     unsigned int len = 0;
@@ -42,17 +88,34 @@ std::string ParameterValue::sanitizeString(const std::string& s, unsigned int ma
     }
     return ss.str();
 }
-
-ParameterValue::ParameterValue()
-: numVal(0.0), type(TYPE_UNDEFINED) {
+//static
+void ParameterValue::Pimpl::copyData(ParameterValue::Pimpl& dst, const ParameterValue::Pimpl& src) {
+    dst.numVal = src.numVal;
+    dst.stringVal = src.stringVal;
+    dst.tensorNumElements = src.tensorNumElements;
+    dst.tensorShape = src.tensorShape;
+    dst.tensorData = src.tensorData;
+    dst.type = src.type;
 }
 
-ParameterValue& ParameterValue::setType(ParameterType t) {
+ParameterValue::Pimpl::Pimpl()
+: numVal(0.0), type(TYPE_UNDEFINED)
+{
+}
+ParameterValue::Pimpl::Pimpl(const ParameterValue::Pimpl& other)
+{
+    copyData(*this, other);
+}
+ParameterValue::Pimpl::~Pimpl()
+{
+}
+
+ParameterValue::Pimpl& ParameterValue::Pimpl::setType(ParameterValue::ParameterType t) {
     type = t;
     return *this;
 };
 
-ParameterValue& ParameterValue::setTensorShape(const std::vector<unsigned int>& shape) {
+ParameterValue::Pimpl& ParameterValue::Pimpl::setTensorShape(const std::vector<unsigned int>& shape) {
     unsigned int dims = (unsigned int) shape.size();
     if (dims==0) {
         throw std::runtime_error("Cannot create a zero-dimensional tensor");
@@ -70,36 +133,36 @@ ParameterValue& ParameterValue::setTensorShape(const std::vector<unsigned int>& 
     return *this;
 }
 
-bool ParameterValue::isDefined() const {
+bool ParameterValue::Pimpl::isDefined() const {
     return (type!=TYPE_UNDEFINED);
 }
-bool ParameterValue::isUndefined() const {
+bool ParameterValue::Pimpl::isUndefined() const {
     return (type==TYPE_UNDEFINED);
 }
-bool ParameterValue::isTensor() const {
+bool ParameterValue::Pimpl::isTensor() const {
     return type==TYPE_TENSOR;
 }
-bool ParameterValue::isScalar() const {
+bool ParameterValue::Pimpl::isScalar() const {
     return !isTensor();
 }
-bool ParameterValue::isCommand() const {
+bool ParameterValue::Pimpl::isCommand() const {
     return type==TYPE_COMMAND;
 }
 
-unsigned int ParameterValue::getTensorDimension() const {
+unsigned int ParameterValue::Pimpl::getTensorDimension() const {
     return (unsigned int) tensorShape.size();
 }
 
-std::vector<unsigned int> ParameterValue::getTensorShape() const {
+std::vector<unsigned int> ParameterValue::Pimpl::getTensorShape() const {
     return tensorShape;
 }
 
-std::vector<double> ParameterValue::getTensorData() const {
+std::vector<double> ParameterValue::Pimpl::getTensorData() const {
     return tensorData;
 }
 
-ParameterValue& ParameterValue::setTensorData(const std::vector<double>& data) {
-    if (data.size() != tensorNumElements) throw std::runtime_error("ParameterValue::setTensorData(): wrong number of elements");
+ParameterValue::Pimpl& ParameterValue::Pimpl::setTensorData(const std::vector<double>& data) {
+    if (data.size() != tensorNumElements) throw std::runtime_error("ParameterValue::Pimpl::setTensorData(): wrong number of elements");
 
     setType(ParameterType::TYPE_TENSOR);
     tensorData = data;
@@ -113,17 +176,38 @@ ParameterValue& ParameterValue::setTensorData(const std::vector<double>& data) {
     return *this;
 }
 
-unsigned int ParameterValue::getTensorNumElements() const {
+unsigned int ParameterValue::Pimpl::getTensorNumElements() const {
     return tensorNumElements;
 }
 
-unsigned int ParameterValue::getTensorCurrentDataSize() const {
+unsigned int ParameterValue::Pimpl::getTensorCurrentDataSize() const {
     return (unsigned int) tensorData.size();
 }
 
+double& ParameterValue::Pimpl::tensorElementAt(unsigned int x) {
+    // Pure 1-dim support
+    //if (tensorShape.size()!=1) throw std::runtime_error("ParameterValue::Pimpl::tensorElementAt(): not a tensor of dimension 1");
+    //if (x>=tensorShape[0]) throw std::runtime_error("ParameterValue::Pimpl::tensorElementAt(): access out of bounds");
+    // Any-dim support (allow self-addressing)
+    if (tensorShape.size()==0) throw std::runtime_error("ParameterValue::Pimpl::tensorElementAt(): not a tensor");
+    if (x>=tensorNumElements) throw std::runtime_error("ParameterValue::Pimpl::tensorElementAt(): access out of bounds");
+    return tensorData[x];
+}
+double& ParameterValue::Pimpl::tensorElementAt(unsigned int y, unsigned int x) {
+    if (tensorShape.size()!=2) throw std::runtime_error("ParameterValue::Pimpl::tensorElementAt(): not a tensor of dimension 2");
+    if (y>=tensorShape[0] || x>=tensorShape[1]) throw std::runtime_error("ParameterValue::Pimpl::tensorElementAt(): access out of bounds");
+    return tensorData[y*tensorShape[1] + x];
+}
+double& ParameterValue::Pimpl::tensorElementAt(unsigned int z, unsigned int y, unsigned int x) {
+    if (tensorShape.size()!=3) throw std::runtime_error("ParameterValue::Pimpl::tensorElementAt(): not a tensor of dimension 3");
+    if (z>=tensorShape[0] || y>=tensorShape[1] || x>=tensorShape[2]) throw std::runtime_error("ParameterValue::Pimpl::tensorElementAt(): access out of bounds");
+    return tensorData[z*tensorShape[1]*tensorShape[2] + y*tensorShape[2] + x];
+}
+
+
 // setters
 template<> VT_EXPORT
-ParameterValue& ParameterValue::setValue(int t) {
+ParameterValue::Pimpl& ParameterValue::Pimpl::setValue(int t) {
     // always cache string
     switch (this->type) {
         case TYPE_INT:
@@ -147,29 +231,8 @@ ParameterValue& ParameterValue::setValue(int t) {
     return *this;
 }
 
-double& ParameterValue::tensorElementAt(unsigned int x) {
-    // Pure 1-dim support
-    //if (tensorShape.size()!=1) throw std::runtime_error("ParameterValue::tensorElementAt(): not a tensor of dimension 1");
-    //if (x>=tensorShape[0]) throw std::runtime_error("ParameterValue::tensorElementAt(): access out of bounds");
-    // Any-dim support (allow self-addressing)
-    if (tensorShape.size()==0) throw std::runtime_error("ParameterValue::tensorElementAt(): not a tensor");
-    if (x>=tensorNumElements) throw std::runtime_error("ParameterValue::tensorElementAt(): access out of bounds");
-    return tensorData[x];
-}
-double& ParameterValue::tensorElementAt(unsigned int y, unsigned int x) {
-    if (tensorShape.size()!=2) throw std::runtime_error("ParameterValue::tensorElementAt(): not a tensor of dimension 2");
-    if (y>=tensorShape[0] || x>=tensorShape[1]) throw std::runtime_error("ParameterValue::tensorElementAt(): access out of bounds");
-    return tensorData[y*tensorShape[1] + x];
-}
-double& ParameterValue::tensorElementAt(unsigned int z, unsigned int y, unsigned int x) {
-    if (tensorShape.size()!=3) throw std::runtime_error("ParameterValue::tensorElementAt(): not a tensor of dimension 3");
-    if (z>=tensorShape[0] || y>=tensorShape[1] || x>=tensorShape[2]) throw std::runtime_error("ParameterValue::tensorElementAt(): access out of bounds");
-    return tensorData[z*tensorShape[1]*tensorShape[2] + y*tensorShape[2] + x];
-}
-
-// setters
 template<> VT_EXPORT
-ParameterValue& ParameterValue::setValue(bool t) {
+ParameterValue::Pimpl& ParameterValue::Pimpl::setValue(bool t) {
     // always cache string
     switch (this->type) {
         case TYPE_INT:
@@ -193,7 +256,7 @@ ParameterValue& ParameterValue::setValue(bool t) {
     return *this;
 }
 template<> VT_EXPORT
-ParameterValue& ParameterValue::setValue(double t) {
+ParameterValue::Pimpl& ParameterValue::Pimpl::setValue(double t) {
     // always cache string
     switch (this->type) {
         case TYPE_DOUBLE:
@@ -221,7 +284,7 @@ ParameterValue& ParameterValue::setValue(double t) {
 }
 
 template<> VT_EXPORT
-ParameterValue& ParameterValue::setValue(const char* t) {
+ParameterValue::Pimpl& ParameterValue::Pimpl::setValue(const char* t) {
     // always cache string
     switch (this->type) {
         case TYPE_COMMAND:
@@ -267,17 +330,17 @@ ParameterValue& ParameterValue::setValue(const char* t) {
 }
 
 template<> VT_EXPORT
-ParameterValue& ParameterValue::setValue(const std::string& t) {
+ParameterValue::Pimpl& ParameterValue::Pimpl::setValue(const std::string& t) {
     return setValue<const char*>(t.c_str());
 }
 template<> VT_EXPORT
-ParameterValue& ParameterValue::setValue(std::string t) {
+ParameterValue::Pimpl& ParameterValue::Pimpl::setValue(std::string t) {
     return setValue<const char*>(t.c_str());
 }
 
 // getters
 template<> VT_EXPORT
-int ParameterValue::getValue() const {
+int ParameterValue::Pimpl::getValue() const {
     switch (this->type) {
         case TYPE_INT: case TYPE_DOUBLE: case TYPE_BOOL:
             return (int) numVal;
@@ -294,7 +357,7 @@ int ParameterValue::getValue() const {
     }
 }
 template<> VT_EXPORT
-double ParameterValue::getValue() const {
+double ParameterValue::Pimpl::getValue() const {
     switch (this->type) {
         case TYPE_INT: case TYPE_DOUBLE: case TYPE_BOOL:
             return (double) numVal;
@@ -311,7 +374,7 @@ double ParameterValue::getValue() const {
     }
 }
 template<> VT_EXPORT
-bool ParameterValue::getValue() const {
+bool ParameterValue::Pimpl::getValue() const {
     switch (this->type) {
         case TYPE_INT: case TYPE_DOUBLE: case TYPE_BOOL:
             return (bool) numVal;
@@ -328,7 +391,7 @@ bool ParameterValue::getValue() const {
     }
 }
 template<> VT_EXPORT
-std::string ParameterValue::getValue() const {
+std::string ParameterValue::Pimpl::getValue() const {
     switch (this->type) {
         case TYPE_INT: case TYPE_DOUBLE: case TYPE_BOOL:
             // string is pre-rendered
@@ -344,7 +407,7 @@ std::string ParameterValue::getValue() const {
 
 // Mainly for literals placed in test code etc - maybe remove?
 template<> VT_EXPORT
-const char* ParameterValue::getValue() const {
+const char* ParameterValue::Pimpl::getValue() const {
     switch (this->type) {
         case TYPE_INT: case TYPE_DOUBLE: case TYPE_BOOL:
             // string is pre-rendered
@@ -356,6 +419,149 @@ const char* ParameterValue::getValue() const {
         default:
             return ""; // silent default
     }
+}
+
+
+//
+//
+// External (API) class
+//
+//
+
+ParameterValue::ParameterValue()
+: pimpl(new ParameterValue::Pimpl())
+{
+}
+
+ParameterValue::ParameterValue(const ParameterValue& other)
+: pimpl(new ParameterValue::Pimpl())
+{
+    ParameterValue::Pimpl::copyData(*pimpl, *(other.pimpl));
+}
+
+ParameterValue::~ParameterValue() {
+    delete pimpl;
+}
+
+ParameterValue& ParameterValue::operator=(const ParameterValue& other) {
+    ParameterValue::Pimpl::copyData(*pimpl, *(other.pimpl));
+    return *this;
+}
+
+ParameterValue& ParameterValue::setType(ParameterValue::ParameterType t) {
+    pimpl->setType(t);
+    return *this;
+}
+
+ParameterValue& ParameterValue::setTensorShape(const std::vector<unsigned int>& shape) {
+    pimpl->setTensorShape(shape);
+    return *this;
+}
+
+bool ParameterValue::isDefined() const {
+    return pimpl->isDefined();
+}
+
+bool ParameterValue::isUndefined() const {
+    return pimpl->isUndefined();
+}
+bool ParameterValue::isTensor() const {
+    return pimpl->isTensor();
+}
+bool ParameterValue::isScalar() const {
+    return pimpl->isScalar();
+}
+bool ParameterValue::isCommand() const {
+    return pimpl->isCommand();
+}
+unsigned int ParameterValue::getTensorDimension() const {
+    return pimpl->getTensorDimension();
+}
+std::vector<unsigned int> ParameterValue::getTensorShape() const {
+    return pimpl->getTensorShape();
+}
+/// Return a copy of the internal tensor data
+std::vector<double> ParameterValue::getTensorData() const {
+    return pimpl->getTensorData();
+}
+/// Return a reference to the internal tensor data (caution)
+std::vector<double>& ParameterValue::getTensorDataReference() {
+    return pimpl->getTensorDataReference();
+}
+ParameterValue& ParameterValue::setTensorData(const std::vector<double>& data) {
+    pimpl->setTensorData(data);
+    return *this;
+}
+unsigned int ParameterValue::getTensorNumElements() const {
+    return pimpl->getTensorNumElements();
+}
+unsigned int ParameterValue::getTensorCurrentDataSize() const {
+    return pimpl->getTensorCurrentDataSize();
+}
+ParameterValue::ParameterType ParameterValue::getType() const {
+    return pimpl->getType();
+}
+double& ParameterValue::tensorElementAt(unsigned int x) {
+    return pimpl->tensorElementAt(x);
+}
+double& ParameterValue::tensorElementAt(unsigned int y, unsigned int x) {
+    return pimpl->tensorElementAt(y, x);
+}
+double& ParameterValue::tensorElementAt(unsigned int z, unsigned int y, unsigned int x) {
+    return pimpl->tensorElementAt(z, y, x);
+}
+
+// getters
+
+template<> VT_EXPORT
+int ParameterValue::getValue() const {
+    return pimpl->getValue<int>();
+}
+template<> VT_EXPORT
+bool ParameterValue::getValue() const {
+    return pimpl->getValue<bool>();
+}
+template<> VT_EXPORT
+double ParameterValue::getValue() const {
+    return pimpl->getValue<double>();
+}
+template<> VT_EXPORT
+std::string ParameterValue::getValue() const {
+    return pimpl->getValue<std::string>();
+}
+template<> VT_EXPORT
+const char* ParameterValue::getValue() const {
+    return pimpl->getValue<const char*>();
+}
+
+// setters
+template<> VT_EXPORT
+ParameterValue& ParameterValue::setValue(int t) {
+    pimpl->setValue<int>(t);
+    return *this;
+}
+template<> VT_EXPORT
+ParameterValue& ParameterValue::setValue(bool t) {
+    pimpl->setValue<bool>(t);
+    return *this;
+}
+template<> VT_EXPORT
+ParameterValue& ParameterValue::setValue(double t) {
+    pimpl->setValue<double>(t);
+    return *this;
+}
+template<> VT_EXPORT
+ParameterValue& ParameterValue::setValue(const char* t) {
+    pimpl->setValue<const char*>(t);
+    return *this;
+}
+template<> VT_EXPORT
+ParameterValue& ParameterValue::setValue(const std::string& t) {
+    return setValue<const char*>(t.c_str());
+}
+template<> VT_EXPORT
+ParameterValue& ParameterValue::setValue(std::string t) {
+    return setValue<const char*>(t.c_str());
 }
 
 } // namespace param

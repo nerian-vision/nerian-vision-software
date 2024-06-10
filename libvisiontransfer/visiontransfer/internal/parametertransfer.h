@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -18,9 +18,9 @@
 #include "visiontransfer/common.h"
 #include "visiontransfer/types.h"
 #include "visiontransfer/parameterinfo.h"
-#include "visiontransfer/tokenizer.h"
 #include "visiontransfer/parameterset.h"
-#include "visiontransfer/networking.h"
+#include "visiontransfer/internal/tokenizer.h"
+#include "visiontransfer/internal/networking.h"
 
 #include <map>
 #include <set>
