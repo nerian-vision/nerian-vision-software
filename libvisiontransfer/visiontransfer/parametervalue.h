@@ -76,9 +76,9 @@ public:
    VT_EXPORT double& tensorElementAt(unsigned int y, unsigned int x);
    VT_EXPORT double& tensorElementAt(unsigned int z, unsigned int y, unsigned int x);
 
-   VT_EXPORT template<typename T> ParameterValue& setValue(T t);
-   VT_EXPORT template<typename T> T getValue() const;
-   VT_EXPORT template<typename T> T getWithDefault(const T& deflt) const;
+   template<typename T> VT_EXPORT ParameterValue& setValue(T t);
+   template<typename T> VT_EXPORT T getValue() const;
+   template<typename T> VT_EXPORT T getWithDefault(const T& deflt) const;
 
 };
 
