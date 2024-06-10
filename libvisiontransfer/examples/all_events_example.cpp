@@ -70,6 +70,7 @@ int main() {
                     transactionLock->commitAndWait(2000);
                     std::cout << "Committed transaction" << std::endl;
                 } catch(visiontransfer::TimeoutException& ex) {
+                    (void) ex; // prevent build warning
                     std::cout << "(Timeout waiting for transaction effects - processing daemon may not be ready yet)" << std::endl;
                 }
             }
@@ -89,6 +90,7 @@ int main() {
                     transactionLock->commitAndWait(2000);
                     std::cout << "Update: committed transaction." << std::endl;
                 } catch(visiontransfer::TimeoutException& ex) {
+                    (void) ex; // prevent build warning
                     std::cout << "(Timeout waiting for transaction effects - processing daemon may not be ready yet)" << std::endl;
                 }
             }
