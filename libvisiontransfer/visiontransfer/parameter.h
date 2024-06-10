@@ -47,7 +47,7 @@ namespace param {
 class Parameter {
 
 private:
-    // We (mostly) follow the pimpl idiom here
+    // We follow the pimpl idiom
     class Pimpl;
     Pimpl* pimpl;
 

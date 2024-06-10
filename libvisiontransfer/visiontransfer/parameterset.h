@@ -34,9 +34,9 @@ namespace param {
 /** ParameterSet is a map from UIDs to Parameters with some extra functionality. */
 class ParameterSet: public std::map<std::string, Parameter> {
 private:
-    // We (mostly) follow the pimpl idiom here
+    // We follow the pimpl idiom
     class Pimpl;
-    Pimpl* pimpl; // Note: reserved for now for forward compatibility
+    Pimpl* pimpl; // Note: reserved for now, for forward compatibility
 
 public:
     typedef std::shared_ptr<ParameterSet> ptr;
