@@ -159,18 +159,6 @@ public:
     VT_EXPORT Parameter& setTensorData(const std::vector<double>& data);
     /** Sets the fallback tensor data */
     VT_EXPORT Parameter& setTensorDefaultData(const std::vector<double>& data);
-#ifdef CV_MAJOR_VERSION
-    /** Sets a Tensor-type (or still undefined) Parameter from an OpenCV Size object, yielding a tensor of shape {2} */
-    VT_EXPORT Parameter& setTensorFromCvSize(const cv::Size& cvSize);
-    /** Sets an OpenCV Size object from a Tensor-type Parameter, which must be of shape {2}. */
-    void setCvSizeFromTensor(cv::Size& cvSize);
-    /** Sets a Tensor-type (or still undefined) Parameter from an OpenCV Mat object, yielding a two-dimensional tensor of identical shape */
-    template<typename T>
-    VT_EXPORT Parameter& setTensorFromCvMat(const cv::Mat_<T>& cvMat);
-    /** Sets an OpenCV Mat object of arbitrary base type from a Tensor-type Parameter, which must be two-dimensional. */
-    template<typename T>
-    VT_EXPORT void setCvMatFromTensor(cv::Mat_<T>& cvMat);
-#endif // CV_MAJOR_VERSION
     /** Sets the human-readable name */
     VT_EXPORT Parameter& setName(const std::string& name);
     /** Sets the overarching module name (abstract categorization for GUI etc.) */
@@ -258,6 +246,71 @@ public:
     VT_EXPORT double at(unsigned int y, unsigned int x);
     /** Returns the z-th slice, y-th row, x-th column data element for a 3-dimensional tensor. Fails for other shapes or types */
     VT_EXPORT double at(unsigned int z, unsigned int y, unsigned int x);
+    // Header-only OpenCV glue:
+#ifdef CV_MAJOR_VERSION
+    /** Sets a Tensor-type (or still undefined) Parameter from an OpenCV Size object, yielding a tensor of shape {2} */
+    VT_EXPORT Parameter& setTensorFromCvSize(const cv::Size& cvSize) {
+        if (isDefined() && !isTensor()) {
+            throw std::runtime_error("Parameter::setTensorFromCvSize(): refused to overwrite existing non-tensor type");
+        }
+        if (isTensor() && (getTensorNumElements()!=0)) {
+            // Already a tensor; only allow replacement with Size if prior size was 2
+            if (getTensorNumElements() != 2) throw std::runtime_error("Parameter::setTensorFromSize(): refused to overwrite tensor with size != 2");
+        } else {
+            // Newly defined as a Tensor, set as two-element vector
+            setAsTensor({2});
+        }
+        std::vector<double> data = { (double) cvSize.width, (double) cvSize.height };
+        setTensorData(data);
+        setTensorDefaultData(data);
+        return *this;
+    }
+    /** Sets an OpenCV Size object from a Tensor-type Parameter, which must be of shape {2}. */
+    VT_EXPORT void setCvSizeFromTensor(cv::Size& cvSize) {
+        if (getTensorNumElements() != 2) throw std::runtime_error("Parameter::setCvSizeFromTensor(): refused to export Tensor of size!=2 to cv::Size");
+        cvSize = cv::Size((int) at(0), (int) at(1));
+    }
+    /** Sets a Tensor-type (or still undefined) Parameter from an OpenCV Mat object, yielding a two-dimensional tensor of identical shape */
+    template<typename T>
+    VT_EXPORT Parameter& setTensorFromCvMat(const cv::Mat_<T>& cvMat) {
+        if (isDefined() && !isTensor()) {
+            throw std::runtime_error("Parameter::setTensorFromCvMat(): refused to overwrite existing non-tensor type");
+        }
+        std::vector<unsigned int> dims = { (unsigned int) cvMat.rows, (unsigned int) cvMat.cols };
+        if (isTensor() && (getTensorNumElements()!=0)) {
+            // Already a tensor; only allow replacement with Mat data of matching size
+            if (getTensorNumElements() != dims[0]*dims[1]) throw std::runtime_error("Parameter::setTensorFromCvMat(): refused to overwrite tensor with cv::Mat of mismatching total size");
+        } else {
+            // Newly defined as a Tensor, copy the Cv shape
+            setAsTensor(dims);
+        }
+        // Not the fastest way, but less hassle than coping with array casts
+        std::vector<double> data;
+        for (unsigned int r=0; r<(unsigned int) cvMat.rows; ++r)
+            for (unsigned int c=0; c<(unsigned int) cvMat.cols; ++c) {
+                data.push_back((double) cvMat(r, c));
+            }
+        setTensorData(data);
+        setTensorDefaultData(data);
+        return *this;
+    }
+    /** Sets an OpenCV Mat object of arbitrary base type from a Tensor-type Parameter, which must be two-dimensional. */
+    template<typename T>
+    VT_EXPORT void setCvMatFromTensor(cv::Mat_<T>& cvMat) {
+        if (getTensorDimension() != 2) {
+            std::ostringstream ss;
+            ss << "{";
+            for (unsigned int i=0; i<getTensorDimension(); ++i) {
+                ss << getTensorShape()[i] << ", ";
+            }
+            ss << "}";
+            ss << " " << getUid() << " " << ((int)getType());
+            throw std::runtime_error(std::string("Parameter::Pimpl::setCvMatFromTensor(): refused to export non-2D Tensor to cv::Mat, offending shape is: ")+ss.str());
+        }
+        auto& refData = getTensorDataReference();
+        cv::Mat_<T>(getTensorShape()[0], getTensorShape()[1], (T*)&refData[0]).copyTo(cvMat);
+    }
+#endif // CV_MAJOR_VERSION
 };
 
 } // namespace param

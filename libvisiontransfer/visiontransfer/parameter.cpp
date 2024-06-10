@@ -78,67 +78,6 @@ public:
         defaultValue.setTensorData(data);
         return *this;
     }
-#ifdef CV_MAJOR_VERSION
-    inline Pimpl& setTensorFromCvSize(const cv::Size& cvSize) {
-        if (currentValue.isDefined() && !(currentValue.isTensor())) {
-            throw std::runtime_error("Parameter::Pimpl::setTensorFromCvSize(): refused to overwrite existing non-tensor type");
-        }
-        if (isTensor() && (getTensorNumElements()!=0)) {
-            // Already a tensor; only allow replacement with Size if prior size was 2
-            if (getTensorNumElements() != 2) throw std::runtime_error("Parameter::Pimpl::setTensorFromSize(): refused to overwrite tensor with size != 2");
-        } else {
-            // Newly defined as a Tensor, set as two-element vector
-            setAsTensor({2});
-        }
-        std::vector<double> data = { (double) cvSize.width, (double) cvSize.height };
-        currentValue.setTensorData(data);
-        defaultValue.setTensorData(data);
-        return *this;
-    }
-    inline void setCvSizeFromTensor(cv::Size& cvSize) {
-        if (getTensorNumElements() != 2) throw std::runtime_error("Parameter::Pimpl::setCvSizeFromTensor(): refused to export Tensor of size!=2 to cv::Size");
-        auto val = getCurrentParameterValue();
-        cvSize = cv::Size((int) val.tensorElementAt(0), (int) val.tensorElementAt(1));
-    }
-    template<typename T>
-    inline Pimpl& setTensorFromCvMat(const cv::Mat_<T>& cvMat) {
-        if (currentValue.isDefined() && !(currentValue.isTensor())) {
-            throw std::runtime_error("Parameter::Pimpl::setTensorFromCvMat(): refused to overwrite existing non-tensor type");
-        }
-        std::vector<unsigned int> dims = { (unsigned int) cvMat.rows, (unsigned int) cvMat.cols };
-        if (isTensor() && (getTensorNumElements()!=0)) {
-            // Already a tensor; only allow replacement with Mat data of matching size
-            if (getTensorNumElements() != dims[0]*dims[1]) throw std::runtime_error("Parameter::Pimpl::setTensorFromCvMat(): refused to overwrite tensor with cv::Mat of mismatching total size");
-        } else {
-            // Newly defined as a Tensor, copy the Cv shape
-            setAsTensor(dims);
-        }
-        // Not the fastest way, but less hassle than coping with array casts
-        std::vector<double> data;
-        for (unsigned int r=0; r<(unsigned int) cvMat.rows; ++r)
-            for (unsigned int c=0; c<(unsigned int) cvMat.cols; ++c) {
-                data.push_back((double) cvMat(r, c));
-            }
-        currentValue.setTensorData(data);
-        defaultValue.setTensorData(data);
-        return *this;
-    }
-    template<typename T>
-    inline void setCvMatFromTensor(cv::Mat_<T>& cvMat) {
-        if (getTensorDimension() != 2) {
-            std::ostringstream ss;
-            ss << "{";
-            for (unsigned int i=0; i<getTensorDimension(); ++i) {
-                ss << getTensorShape()[i] << ", ";
-            }
-            ss << "}";
-            ss << " " << getUid() << " " << ((int)getType());
-            throw std::runtime_error(std::string("Parameter::Pimpl::setCvMatFromTensor(): refused to export non-2D Tensor to cv::Mat, offending shape is: ")+ss.str());
-        }
-        auto& refData = getTensorDataReference();
-        cv::Mat_<T>(getTensorShape()[0], getTensorShape()[1], (T*)&refData[0]).copyTo(cvMat);
-    }
-#endif // CV_MAJOR_VERSION
     inline Pimpl& setName(const std::string& name) { this->name = name;         return *this; }
     inline Pimpl& setModuleName(const std::string& n) { this->modulename = n; return *this; }
     inline Pimpl& setCategoryName(const std::string& n) { this->categoryname = n; return *this; }
@@ -887,32 +826,6 @@ Parameter& Parameter::setTensorDefaultData(const std::vector<double>& data) {
     pimpl->setTensorDefaultData(data);
     return *this;
 }
-
-#ifdef CV_MAJOR_VERSION
-Parameter& Parameter::setTensorFromCvSize(const cv::Size& cvSize) {
-    pimpl->setTensorFromCvSize(cvSize);
-    return *this;
-}
-void Parameter::setCvSizeFromTensor(cv::Size& cvSize) {
-    pimpl->setCvSizeFromTensor(cvSize);
-    return *this;
-}
-// Specialzations for supported OpenCV element types
-template<> VT_EXPORT Parameter& Parameter::setTensorFromCvMat(const cv::Mat_<float>& cvMat) {
-    pimpl->setTensorFromCvMat<float>(cvMat);
-    return *this;
-}
-template<> VT_EXPORT Parameter& Parameter::setTensorFromCvMat(const cv::Mat_<double>& cvMat) {
-    pimpl->setTensorFromCvMat<double>(cvMat);
-    return *this;
-}
-template<> VT_EXPORT void Parameter::setCvMatFromTensor(cv::Mat_<float>& cvMat) {
-    pimpl->setCvMatFromTensor(cvMat);
-}
-template<> VT_EXPORT void Parameter::setCvMatFromTensor(cv::Mat_<double>& cvMat) {
-    pimpl->setCvMatFromTensor(cvMat);
-}
-#endif // CV_MAJOR_VERSION
 
 Parameter& Parameter::setName(const std::string& name) {
     pimpl->setName(name);
