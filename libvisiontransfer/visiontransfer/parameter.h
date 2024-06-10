@@ -250,7 +250,7 @@ public:
 #ifdef CV_MAJOR_VERSION
     /** Sets a Tensor-type (or still undefined) Parameter from an OpenCV Size object, yielding a tensor of shape {2} */
     VT_EXPORT Parameter& setTensorFromCvSize(const cv::Size& cvSize) {
-        if (isDefined() && !isTensor()) {
+        if ((getType()!=ParameterValue::TYPE_UNDEFINED) && !isTensor()) {
             throw std::runtime_error("Parameter::setTensorFromCvSize(): refused to overwrite existing non-tensor type");
         }
         if (isTensor() && (getTensorNumElements()!=0)) {
@@ -273,7 +273,7 @@ public:
     /** Sets a Tensor-type (or still undefined) Parameter from an OpenCV Mat object, yielding a two-dimensional tensor of identical shape */
     template<typename T>
     VT_EXPORT Parameter& setTensorFromCvMat(const cv::Mat_<T>& cvMat) {
-        if (isDefined() && !isTensor()) {
+        if ((getType()!=ParameterValue::TYPE_UNDEFINED) && !isTensor()) {
             throw std::runtime_error("Parameter::setTensorFromCvMat(): refused to overwrite existing non-tensor type");
         }
         std::vector<unsigned int> dims = { (unsigned int) cvMat.rows, (unsigned int) cvMat.cols };
