@@ -100,7 +100,7 @@ DeviceInfo* DeviceEnumeration::Pimpl::getDevicesPointer(int* numDevices) {
     deviceList = collectDiscoverResponses();
 
     // Convert vector to simple pointer
-    *numDevices = deviceList.size();
+    *numDevices = (int) deviceList.size();
     return deviceList.data();
 }
 

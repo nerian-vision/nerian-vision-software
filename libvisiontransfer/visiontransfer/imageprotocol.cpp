@@ -652,6 +652,7 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
                 }
             } catch(const ProtocolException& ex) {
                 LOG_DEBUG_IMPROTO("Protocol exception: " << ex.what());
+                (void) ex; // silence unused warning
                 resetReception();
                 return false;
             }

@@ -32,7 +32,7 @@ namespace param {
 
 
 /** A raw castable variant value for parameters, used for several things internally in Parameter */
-class VT_EXPORT ParameterValue {
+class ParameterValue {
 
 private:
     // We (mostly) follow the pimpl idiom here
@@ -51,34 +51,34 @@ public:
         TYPE_UNDEFINED
     };
 
-    ParameterValue();
-    ParameterValue(const ParameterValue& other);
-    ~ParameterValue();
-    ParameterValue& operator= (const ParameterValue& other);
-    ParameterValue& setType(ParameterType t);
-    ParameterValue& setTensorShape(const std::vector<unsigned int>& shape);
-    bool isDefined() const;
-    bool isUndefined() const;
-    bool isTensor() const;
-    bool isScalar() const;
-    bool isCommand() const;
-    unsigned int getTensorDimension() const;
-    std::vector<unsigned int> getTensorShape() const;
-    /// Return a copy of the internal tensor data
-    std::vector<double> getTensorData() const;
-    /// Return a reference to the internal tensor data (caution)
-    std::vector<double>& getTensorDataReference();
-    ParameterValue& setTensorData(const std::vector<double>& data);
-    unsigned int getTensorNumElements() const;
-    unsigned int getTensorCurrentDataSize() const;
-    ParameterType getType() const;
-    double& tensorElementAt(unsigned int x);
-    double& tensorElementAt(unsigned int y, unsigned int x);
-    double& tensorElementAt(unsigned int z, unsigned int y, unsigned int x);
+   VT_EXPORT ParameterValue();
+   VT_EXPORT ParameterValue(const ParameterValue& other);
+   VT_EXPORT ~ParameterValue();
+   VT_EXPORT ParameterValue& operator= (const ParameterValue& other);
+   VT_EXPORT ParameterValue& setType(ParameterType t);
+   VT_EXPORT ParameterValue& setTensorShape(const std::vector<unsigned int>& shape);
+   VT_EXPORT bool isDefined() const;
+   VT_EXPORT bool isUndefined() const;
+   VT_EXPORT bool isTensor() const;
+   VT_EXPORT bool isScalar() const;
+   VT_EXPORT bool isCommand() const;
+   VT_EXPORT unsigned int getTensorDimension() const;
+   VT_EXPORT std::vector<unsigned int> getTensorShape() const;
+   /// Return a copy of the internal tensor data
+   VT_EXPORT std::vector<double> getTensorData() const;
+   /// Return a reference to the internal tensor data (caution)
+   VT_EXPORT std::vector<double>& getTensorDataReference();
+   VT_EXPORT ParameterValue& setTensorData(const std::vector<double>& data);
+   VT_EXPORT unsigned int getTensorNumElements() const;
+   VT_EXPORT unsigned int getTensorCurrentDataSize() const;
+   VT_EXPORT ParameterType getType() const;
+   VT_EXPORT double& tensorElementAt(unsigned int x);
+   VT_EXPORT double& tensorElementAt(unsigned int y, unsigned int x);
+   VT_EXPORT double& tensorElementAt(unsigned int z, unsigned int y, unsigned int x);
 
-    template<typename T> ParameterValue& setValue(T t);
-    template<typename T> T getValue() const;
-    template<typename T> T getWithDefault(const T& deflt) const;
+   VT_EXPORT template<typename T> ParameterValue& setValue(T t);
+   VT_EXPORT template<typename T> T getValue() const;
+   VT_EXPORT template<typename T> T getWithDefault(const T& deflt) const;
 
 };
 

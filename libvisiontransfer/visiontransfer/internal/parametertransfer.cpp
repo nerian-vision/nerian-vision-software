@@ -383,7 +383,7 @@ void ParameterTransfer::receiverRoutine() {
     auto refTime = std::chrono::steady_clock::now();
     recvBufBytes = 0;
     threadRunning = true;
-    [[maybe_unused]] int internalThreadId = getThreadId(); // we just reserve ID 0 for the receiver
+    (void) getThreadId(); // we just grab and reserve ID 0 for the receiver
     while (threadRunning) {
         if (socket == INVALID_SOCKET) {
             // Error that is recoverable by reconnection (otherwise this thread would have been terminated)

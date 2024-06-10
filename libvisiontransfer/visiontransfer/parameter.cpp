@@ -420,7 +420,7 @@ std::string Parameter::Pimpl::interpolateCommandLine(const ParameterValue& newVa
         for (auto ch: subst) {
             std::string lookfor = "%";
             lookfor += ch;
-            foundAt = result.rfind(lookfor, where);
+            foundAt = (int) result.rfind(lookfor, where);
             if (foundAt > foundRightmost) {
                 foundRightmost = foundAt;
                 what = ch;
