@@ -1,6 +1,12 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
+1x.x.x (2024-xx-xx)
+-------------------
+* API
+    * C++: moved internal headers to internal/ directory
+    * Future-proofed ImageSet and parameter ABIs
+
 10.7.0 (2024-05-03)
 -------------------
 * NVCom / GenTL producer / API
