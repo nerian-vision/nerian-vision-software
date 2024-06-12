@@ -687,6 +687,11 @@ void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
         invalidateFeatureFromAsyncEvent("NoiseReductionEnabled");
     } else if (uid == "speckle_filter_iterations") {
         invalidateFeatureFromAsyncEvent("SpeckleFilterIterations");
+    } else if (uid == "capture_pixel_format") {
+        invalidateFeatureFromAsyncEvent("InputPixelFormatsAvailableReg");
+        invalidateFeatureFromAsyncEvent("InputPixelFormatReg");
+        invalidateFeatureFromAsyncEvent("InputPixelFormatValue");
+        invalidateFeatureFromAsyncEvent("InputPixelFormat");
     } else {
         return; // Unmapped feature - ignore parameter change
     }
