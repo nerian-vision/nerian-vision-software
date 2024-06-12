@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,13 @@ namespace param {
 
 
 /** A raw castable variant value for parameters, used for several things internally in Parameter */
-class VT_EXPORT ParameterValue {
+class ParameterValue {
+
+private:
+    // We follow the pimpl idiom
+    class Pimpl;
+    Pimpl* pimpl;
+
 public:
     enum ParameterType {
         TYPE_INT,
@@ -45,43 +51,35 @@ public:
         TYPE_UNDEFINED
     };
 
-    ParameterValue();
-    ParameterValue& setType(ParameterType t);
-    ParameterValue& setTensorShape(const std::vector<unsigned int>& shape);
-    bool isDefined() const;
-    bool isUndefined() const;
-    bool isTensor() const;
-    bool isScalar() const;
-    bool isCommand() const;
-    unsigned int getTensorDimension() const;
-    std::vector<unsigned int> getTensorShape() const;
-    /// Return a copy of the internal tensor data
-    std::vector<double> getTensorData() const;
-    /// Return a reference to the internal tensor data (caution)
-    std::vector<double>& getTensorDataReference() { return tensorData; };
-    ParameterValue& setTensorData(const std::vector<double>& data);
-    unsigned int getTensorNumElements() const;
-    unsigned int getTensorCurrentDataSize() const;
-    ParameterType getType() const { return type; }
-    double& tensorElementAt(unsigned int x);
-    double& tensorElementAt(unsigned int y, unsigned int x);
-    double& tensorElementAt(unsigned int z, unsigned int y, unsigned int x);
+   VT_EXPORT ParameterValue();
+   VT_EXPORT ParameterValue(const ParameterValue& other);
+   VT_EXPORT ~ParameterValue();
+   VT_EXPORT ParameterValue& operator= (const ParameterValue& other);
+   VT_EXPORT ParameterValue& setType(ParameterType t);
+   VT_EXPORT ParameterValue& setTensorShape(const std::vector<unsigned int>& shape);
+   VT_EXPORT bool isDefined() const;
+   VT_EXPORT bool isUndefined() const;
+   VT_EXPORT bool isTensor() const;
+   VT_EXPORT bool isScalar() const;
+   VT_EXPORT bool isCommand() const;
+   VT_EXPORT unsigned int getTensorDimension() const;
+   VT_EXPORT std::vector<unsigned int> getTensorShape() const;
+   /// Return a copy of the internal tensor data
+   VT_EXPORT std::vector<double> getTensorData() const;
+   /// Return a reference to the internal tensor data (caution)
+   VT_EXPORT std::vector<double>& getTensorDataReference();
+   VT_EXPORT ParameterValue& setTensorData(const std::vector<double>& data);
+   VT_EXPORT unsigned int getTensorNumElements() const;
+   VT_EXPORT unsigned int getTensorCurrentDataSize() const;
+   VT_EXPORT ParameterType getType() const;
+   VT_EXPORT double& tensorElementAt(unsigned int x);
+   VT_EXPORT double& tensorElementAt(unsigned int y, unsigned int x);
+   VT_EXPORT double& tensorElementAt(unsigned int z, unsigned int y, unsigned int x);
 
-    template<typename T> ParameterValue& setValue(T t);
-    template<typename T> T getValue() const;
-    template<typename T> T getWithDefault(const T& deflt) const { return (type==TYPE_UNDEFINED) ? deflt : getValue<T>(); }
+   template<typename T> VT_EXPORT ParameterValue& setValue(T t);
+   template<typename T> VT_EXPORT T getValue() const;
+   template<typename T> VT_EXPORT T getWithDefault(const T& deflt) const;
 
-private:
-    double numVal;
-    std::string stringVal;
-    unsigned int tensorNumElements; // quick access to number of elements
-    std::vector<unsigned int> tensorShape;
-    std::vector<double> tensorData;
-
-    ParameterType type;
-
-    /// Parameters of TYPE_SAFESTRING enforce a safe character whitelist and max length
-    std::string sanitizeString(const std::string& s, unsigned int maxLength=4096);
 };
 
 } // namespace param

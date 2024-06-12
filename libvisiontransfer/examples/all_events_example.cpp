@@ -37,28 +37,69 @@
 
 using namespace visiontransfer;
 
-int main() {
+void showHelpAndExit() {
+    std::cout << "Usage: all_events_example [--tcp <ipAddr> | --udp <ipAddr>]" << std::endl;
+    std::cout << "  Logs incoming frames and parameter changes from the specified IP" << std::endl;
+    std::cout << "  address, or else from the first device detected with a broadcast." << std::endl;
+    std::cout << "  For manual IP address mode, you must choose between --tcp/--udp." << std::endl;
+    exit(0);
+}
+
+int main(int argc, char** argv) {
     try {
-        // Search for Nerian stereo devices
-        DeviceEnumeration deviceEnum;
-        DeviceEnumeration::DeviceList devices =
-            deviceEnum.discoverDevices();
-        if(devices.size() == 0) {
-            std::cout << "No devices discovered!" << std::endl;
-            return -1;
+        bool useUdp = true;
+        std::string ipStr;
+        const char* ipAddr = nullptr;
+        if (argc > 1) {
+            std::string arg = argv[1];
+            if ((arg == "--help") || (argc < 3)) {
+                showHelpAndExit();
+            } else {
+                if (argc < 3) {
+                    showHelpAndExit();
+                } else {
+                    if (arg == "--udp") {
+                        useUdp = true;
+                    } else if (arg == "--tcp") {
+                        useUdp = false;
+                    } else {
+                        showHelpAndExit();
+                    }
+                    ipAddr = argv[2];
+                }
+            }
         }
 
-        // Print devices
-        std::cout << "Discovered devices:" << std::endl;
-        for(unsigned int i = 0; i< devices.size(); i++) {
-            std::cout << devices[i].toString() << std::endl;
+        if (ipAddr == nullptr) {
+            // Search for Nerian stereo devices
+            DeviceEnumeration deviceEnum;
+            DeviceEnumeration::DeviceList devices =
+                deviceEnum.discoverDevices();
+            if(devices.size() == 0) {
+                std::cout << "No devices discovered!" << std::endl;
+                return -1;
+            }
+
+            // Print devices
+            std::cout << "Discovered devices:" << std::endl;
+            for(unsigned int i = 0; i< devices.size(); i++) {
+                std::cout << devices[i].toString() << std::endl;
+            }
+            std::cout << std::endl;
+
+            // Choose first device to connect to
+            ipStr = devices[0].getIpAddress();
+            ipAddr = ipStr.c_str();
+            useUdp = devices[0].getNetworkProtocol() == DeviceInfo::PROTOCOL_UDP;
         }
-        std::cout << std::endl;
+
+        std::cout << "Connecting to " << ipAddr << " for parameter connection"
+                  << " and " << (useUdp?"UDP":"TCP") << " image transfer" << std::endl;
 
         // Create a DeviceParameters object that connects to the parameter
         // service on the device to set / receive current device parameters.
         // This uses a TCP connection with auto-reconnect enabled by default.
-        DeviceParameters parameters(devices[0]);
+        DeviceParameters parameters(ipAddr);
         parameters.setConnectionStateChangeCallback([&parameters](visiontransfer::ConnectionState state){
             std::cout << "DeviceParameters connection state change: " << ((state==ConnectionState::CONNECTED)?"CONNECTED":"DISCONNECTED") << std::endl;
             // Debug / testing: toggle a parameter when connection comes back up
@@ -70,6 +111,7 @@ int main() {
                     transactionLock->commitAndWait(2000);
                     std::cout << "Committed transaction" << std::endl;
                 } catch(visiontransfer::TimeoutException& ex) {
+                    (void) ex; // prevent build warning
                     std::cout << "(Timeout waiting for transaction effects - processing daemon may not be ready yet)" << std::endl;
                 }
             }
@@ -89,6 +131,7 @@ int main() {
                     transactionLock->commitAndWait(2000);
                     std::cout << "Update: committed transaction." << std::endl;
                 } catch(visiontransfer::TimeoutException& ex) {
+                    (void) ex; // prevent build warning
                     std::cout << "(Timeout waiting for transaction effects - processing daemon may not be ready yet)" << std::endl;
                 }
             }
@@ -96,7 +139,7 @@ int main() {
 
         // Create an image transfer object that receives data from
         // the first detected device
-        AsyncTransfer asyncTransfer(devices[0]);
+        AsyncTransfer asyncTransfer(ipAddr, "7681", useUdp?ImageProtocol::PROTOCOL_UDP:ImageProtocol::PROTOCOL_TCP);
 
         // Connection state change handler: use this to be informed of any network
         // disconnection and subsequent automatic background reconnection.

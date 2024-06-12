@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -11,6 +11,9 @@
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
  *******************************************************************************/
+
+#ifndef VISIONTRANSFER_INTERNAL_CONVERSIONHELPERS_H
+#define VISIONTRANSFER_INTERNAL_CONVERSIONHELPERS_H
 
 namespace visiontransfer {
 namespace internal {
@@ -48,3 +51,6 @@ template<typename T> inline double ConversionHelpers::anyToDouble(T val) { retur
 
 } // namespace internal
 } // namespace visiontransfer
+
+#endif
+

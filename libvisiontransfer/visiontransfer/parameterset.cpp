@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,9 @@
 namespace visiontransfer {
 namespace param {
 
+class ParameterSet::Pimpl {
+    // Empty for now, reserved for extensibility of ParameterSet
+};
 
 Parameter& ParameterSet::setOrCreateSimpleScalar(const std::string& uid, int value) {
     auto it = find(uid);

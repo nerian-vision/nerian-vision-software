@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -52,7 +52,7 @@ namespace visiontransfer {
 class VT_EXPORT DeviceParameters {
 
 private:
-    // We (mostly) follow the pimpl idiom here
+    // We follow the pimpl idiom
     class Pimpl;
     Pimpl* pimpl;
 

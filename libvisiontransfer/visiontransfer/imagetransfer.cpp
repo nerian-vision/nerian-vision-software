@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +22,8 @@
 #include <thread>
 #include "visiontransfer/imagetransfer.h"
 #include "visiontransfer/exceptions.h"
-#include "visiontransfer/datablockprotocol.h"
-#include "visiontransfer/networking.h"
+#include "visiontransfer/internal/datablockprotocol.h"
+#include "visiontransfer/internal/networking.h"
 
 using namespace std;
 using namespace visiontransfer;
@@ -580,8 +580,11 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
         throw ex;
     } else if(bytesReceived > 0) {
         // Check whether this reception is from an unexpected new sender (for UDP server)
-        bool newSender = (((fromAddress.sin_addr.s_addr!=remoteAddress.sin_addr.s_addr) || (fromAddress.sin_port!=remoteAddress.sin_port)) && (remoteAddress.sin_port != 0));
-
+        bool newSender = (
+                protType == ImageProtocol::PROTOCOL_UDP &&
+                ((fromAddress.sin_addr.s_addr!=remoteAddress.sin_addr.s_addr) || (fromAddress.sin_port!=remoteAddress.sin_port)) &&
+                (remoteAddress.sin_port != 0)
+            );
         if (isServer && newSender && protocol->isConnected()) {
             // Reject interfering client
             // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
@@ -748,7 +751,7 @@ int ImageTransfer::Pimpl::getNumDroppedFrames() const {
 
 bool ImageTransfer::Pimpl::isTcpClientClosed(SOCKET sock) {
     char x;
-    ssize_t ret = recv(sock, &x, 1, MSG_DONTWAIT | MSG_PEEK);
+    auto ret = recv(sock, &x, 1, MSG_DONTWAIT | MSG_PEEK);
     return ret == 0;
 }
 
@@ -770,7 +773,7 @@ bool ImageTransfer::Pimpl::selectSocket(bool read, bool wait) {
         tv.tv_usec = 0;
     }
 
-    if(select(sock+1, (read ? &fds : nullptr), (!read ? &fds : nullptr), nullptr, &tv) <= 0) {
+    if(select(((int)sock)+1, (read ? &fds : nullptr), (!read ? &fds : nullptr), nullptr, &tv) <= 0) {
         // The socket is currently not ready
         return false;
     }

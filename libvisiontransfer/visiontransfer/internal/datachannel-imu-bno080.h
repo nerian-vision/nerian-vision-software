@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2023 Allied Vision Technologies GmbH
+ * Copyright (c) 2024 Allied Vision Technologies GmbH
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -17,8 +17,8 @@
 #ifndef VISIONTRANSFER_DATACHANNEL_IMU_BNO080_H
 #define VISIONTRANSFER_DATACHANNEL_IMU_BNO080_H
 
-#include <visiontransfer/datachannelservicebase.h>
-#include <visiontransfer/sensorringbuffer.h>
+#include <visiontransfer/internal/datachannelservicebase.h>
+#include <visiontransfer/internal/sensorringbuffer.h>
 
 #include <vector>
 #include <stdexcept>

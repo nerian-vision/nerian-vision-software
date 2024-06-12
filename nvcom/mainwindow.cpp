@@ -238,6 +238,8 @@ void MainWindow::reinitNVCom() {
         emit ui->actionConnect->triggered();
     });
 
+    nvcom->setCaptureSequence(ui->actionCapture_sequence->isChecked());
+
     // Re-initialize the 2D or 3D view
     switchView(settings.view3D);
 
@@ -484,13 +486,13 @@ bool MainWindow::parseOptions(QApplication& app) {
     settings.maxFrameRate = cmdParser.value(optColCoding).toDouble();
     if(cmdParser.isSet(optWriteDir)) {
         settings.writeDir = cmdParser.value(optWriteDir).toLocal8Bit().toStdString();
-                writeImages = true;
-                writeDirSelected = true;
+        writeImages = true;
+        writeDirSelected = true;
     }
     if(cmdParser.isSet(optReadDir)) {
         settings.readDir = cmdParser.value(optReadDir).toLocal8Bit().toStdString();
-                settings.readImages = true;
-                closeAfterSend = true;
+        settings.readImages = true;
+        closeAfterSend = true;
     }
     settings.nonGraphical = cmdParser.isSet(optNonGraph);
     settings.remotePort = cmdParser.value(optRemotePort).toInt();
