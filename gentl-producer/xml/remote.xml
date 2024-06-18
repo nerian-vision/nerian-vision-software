@@ -25,6 +25,7 @@
         <pFeature>ImageFormatControl</pFeature>
         <pFeature>TransportLayerControl</pFeature>
         <pFeature>Scan3dControl</pFeature>
+        <pFeature>DigitalIOControl</pFeature>
         <pFeature>Nerian</pFeature>
     </Category>
 
@@ -95,7 +96,19 @@
         <pFeature>Scan3dCoordinateOffset</pFeature>
     </Category>
 
+    <Category Name="DigitalIOControl" NameSpace="Standard">
+        <pFeature>LineSelector</pFeature>
+        <pFeature>LineMode</pFeature>
+        <pFeature>LineInverter</pFeature>
+        <pFeature>LineSource</pFeature>
+        <pFeature>UserOutputSelector</pFeature>
+        <pFeature>UserOutputValue</pFeature>
+    </Category>
+
     <Category Name="Nerian" NameSpace="Custom">
+        <pFeature>LinePulseWidthSelector</pFeature>
+        <pFeature>LinePulseWidthAlternationMode</pFeature>
+        <pFeature>LinePulseWidth</pFeature>
         <pFeature>InputPixelFormat</pFeature>
         <pFeature>PatternProjectorPresent</pFeature>
         <pFeature>PatternProjectorBrightness</pFeature>
@@ -198,6 +211,8 @@
     </Enumeration>
 
     <Float Name="AcquisitionFrameRate" NameSpace="Standard">
+        <ToolTip>The trigger frequency for the primary internal camera trigger generator (Line0), which is also the frequency for an enabled trigger output (Line1). Only used when TriggerSource is set to Line0.</ToolTip>
+        <Description>The trigger frequency for the primary internal camera trigger generator (Line0), which is also the frequency for an enabled trigger output (Line1). Only used when TriggerSource is set to Line0.</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>AcquisitionFrameRateReg</pValue>
         <Min>0</Min>
@@ -234,34 +249,35 @@
     </Enumeration>
 
     <Enumeration Name="TriggerMode" NameSpace="Standard">
-        <ImposedAccessMode>RW</ImposedAccessMode>
-        <EnumEntry Name="Off" NameSpace="Standard">
-            <Value>0</Value>
-        </EnumEntry>
+        <ImposedAccessMode>RO</ImposedAccessMode>
         <EnumEntry Name="On" NameSpace="Standard">
             <Value>1</Value>
         </EnumEntry>
-        <pValue>TriggerModeReg</pValue>
+        <Value>1</Value>
     </Enumeration>
-    <IntReg Name="TriggerModeReg" NameSpace="Custom">
-        <Address>0xC002D000</Address>
-        <Length>4</Length>
-        <AccessMode>RW</AccessMode>
-        <pPort>Device</pPort>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
 
     <IntSwissKnife Name="HardwareTriggerInputPresent" NameSpace="Custom">
         <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
         <Formula>bitmask &amp; 4</Formula> <!-- Bit 2: availability of hardware trigger input -->
     </IntSwissKnife>
     <Enumeration Name="TriggerSource" NameSpace="Standard">
+        <ToolTip>Trigger source, selected between internal trigger generator (Line0) or available external triggering modes</ToolTip>
+        <Description>Trigger source, selected between internal trigger generator (Line0) or available external triggering modes</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
+        <EnumEntry Name="Line0" NameSpace="Standard">
+            <ToolTip>Line0 represents the internal trigger generator</ToolTip>
+            <Description>Line0 represents the internal trigger generator</Description>
+            <Value>0</Value>
+        </EnumEntry>
         <EnumEntry Name="Line1" NameSpace="Standard">
+            <ToolTip>Line1 represents the external trigger line (if set to Input mode)</ToolTip>
+            <Description>Line1 represents the external trigger line (if set to Input mode)</Description>
             <pIsAvailable>HardwareTriggerInputPresent</pIsAvailable>
             <Value>1</Value>
         </EnumEntry>
         <EnumEntry Name="Software" NameSpace="Standard">
+            <ToolTip>Software triggering via TCP, use TriggerSoftware command to emit</ToolTip>
+            <Description>Software triggering via TCP, use TriggerSoftware command to emit</Description>
             <Value>2</Value>
         </EnumEntry>
         <pValue>TriggerSourceReg</pValue>
@@ -295,6 +311,8 @@
 
     <!-- Exposure control (inside category Acquisition) -->
     <Enumeration Name="ExposureTimeSelector" NameSpace="Standard">
+        <ToolTip>Selector for exposure time. Left and right camera are always tied, but on three-sensor models, the settings for the center (color) camera can be set independently.</ToolTip>
+        <Description>Selector for exposure time. Left and right camera are always tied, but on three-sensor models, the settings for the center (color) camera can be set independently.</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="StereoCamera" NameSpace="Standard">
             <Value>0</Value>
@@ -371,6 +389,8 @@
 
     <!-- Gain control (inside category Analog) -->
     <Enumeration Name="GainSelector" NameSpace="Standard">
+        <ToolTip>Selector for gain. Left and right camera are always tied, but on three-sensor models, the settings for the center (color) camera can be set independently.</ToolTip>
+        <Description>Selector for gain. Left and right camera are always tied, but on three-sensor models, the settings for the center (color) camera can be set independently.</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="StereoCamera" NameSpace="Custom">
             <Value>0</Value>
@@ -445,6 +465,8 @@
         <Formula>bitmask &amp; 2</Formula> <!-- Bit 1: availability of balance control -->
     </IntSwissKnife>
     <Enumeration Name="BalanceRatioSelector" NameSpace="Standard">
+        <ToolTip>Selector for color channel to white balance; Red or Blue (Green is reference).</ToolTip>
+        <Description>Selector for color channel to white balance; Red or Blue (Green is reference).</Description>
         <pIsAvailable>BalanceControlAvailable</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Red" NameSpace="Standard">
@@ -468,6 +490,8 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
     <Float Name="BalanceRatio" NameSpace="Standard">
+        <ToolTip>White balance factor, relative to a constant Green of 1.0.</ToolTip>
+        <Description>White balance factor, relative to a constant Green of 1.0.</Description>
         <pIsAvailable>BalanceControlAvailable</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>BalanceRatioReg</pValue>
@@ -499,6 +523,8 @@
         <Endianess>LittleEndian</Endianess>
     </FloatReg>
     <Enumeration Name="BalanceWhiteAuto" NameSpace="Standard">
+        <ToolTip>Auto white balance mode; Continuous activates a simple gray-world algorithm.</ToolTip>
+        <Description>Auto white balance mode; Continuous activates a simple gray-world algorithm.</Description>
         <pIsAvailable>BalanceControlAvailable</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Off" NameSpace="Standard">
@@ -569,6 +595,7 @@
     </Integer>
 
     <Enumeration Name="PixelFormat" NameSpace="Standard">
+        <ToolTip>The pixel format for the component. This is not necessarily identical to InputPixelFormat: converted / debayered output from the FPGA will always arrive as Mono8, Mono12, or RGB8.</ToolTip>
         <ImposedAccessMode>RO</ImposedAccessMode>
         <pInvalidator>IntensitySource</pInvalidator> <!-- changing the source may change the pixel format for Intensity -->
         <EnumEntry Name="Mono8" NameSpace="Standard">
@@ -826,10 +853,14 @@
     <!-- Nerian-specific features -->
     <!-- Source for the multipart 'Intensity' channel, for models with more than 2 cameras -->
     <IntSwissKnife Name="ThirdCameraPresent" NameSpace="Custom">
+        <ToolTip>Indicates whether this is a three-camera Nerian device.</ToolTip>
+        <Description>Indicates whether this is a three-camera Nerian device.</Description>
         <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
         <Formula>bitmask &amp; 1</Formula> <!-- Bit 0: availability of third camera -->
     </IntSwissKnife>
     <Enumeration Name="IntensitySource" NameSpace="Custom">
+        <ToolTip>The camera to dedicate to the Intensity purpose of a GenTL multipart stream (other active channel is appended with Custom0 purpose). Auto setting prefers color camera, if that channel is activated.</ToolTip>
+        <Description>The camera to dedicate to the Intensity purpose of a GenTL multipart stream (other active channel is appended with Custom0 purpose). Auto setting prefers color camera, if that channel is activated.</Description>
         <Visibility>Expert</Visibility>
         <pIsAvailable>ThirdCameraPresent</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
@@ -1005,7 +1036,241 @@
         <Value>1</Value>
     </Enumeration>
 
+    <!-- Digital I/O control -->
+
+    <Enumeration Name="LineSelector" NameSpace="Standard">
+        <ToolTip>Selector for the (virtual) digital I/O lines. Line0 is the primary internal camera trigger, Line1 is the external trigger I/O connection.</ToolTip>
+        <Description>Selector for the (virtual) digital I/O lines. Line0 is the primary internal camera trigger, Line1 is the external trigger I/O connection.</Description>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <EnumEntry Name="Line0" NameSpace="Standard">
+            <Value>0</Value>
+        </EnumEntry>
+        <EnumEntry Name="Line1" NameSpace="Standard">
+            <Value>1</Value>
+        </EnumEntry>
+        <pValue>LineSelectorReg</pValue>
+        <pSelected>LineMode</pSelected>
+        <pSelected>LineModeReg</pSelected>
+        <pSelected>LineInverter</pSelected>
+        <pSelected>LineInverterReg</pSelected>
+        <pSelected>LineSource</pSelected>
+        <pSelected>LineSourceReg</pSelected>
+        <pSelected>LinePulseWidthAlternationMode</pSelected>
+        <pSelected>LinePulseWidthAlternationModeReg</pSelected>
+        <pSelected>LinePulseWidth</pSelected>
+        <pSelected>LinePulseWidthReg</pSelected>
+        <pSelected>LineOffset</pSelected>
+        <pSelected>LineOffsetReg</pSelected>
+    </Enumeration>
+    <IntReg Name="LineSelectorReg" NameSpace="Custom">
+        <Address>0xC004D000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Enumeration Name="LineMode" NameSpace="Standard">
+        <ToolTip>Mode for digital I/O. Line0 (primary internal camera trigger) is always in Output mode. Line1 operates as a secondary Output, or as the hardware trigger Input (on devices that support it).</ToolTip>
+        <Description>Mode for digital I/O. Line0 (primary internal camera trigger) is always in Output mode. Line1 operates as a secondary Output, or as the hardware trigger Input (on devices that support it).</Description>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <EnumEntry Name="Output" NameSpace="Standard">
+            <Value>0</Value>
+        </EnumEntry>
+        <EnumEntry Name="Input" NameSpace="Standard">
+            <pIsAvailable>LineSettableToInput</pIsAvailable>
+            <Value>1</Value>
+        </EnumEntry>
+        <pValue>LineModeReg</pValue>
+    </Enumeration>
+    <IntReg Name="LineModeReg" NameSpace="Custom">
+        <Address>0xC004E000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntSwissKnife Name="LineSettableToInput" NameSpace="Custom">
+        <pVariable Name="selector">LineSelectorReg</pVariable>
+        <pVariable Name="supported">HardwareTriggerInputPresent</pVariable>
+        <Formula>selector &amp; supported</Formula> <!-- Only Line1 is settable to Input, and only on supported devices -->
+    </IntSwissKnife>
+
+    <Enumeration Name="LineInverter" NameSpace="Standard">
+        <ToolTip>Inverter for the selected output line. False means active-high, True means active-low.</ToolTip>
+        <Description>Inverter for the selected output line. False means active-high, True means active-low.</Description>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <EnumEntry Name="False" NameSpace="Standard">
+            <Value>0</Value>
+        </EnumEntry>
+        <EnumEntry Name="True" NameSpace="Standard">
+            <Value>1</Value>
+        </EnumEntry>
+        <pValue>LineInverterReg</pValue>
+    </Enumeration>
+    <IntReg Name="LineInverterReg" NameSpace="Custom">
+        <Address>0xC004F000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Enumeration Name="LineSource" NameSpace="Standard">
+        <ToolTip>Output source for the given I/O line (unless set to Input mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; UserOutput0: emit constant logical 0 (before any inversion); UserOutput1: emit constant logical 1 (before any inversion).</ToolTip>
+        <Description>Output source for the given I/O line (unless set to Input mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; UserOutput0: emit constant logical 0 (before any inversion); UserOutput1: emit constant logical 1 (before any inversion).</Description>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <EnumEntry Name="UserOutput0" NameSpace="Standard">
+            <Value>0</Value>
+        </EnumEntry>
+        <EnumEntry Name="UserOutput1" NameSpace="Standard">
+            <Value>1</Value>
+        </EnumEntry>
+        <EnumEntry Name="FrameTrigger" NameSpace="Standard">
+            <Value>2</Value>
+        </EnumEntry>
+        <pValue>LineSourceReg</pValue>
+    </Enumeration>
+    <IntReg Name="LineSourceReg" NameSpace="Custom">
+        <Address>0xC0050000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Enumeration Name="UserOutputSelector" NameSpace="Standard">
+        <ToolTip>Selector for the user output data, set to constant 0 and 1 for emitting constant levels if configured.</ToolTip>
+        <Description>Selector for the user output data, set to constant 0 and 1 for emitting constant levels if configured.</Description>
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <EnumEntry Name="UserOutput0" NameSpace="Standard">
+            <Value>0</Value>
+        </EnumEntry>
+        <EnumEntry Name="UserOutput1" NameSpace="Standard">
+            <Value>1</Value>
+        </EnumEntry>
+        <pValue>UserOutputSelectorReg</pValue>
+        <pSelected>UserOutputValue</pSelected>
+    </Enumeration>
+    <IntReg Name="UserOutputSelectorReg" NameSpace="Custom">
+        <Address>0xC0058000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="UserOutputValue" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RO</ImposedAccessMode>
+        <pValue>UserOutputSelectorReg</pValue>
+        <!-- The value mirrors the index (0, 1); convenient selection of constant values -->
+    </Integer>
+
     <!-- Nerian-specific features -->
+
+    <!-- Digital I/O control: custom Nerian extensions -->
+    
+    <Enumeration Name="LinePulseWidthSelector" NameSpace="Custom">
+        <ToolTip>Selector for accessing the n-th pulse width when LinePulseWidthAlternationMode is 'Cycle'. A zero width terminates the alternation sequence.</ToolTip>
+        <Description>Selector for accessing the n-th pulse width when LinePulseWidthAlternationMode is 'Cycle'. A zero width terminates the alternation sequence.</Description>
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pInvalidator>LinePulseWidthAlternationMode</pInvalidator> <!-- Constant mode resets selector to first pulse -->
+        <EnumEntry Name="PulseWidth1" NameSpace="Custom"> <Value>0</Value> </EnumEntry>
+        <EnumEntry Name="PulseWidth2" NameSpace="Custom"> <pIsAvailable>LinePulseWidthAlternationMode</pIsAvailable> <Value>1</Value> </EnumEntry>
+        <EnumEntry Name="PulseWidth3" NameSpace="Custom"> <pIsAvailable>LinePulseWidthAlternationMode</pIsAvailable> <Value>2</Value> </EnumEntry>
+        <EnumEntry Name="PulseWidth4" NameSpace="Custom"> <pIsAvailable>LinePulseWidthAlternationMode</pIsAvailable> <Value>3</Value> </EnumEntry>
+        <EnumEntry Name="PulseWidth5" NameSpace="Custom"> <pIsAvailable>LinePulseWidthAlternationMode</pIsAvailable> <Value>4</Value> </EnumEntry>
+        <EnumEntry Name="PulseWidth6" NameSpace="Custom"> <pIsAvailable>LinePulseWidthAlternationMode</pIsAvailable> <Value>5</Value> </EnumEntry>
+        <EnumEntry Name="PulseWidth7" NameSpace="Custom"> <pIsAvailable>LinePulseWidthAlternationMode</pIsAvailable> <Value>6</Value> </EnumEntry>
+        <EnumEntry Name="PulseWidth8" NameSpace="Custom"> <pIsAvailable>LinePulseWidthAlternationMode</pIsAvailable> <Value>7</Value> </EnumEntry>
+        <pValue>LinePulseWidthSelectorReg</pValue>
+        <pSelected>LinePulseWidth</pSelected>
+        <pSelected>LinePulseWidthReg</pSelected>
+    </Enumeration>
+    <IntReg Name="LinePulseWidthSelectorReg" NameSpace="Custom">
+        <Address>0xC0051000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Enumeration Name="LinePulseWidthAlternationMode" NameSpace="Custom">
+        <!-- Selected by LineSelector -->
+        <ToolTip>Activate or deactivate the cycling through a configured sequence of pulse widths for subsequent trigger output events.</ToolTip>
+        <Description>Activate or deactivate the cycling through a configured sequence of pulse widths for subsequent trigger output events.</Description>
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <EnumEntry Name="Constant" NameSpace="Custom">
+            <Value>0</Value>
+        </EnumEntry>
+        <EnumEntry Name="Cycle" NameSpace="Custom">
+            <Value>1</Value>
+        </EnumEntry>
+        <pValue>LinePulseWidthAlternationModeReg</pValue>
+    </Enumeration>
+    <IntReg Name="LinePulseWidthAlternationModeReg" NameSpace="Custom">
+        <Address>0xC0052000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="LinePulseWidth" NameSpace="Standard">
+        <ToolTip>The n-th pulse width when LinePulseWidthAlternationMode is 'Cycle'. A zero width terminates the alternation sequence.</ToolTip>
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>LinePulseWidthReg</pValue>
+        <Min>0</Min>
+        <pMax>LinePulseWidthMaxReg</pMax>
+    </Integer>
+    <IntReg Name="LinePulseWidthReg" NameSpace="Custom">
+        <Address>0xC0053000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="LinePulseWidthMaxReg" NameSpace="Custom">
+        <Address>0xC0054000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="LineOffset" NameSpace="Standard">
+        <Visibility>Expert</Visibility>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>LineOffsetReg</pValue>
+        <pMin>LineOffsetMinReg</pMin>
+        <pMax>LineOffsetMaxReg</pMax>
+    </Integer>
+    <IntReg Name="LineOffsetReg" NameSpace="Custom">
+        <Address>0xC0055000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="LineOffsetMinReg" NameSpace="Custom">
+        <Address>0xC0056000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="LineOffsetMaxReg" NameSpace="Custom">
+        <Address>0xC0057000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
 
     <!-- Selection of camera (sensor) pixel format - this need not be the same as the post-FPGA output format -->
     <IntReg Name="InputPixelFormatsAvailableReg" NameSpace="Custom">
@@ -1069,6 +1334,8 @@
     </IntReg>
 
     <Enumeration Name="InputPixelFormat" NameSpace="Custom">
+        <ToolTip>The pixel format for the stereo camera sensors. Not the same as the output PixelFormat: the FPGA may convert the format.</ToolTip>
+        <Description>The pixel format for the stereo camera sensors. Not the same as the output PixelFormat: the FPGA may convert the format.</Description>
         <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Mono8" NameSpace="Standard">
@@ -1107,16 +1374,14 @@
             <pIsAvailable>InputPixelFormatAvailableBayerBG8</pIsAvailable>
             <Value>0x0108000B</Value>
         </EnumEntry>
-        <!--EnumEntry Name="RGB8Packed" NameSpace="Standard">
-            <pIsAvailable>InputPixelFormatAvailableRGB8Packed</pIsAvailable>
-            <Value>?</Value>
-        </EnumEntry-->
         <pValue>InputPixelFormatValue</pValue>
     </Enumeration>
 
     <!-- Stereo algorithm parameters -->
 
     <Integer Name="NumberOfDisparities" NameSpace="Custom">
+        <ToolTip>The horizontal range in pixels for which correspondences can be found, sethigher to allow measurement of closer objects. Influences available frame rate and available image sizes.</ToolTip>
+        <Description>The horizontal range in pixels for which correspondences can be found, set higher to allow measurement of closer objects. Influences available frame rate and available image sizes.</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>NumberOfDisparitiesReg</pValue>
         <pMin>NumberOfDisparitiesMinReg</pMin>
@@ -1157,6 +1422,8 @@
     </IntReg>
 
     <Integer Name="DisparityOffset" NameSpace="Custom">
+        <ToolTip>The minimum disparity for successful matching. Non-zero values allow measuring closer objects, at the expense of not detecting the most distant objects. Influences available image sizes.</ToolTip>
+        <Description>The minimum disparity for successful matching. Non-zero values allow measuring closer objects, at the expense of not detecting the most distant objects. Influences available image sizes.</Description>
         <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pInvalidator>NumberOfDisparities</pInvalidator>
@@ -1184,6 +1451,8 @@
     </IntSwissKnife>
 
     <Integer Name="SgmP1NoEdge" NameSpace="Custom">
+        <ToolTip>The SGM P1 penalty parameter for small disparity changes, where not at an edge in the image</ToolTip>
+        <Description>The SGM P1 penalty parameter for small disparity changes, where not at an edge in the image</Description>
         <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP1NoEdgeReg</pValue>
@@ -1200,6 +1469,8 @@
     </IntReg>
 
     <Integer Name="SgmP1Edge" NameSpace="Custom">
+        <ToolTip>The SGM P1 penalty parameter for small disparity changes, where at a detected edge in the image</ToolTip>
+        <Description>The SGM P1 penalty parameter for small disparity changes, where at a detected edge in the image</Description>
         <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP1EdgeReg</pValue>
@@ -1216,6 +1487,8 @@
     </IntReg>
 
     <Integer Name="SgmP2NoEdge" NameSpace="Custom">
+        <ToolTip>The SGM P2 penalty parameter for larger disparity changes, where not at an edge in the image</ToolTip>
+        <Description>The SGM P2 penalty parameter for larger disparity changes, where not at an edge in the image</Description>
         <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP2NoEdgeReg</pValue>
@@ -1232,6 +1505,8 @@
     </IntReg>
 
     <Integer Name="SgmP2Edge" NameSpace="Custom">
+        <ToolTip>The SGM P2 penalty parameter for larger disparity changes, where at a detected edge in the image</ToolTip>
+        <Description>The SGM P2 penalty parameter for larger disparity changes, where at a detected edge in the image</Description>
         <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP2EdgeReg</pValue>

@@ -46,6 +46,9 @@ DevicePortImpl::DevicePortImpl(LogicalDevice* device)
     currentSelectorForBalanceRatio = 1;
     currentSelectorForExposure = 0;
     currentSelectorForGain = 0;
+    currentSelectorForLine = 0;
+    currentSelectorForPulseWidth = 0;
+    currentSelectorForUserOutput = 0;
     currentIndexForQMatrix = 0;
     preferredTriggerSource = 2; // SW trigger is preselected (available everywhere)
 }
@@ -424,16 +427,15 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setDouble(maxRate);
             }
             break;
-        case 0x2d: // TriggerMode (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+        case 0x2d: // TriggerMode
             {
-                int activeTriggerInput = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
-                info.setUInt(activeTriggerInput != 0);
+                // DEPRECATED / unused register
+                info.setUInt(1);
             }
             break;
-        case 0x2e: // TriggerSource (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
+        case 0x2e: // TriggerSource
             {
                 int activeTriggerSource = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
-                if (activeTriggerSource == 0) activeTriggerSource = preferredTriggerSource;
                 info.setUInt(activeTriggerSource);
             }
             break;
@@ -634,6 +636,157 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             {
                 int num = device->getPhysicalDevice()->getParameter("capture_pixel_format").getCurrent<int>();
                 info.setUInt(num);
+            }
+            break;
+        case 0x4D: // LineSelector
+            {
+                info.setUInt(currentSelectorForLine);
+            }
+            break;
+        case 0x4E: // LineMode (Input / Output: Line0 always Output, Line1 always Output on SceneScan, switchable on others)
+            {
+                if (currentSelectorForLine == 0) {
+                    info.setUInt(0); // always 'Output'
+                } else {
+                    int trigInp = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
+                    info.setUInt(trigInp == 1); // 'Input' iff hardware trigger input is active
+                }
+            }
+            break;
+        case 0x4F: // LineInverter
+            {
+                if (currentSelectorForLine == 0) {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_0_polarity").getCurrent<int>();
+                    info.setUInt(val ? 1 : 0);
+                } else {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_1_polarity").getCurrent<int>();
+                    info.setUInt(val ? 1 : 0);
+                }
+            }
+            break;
+        case 0x50: // LineSource: FrameTrigger (if 'Enabled' in nvparam), UserOutput0/1 (if 'Disabled with constant' in nvparam)
+            {
+                if (currentSelectorForLine == 0) {
+                    int mode = device->getPhysicalDevice()->getParameter("trigger_0_enabled").getCurrent<int>();
+                    int cons = device->getPhysicalDevice()->getParameter("trigger_0_constant").getCurrent<int>();
+                    info.setUInt(mode ? 2 : cons); // 0, 1 = the respective value; 2 = FrameTrigger
+                } else {
+                    int mode = device->getPhysicalDevice()->getParameter("trigger_1_enabled").getCurrent<int>();
+                    int cons = device->getPhysicalDevice()->getParameter("trigger_1_constant").getCurrent<int>();
+                    info.setUInt(mode ? 2 : cons); // 0, 1 = the respective value; 2 = FrameTrigger
+                }
+            }
+            break;
+        case 0x51: // LinePulseWidthSelector (PulseWidth1..8)
+            {
+                info.setUInt(currentSelectorForPulseWidth);
+            }
+            break;
+        case 0x52: // LinePulseWidthAlternationMode (Constant / Cycle; Constant restricts LinePulseWidthSelector to 1)
+            {
+                if (currentSelectorForLine == 0) {
+                    int mode = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width_mode").getCurrent<int>();
+                    info.setUInt(mode ? 1 : 0);
+                } else {
+                    int mode = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width_mode").getCurrent<int>();
+                    info.setUInt(mode ? 1 : 0);
+                }
+            }
+            break;
+        case 0x53: // LinePulseWidth (trigger_XY_pulse_width, X LineSelector -> 0,1; Y LinePulseWidthSelector -> '','b'..'h')
+            {
+                int val = 0;
+                if (currentSelectorForLine == 0) {
+                    switch (currentSelectorForPulseWidth) {
+                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width").getCurrent<int>(); break;
+                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_0b_pulse_width").getCurrent<int>(); break;
+                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_0c_pulse_width").getCurrent<int>(); break;
+                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_0d_pulse_width").getCurrent<int>(); break;
+                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_0e_pulse_width").getCurrent<int>(); break;
+                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_0f_pulse_width").getCurrent<int>(); break;
+                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_0g_pulse_width").getCurrent<int>(); break;
+                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_0h_pulse_width").getCurrent<int>(); break;
+                    };
+                } else {
+                    switch (currentSelectorForPulseWidth) {
+                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width").getCurrent<int>(); break;
+                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_1b_pulse_width").getCurrent<int>(); break;
+                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_1c_pulse_width").getCurrent<int>(); break;
+                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_1d_pulse_width").getCurrent<int>(); break;
+                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_1e_pulse_width").getCurrent<int>(); break;
+                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_1f_pulse_width").getCurrent<int>(); break;
+                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_1g_pulse_width").getCurrent<int>(); break;
+                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_1h_pulse_width").getCurrent<int>(); break;
+                    };
+                }
+                info.setUInt(val);
+            }
+            break;
+        case 0x54: // LinePulseWidthMax (max values)
+            {
+                int val = 0;
+                if (currentSelectorForLine == 0) {
+                    switch (currentSelectorForPulseWidth) {
+                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width").getMax<int>(); break;
+                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_0b_pulse_width").getMax<int>(); break;
+                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_0c_pulse_width").getMax<int>(); break;
+                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_0d_pulse_width").getMax<int>(); break;
+                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_0e_pulse_width").getMax<int>(); break;
+                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_0f_pulse_width").getMax<int>(); break;
+                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_0g_pulse_width").getMax<int>(); break;
+                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_0h_pulse_width").getMax<int>(); break;
+                    };
+                } else {
+                    switch (currentSelectorForPulseWidth) {
+                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width").getMax<int>(); break;
+                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_1b_pulse_width").getMax<int>(); break;
+                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_1c_pulse_width").getMax<int>(); break;
+                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_1d_pulse_width").getMax<int>(); break;
+                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_1e_pulse_width").getMax<int>(); break;
+                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_1f_pulse_width").getMax<int>(); break;
+                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_1g_pulse_width").getMax<int>(); break;
+                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_1h_pulse_width").getMax<int>(); break;
+                    };
+                }
+                info.setUInt(val);
+            }
+            break;
+        case 0x55: // LineOffset (trigger offset in ms)
+            {
+                if (currentSelectorForLine == 0) {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_0_offset").getCurrent<int>();
+                    info.setUInt(val);
+                } else {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getCurrent<int>();
+                    info.setUInt(val);
+                }
+            }
+            break;
+        case 0x56: // LineOffsetMin
+            {
+                if (currentSelectorForLine == 0) {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_0_offset").getMin<int>();
+                    info.setUInt(val);
+                } else {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getMin<int>();
+                    info.setUInt(val);
+                }
+            }
+            break;
+        case 0x57: // LineOffsetMax
+            {
+                if (currentSelectorForLine == 0) {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_0_offset").getMax<int>();
+                    info.setUInt(val);
+                } else {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getMax<int>();
+                    info.setUInt(val);
+                }
+            }
+            break;
+        case 0x58: // UserOutputSelector (for choosing constant-output Off / On)
+            {
+                info.setUInt(currentSelectorForUserOutput);
             }
             break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
@@ -870,31 +1023,20 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
             break;
         case 0x2d: // TriggerMode (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
             {
-                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 8");
+                // DEPRECATED / unused register
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                auto dev = device->getPhysicalDevice();
-                if (newVal == 0) {
-                    // Deactivate (return to capture internally at AcquisitionFrameRate)
-                    dev->setParameter("trigger_input", 0);
-                } else {
-                    // Activate previously deferred trigger input mode
-                    dev->setParameter("trigger_input", preferredTriggerSource);
-                }
+                if (newVal != 1) return GC_ERR_ERROR;
                 return GC_ERR_SUCCESS;
             }
             break;
         case 0x2e: // TriggerSource (NB: TriggerSource and TriggerMode overlap in Nerian parameter)
             {
-                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 8");
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                preferredTriggerSource = newVal;
-                // Only actually change trigger source on device if already activated
-                // (otherwise defer until TriggerMode is set true, below)
                 auto dev = device->getPhysicalDevice();
-                bool triggerInputActive = dev->getParameter("trigger_input").getCurrent<int>() != 0;
-                if (triggerInputActive) {
-                    dev->setParameter("trigger_input", preferredTriggerSource);
-                }
+                // values: 0 (disabled, i.e. internal trigger); 1 (ext hw trigger input); 2 (software)
+                dev->setParameter("trigger_input", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;

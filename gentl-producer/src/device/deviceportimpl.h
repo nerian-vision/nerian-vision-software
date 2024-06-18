@@ -45,6 +45,9 @@ private:
     int currentSelectorForGain;
     int currentIndexForQMatrix;
     int preferredTriggerSource;
+    int currentSelectorForLine;
+    int currentSelectorForPulseWidth;
+    int currentSelectorForUserOutput;
 };
 
 }
