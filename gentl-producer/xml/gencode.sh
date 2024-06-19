@@ -34,13 +34,16 @@ for file in *.xml; do
     # Check syntax
     xmllint --noout --schema GenApiSchema_Version_1_1.xsd gen/temp.xml || exit 1
 
+    # Strip whitespace to save space in the string literal
+    xmllint --noblanks gen/temp.xml > gen/temp2.xml
+
     # Escape string and write to header
     echo -en "{\"${file}\", FileData($major, $minor, $subminor, \n" >> gen/xmlfiles.cpp
-    cat gen/temp.xml | sed -ze 's/\n/\\n\n/g' | sed -e 's/\"/\\\"/g' | \
+    cat gen/temp2.xml | sed -ze 's/\n/\\n\n/g' | sed -e 's/\"/\\\"/g' | \
         sed -e 's/^\(.*\)$/\"\1\"/' >> gen/xmlfiles.cpp
     echo -e ")},\n\n" >> gen/xmlfiles.cpp
 
-    rm gen/temp.xml
+    rm gen/temp.xml gen/temp2.xml
 done
 
 # Write bottom part
