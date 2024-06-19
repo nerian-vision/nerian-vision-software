@@ -61,6 +61,9 @@ private:
         FileData(int majorVer, int minorVer, int subminorVer, const char* content)
             : majorVer(majorVer), minorVer(minorVer), subminorVer(subminorVer), content(content) {
         }
+        FileData(int majorVer, int minorVer, int subminorVer, const std::string& content)
+            : majorVer(majorVer), minorVer(minorVer), subminorVer(subminorVer), content(content) {
+        }
     };
 
     static std::map<std::string, FileData> xmlFiles;
