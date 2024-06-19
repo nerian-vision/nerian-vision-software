@@ -136,6 +136,7 @@
         <pFeature>GapInterpolationEnabled</pFeature>
         <pFeature>NoiseReductionEnabled</pFeature>
         <pFeature>SpeckleFilterIterations</pFeature>
+        <pFeature>FlushOutputQueue</pFeature> <!-- DEBUG -->
     </Category>
 
     <Port Name="Device" NameSpace="Standard">
@@ -1821,6 +1822,29 @@
         <pInvalidator>QMatrixIndexReg</pInvalidator>
         <Endianess>LittleEndian</Endianess>
     </FloatReg>
+
+    <!-- DEBUG STUFF -->
+
+    <Command Name="FlushOutputQueue" NameSpace="Standard">
+        <ToolTip>Flush the GenTL output queue of all data streams to discard all queued frames.</ToolTip>
+        <Description>Flush the GenTL output queue of all data streams to discard all queued frames.</Description>
+        <ImposedAccessMode>WO</ImposedAccessMode>
+        <pValue>FlushOutputQueueBool</pValue>
+        <CommandValue>1</CommandValue>
+    </Command>
+
+    <Boolean Name="FlushOutputQueueBool" NameSpace="Custom">
+        <ImposedAccessMode>WO</ImposedAccessMode>
+        <pValue>FlushOutputQueueReg</pValue>
+    </Boolean>
+
+    <IntReg Name="FlushOutputQueueReg" NameSpace="Custom">
+        <Address>0xC00F1000</Address>
+        <Length>4</Length>
+        <AccessMode>WO</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
 
 
 </RegisterDescription>
