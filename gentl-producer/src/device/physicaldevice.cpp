@@ -131,21 +131,29 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
                 latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, channelIdx);
                 latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
                 channelIdx++;
+            } else {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, -1);
             }
             if (enabledDisparity) {
                 latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, channelIdx);
                 latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_12_BIT_MONO);
                 channelIdx++;
+            } else {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, -1);
             }
             if (enabledColor) {
                 latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, channelIdx);
                 latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_8_BIT_RGB);
                 channelIdx++;
+            } else {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, -1);
             }
             if (enabledRight) {
                 latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, channelIdx);
                 latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
                 channelIdx++;
+            } else {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, -1);
             }
             // Also set initial values for the Q matrix, so all features can be calculated
             auto qMatData = paramSet["calib_Q_12"].getTensorData();
