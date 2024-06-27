@@ -22,6 +22,7 @@
 #include <algorithm>
 
 #include <iostream> // DEBUG
+#include <fstream>
 
 using namespace visiontransfer;
 
