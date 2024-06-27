@@ -92,7 +92,7 @@ BufferMapping::BufferMapping(const ImageSet& metaData, int intensitySource, bool
         offset += sz;
     }
     totalBufferSize = offset;
-    //std::cout << "NEW BUFFERMAPPING - Parts: " << numBufferParts << " Res: " << metaData.getWidth() << "x" << metaData.getHeight() << " BufSize " << totalBufferSize << std::endl;
+    //dumpToStream(std::cout); //DEBUG
 }
 
 int BufferMapping::getNumBufferParts() const {
