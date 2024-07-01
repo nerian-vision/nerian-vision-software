@@ -140,21 +140,13 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
 
 void PhysicalDevice::close() {
     DEBUG_PHYS("Closing a PhysicalDevice");
-#ifndef DELIVER_TEST_DATA
-    // Re-isolate parameter event thread from current physical device instance
-    // This may block briefly until a running parameter callback has completed
-    if (deviceParameters) {
-        DEBUG_PHYS("Disconnecting device parameter callback");
-        deviceParameters->setParameterUpdateCallback([](const std::string& uid){});
-    }
-#endif
     if(threadRunning) {
-        DEBUG_PHYS("Terminating physical device receiver thread");
+        DEBUG_PHYS("Terminating a running physical device receiver thread");
         threadRunning = false;
-        if(receiveThread.joinable()) {
-            DEBUG_PHYS("Joining thread");
-            receiveThread.join();
-        }
+    }
+    if(receiveThread.joinable()) {
+        DEBUG_PHYS("Joining device receiver thread");
+        receiveThread.join();
     }
     DEBUG_PHYS("Closed physical device");
 }
@@ -291,6 +283,14 @@ void PhysicalDevice::deviceReceiveThread() {
         DEBUG_PHYS("Exception in receiver thread: terminating");
         threadRunning = false;
     }
+#ifndef DELIVER_TEST_DATA
+    // Also re-isolate the parameter event thread from current physical device instance at this point.
+    // This may block briefly until a running parameter callback has completed.
+    if (deviceParameters) {
+        DEBUG_PHYS("Disconnecting device parameter callback");
+        deviceParameters->setParameterUpdateCallback([](const std::string& uid){});
+    }
+#endif
 }
 
 void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
