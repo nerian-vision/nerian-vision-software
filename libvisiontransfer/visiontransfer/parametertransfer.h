@@ -261,6 +261,8 @@ private:
     std::mutex mapMutex;
     /// Mutex to guard the socket in case of modification (invalidation by disconnect)
     std::mutex socketModificationMutex;
+    /// Mutex for calling or modifying the user callback functions
+    std::mutex callbackMutex;
     /// Per-thread cond to wait for network reply messages
     std::map<int, std::condition_variable> waitConds;
     /// Condition-specific mutexes

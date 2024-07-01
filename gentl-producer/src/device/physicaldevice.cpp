@@ -92,7 +92,9 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
 
 #ifndef DELIVER_TEST_DATA
         // Initialize network receiver
-        imageTf.reset(new ImageTransfer(host, "7681",
+        //imageTf.reset(new ImageTransfer(host, "7681",
+        //    udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
+        asyncTf.reset(new AsyncTransfer(host, "7681",
             udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
         // Initialize parameter server connection
         DEBUG_PHYS("Creating DeviceParameters");
@@ -136,6 +138,13 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
 }
 
 void PhysicalDevice::close() {
+#ifndef DELIVER_TEST_DATA
+    // Re-isolate parameter event thread from current physical device instance
+    // This may block briefly until a running parameter callback has completed
+    if (deviceParameters) {
+        deviceParameters->setParameterUpdateCallback([](const std::string& uid){});
+    }
+#endif
     if(threadRunning) {
         threadRunning = false;
         if(receiveThread.joinable()) {
@@ -185,7 +194,8 @@ void PhysicalDevice::deviceReceiveThread() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #else
             // Receive new image
-            if(!imageTf->receiveImageSet(receivedSet)) {
+            //if(!imageTf->receiveImageSet(receivedSet)) {
+            if(!asyncTf->collectReceivedImageSet(receivedSet, 1.0)) { // Wait up to 1.0 sec for full image set, then gracefully return to running check
                 // No image available
                 continue;
             }
