@@ -75,6 +75,7 @@ namespace GenTL {
 #define DEBUG7(a, b, c, d, e, f, g)  {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
     << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << "; " << DEBUG_VAL(e) << "; " << DEBUG_VAL(f) \
     << "; " << DEBUG_VAL(g) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG_MSG(m)        {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << m << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
 
 
 #else
@@ -87,7 +88,7 @@ namespace GenTL {
 #define DEBUG5(a, b, c, d, e)          {}
 #define DEBUG6(a, b, c, d, e, f)       {}
 #define DEBUG7(a, b, c, d, e, f, g)    {}
-
+#define DEBUG_MSG(m)                   {}
 
 #endif
 
@@ -407,8 +408,11 @@ GC_API DevClose(DEV_HANDLE hDevice) {
     if(!verifyHandle(hDevice, Handle::TYPE_DEVICE)) {
         return setLastError(GC_ERR_INVALID_HANDLE);
     } else {
+        DEBUG_MSG("Closing Logical Device");
         GenTL::GC_ERROR error =  reinterpret_cast<LogicalDevice*>(hDevice)->close();
+        DEBUG_MSG("Freeing unused Physical Devices");
         reinterpret_cast<LogicalDevice*>(hDevice)->getPhysicalDevice()->getInterface()->getSystem()->freeUnusedDevices();
+        DEBUG_MSG("Done with DevClose");
         return setLastError(error);
     }
 

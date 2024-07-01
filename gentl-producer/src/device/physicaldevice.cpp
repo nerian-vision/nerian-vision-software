@@ -62,9 +62,10 @@ PhysicalDevice::PhysicalDevice(Interface* interface): interface(interface), udp(
 }
 
 PhysicalDevice::~PhysicalDevice() {
-    DEBUG_PHYS("Destroying a PhysicalDevice");
     close();
+    DEBUG_PHYS("Deallocating error event");
     freeErrorEvent();
+    DEBUG_PHYS("Destroying a PhysicalDevice");
 }
 
 Event* PhysicalDevice::allocErrorEvent() {
@@ -138,19 +139,24 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
 }
 
 void PhysicalDevice::close() {
+    DEBUG_PHYS("Closing a PhysicalDevice");
 #ifndef DELIVER_TEST_DATA
     // Re-isolate parameter event thread from current physical device instance
     // This may block briefly until a running parameter callback has completed
     if (deviceParameters) {
+        DEBUG_PHYS("Disconnecting device parameter callback");
         deviceParameters->setParameterUpdateCallback([](const std::string& uid){});
     }
 #endif
     if(threadRunning) {
+        DEBUG_PHYS("Terminating physical device receiver thread");
         threadRunning = false;
         if(receiveThread.joinable()) {
+            DEBUG_PHYS("Joining thread");
             receiveThread.join();
         }
     }
+    DEBUG_PHYS("Closed physical device");
 }
 
 void PhysicalDevice::setTestData(ImageSet& receivedSet) {
