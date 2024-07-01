@@ -27,6 +27,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 // SIMD Headers
 #ifdef __SSE2__
@@ -45,7 +46,8 @@ using namespace std::placeholders;
 #else
     std::ostream& debugStreamPhys = std::cout;
 #endif
-#define DEBUG_PHYS(x) debugStreamPhys << x << std::endl;
+std::chrono::system_clock::time_point debugStreamPhysInitTime = std::chrono::system_clock::now();
+#define DEBUG_PHYS(x) debugStreamPhys << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamPhysInitTime).count() << ": " << x << std::endl;
 #else
 #define DEBUG_PHYS(x) ;
 #endif
