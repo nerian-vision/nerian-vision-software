@@ -274,11 +274,21 @@ void PhysicalDevice::deviceReceiveThread() {
                 }
             }
         }
-    } catch(...) {
+    } catch(std::runtime_error& ex) {
+        DEBUG_PHYS("Runtime error in receiver thread: " << ex.what());
         // Error has occurred
         if(errorEvent != nullptr) {
             errorEvent->emitEvent(GC_ERR_IO);
         }
+        DEBUG_PHYS("Exception in receiver thread: terminating");
+        threadRunning = false;
+    } catch(...) {
+        DEBUG_PHYS("Unhandled exception in receiver thread");
+        // Error has occurred
+        if(errorEvent != nullptr) {
+            errorEvent->emitEvent(GC_ERR_IO);
+        }
+        DEBUG_PHYS("Exception in receiver thread: terminating");
         threadRunning = false;
     }
 }
