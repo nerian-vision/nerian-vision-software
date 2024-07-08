@@ -130,7 +130,6 @@ public:
 
 private:
     Interface* interface; // Associated system object
-    std::unique_ptr<visiontransfer::ImageTransfer> imageTf; // Object for receiving image data
     std::unique_ptr<visiontransfer::AsyncTransfer> asyncTf; // Object for receiving image data - with background receiver thread
     std::unique_ptr<visiontransfer::DeviceParameters> deviceParameters; // Parameter access for sending software trigger
 
