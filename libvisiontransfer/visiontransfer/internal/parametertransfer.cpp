@@ -414,7 +414,10 @@ void ParameterTransfer::receiverRoutine() {
                     networkError = true;
                     networkErrorString = std::string("Error receiving network packet: ") + Networking::getLastErrorString();
                     if (connectionStateChangeCallback) {
-                        std::thread([&](){connectionStateChangeCallback(ConnectionState::DISCONNECTED);}).detach();
+                        std::thread([&](){
+                                std::lock_guard<std::mutex> callbackLock(callbackMutex);
+                                connectionStateChangeCallback(ConnectionState::DISCONNECTED);
+                            }).detach();
                     }
                     continue;
                 }
@@ -429,7 +432,10 @@ void ParameterTransfer::receiverRoutine() {
                 networkError = true;
                 networkErrorString = "Connection closed";
                 if (connectionStateChangeCallback) {
-                    std::thread([&](){connectionStateChangeCallback(ConnectionState::DISCONNECTED);}).detach();
+                    std::thread([&](){
+                            std::lock_guard<std::mutex> callbackLock(callbackMutex);
+                            connectionStateChangeCallback(ConnectionState::DISCONNECTED);
+                        }).detach();
                 }
                 continue;
             } else {
@@ -506,8 +512,12 @@ void ParameterTransfer::receiverRoutine() {
                                 if (alreadyPresent && parameterUpdateCallback) {
                                     // Only call the user callback for metadata updates, but not for the initial enumeration
                                     if (parameterUpdateCallbackThreaded) {
-                                        std::thread([&, uid](){parameterUpdateCallback(uid);}).detach();
+                                        std::thread([&, uid](){
+                                                std::lock_guard<std::mutex> callbackLock(callbackMutex);
+                                                parameterUpdateCallback(uid);
+                                            }).detach();
                                     } else {
+                                        std::lock_guard<std::mutex> callbackLock(callbackMutex);
                                         writingProhibited = true; // thread_local
                                         parameterUpdateCallback(uid);
                                         writingProhibited = false;
@@ -524,8 +534,12 @@ void ParameterTransfer::receiverRoutine() {
                                 if (networkReady) {
                                     if (parameterUpdateCallback) {
                                         if (parameterUpdateCallbackThreaded) {
-                                            std::thread([&, uid](){parameterUpdateCallback(uid);}).detach();
+                                            std::thread([&, uid](){
+                                                    std::lock_guard<std::mutex> callbackLock(callbackMutex);
+                                                    parameterUpdateCallback(uid);
+                                                }).detach();
                                         } else {
+                                            std::lock_guard<std::mutex> callbackLock(callbackMutex);
                                             writingProhibited = true; // thread_local
                                             parameterUpdateCallback(uid);
                                             writingProhibited = false;
@@ -547,8 +561,12 @@ void ParameterTransfer::receiverRoutine() {
                                 if (networkReady) {
                                     if (parameterUpdateCallback) {
                                         if (parameterUpdateCallbackThreaded) {
-                                            std::thread([&, uid](){parameterUpdateCallback(uid);}).detach();
+                                            std::thread([&, uid](){
+                                                    std::lock_guard<std::mutex> callbackLock(callbackMutex);
+                                                    parameterUpdateCallback(uid);
+                                                }).detach();
                                         } else {
+                                            std::lock_guard<std::mutex> callbackLock(callbackMutex);
                                             writingProhibited = true; // thread_local
                                             parameterUpdateCallback(uid);
                                             writingProhibited = false;
@@ -589,7 +607,10 @@ void ParameterTransfer::receiverRoutine() {
                             readyCond.notify_all();
                             // The actual ready state is the user-visible connected state
                             if (connectionStateChangeCallback) {
-                                std::thread([&](){connectionStateChangeCallback(ConnectionState::CONNECTED);}).detach();
+                                std::thread([&](){
+                                        std::lock_guard<std::mutex> callbackLock(callbackMutex);
+                                        connectionStateChangeCallback(ConnectionState::CONNECTED);
+                                    }).detach();
                             }
                         } else if (cmd=="HB") {
                             // Heartbeat
@@ -675,6 +696,7 @@ ParameterSet const& ParameterTransfer::getParameterSet() const {
 }
 
 void ParameterTransfer::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded) {
+    std::lock_guard<std::mutex> callbackLock(callbackMutex);
     parameterUpdateCallbackThreaded = threaded;
     parameterUpdateCallback = callback;
 }
@@ -864,6 +886,7 @@ void ParameterTransfer::pollParameter(const std::string& uid, bool synchronous) 
 }
 
 void ParameterTransfer::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback) {
+    std::lock_guard<std::mutex> callbackLock(callbackMutex);
     connectionStateChangeCallback = callback;
 }
 

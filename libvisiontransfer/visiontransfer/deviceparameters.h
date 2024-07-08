@@ -384,7 +384,7 @@ public:
         AUTO_EXPOSURE_MANUAL_GAIN = 1,
 
         /// Only gain is automatically adjusted, exposure is set manually
-        MANUAL_EXPOSORE_AUTO_GAIN = 2,
+        MANUAL_EXPOSURE_AUTO_GAIN = 2,
 
         /// Both, exposure and gain are set manually
         MANUAL_EXPOSURE_MANUAL_GAIN = 3
@@ -407,7 +407,7 @@ public:
     }
 
     /**
-     * \brief Gets the target image intensity of the automatic exposure and gain control
+     * \brief Gets the target image intensity of the automatic exposure and gain control for the left and right cameras.
      * \return The target intensity.
      *
      * Intensities are measured from 0.0 to 1.0, with 0.0 being the darkest,
@@ -418,7 +418,7 @@ public:
     }
 
     /**
-     * \brief Sets the target image intensity of the automatic exposure and gain control
+     * \brief Sets the target image intensity of the automatic exposure and gain control for the left and right cameras.
      * \param intensity The new target intensity.
      *
      * Intensities are measured from 0.0 to 1.0, with 0.0 being the darkest,
@@ -426,6 +426,28 @@ public:
      */
     void setAutoTargetIntensity(double intensity) {
         writeDoubleParameter("auto_target_intensity", intensity);
+    }
+
+    /**
+     * \brief Gets the target image intensity of the automatic exposure and gain control for the third, center, color camera (if present in the device).
+     * \return The target intensity.
+     *
+     * Intensities are measured from 0.0 to 1.0, with 0.0 being the darkest,
+     * and 1.0 the brightest possible pixel intensity.
+     */
+    double getAutoTargetIntensityThirdCamera() {
+        return readDoubleParameter("auto_target_intensity_color");
+    }
+
+    /**
+     * \brief Sets the target image intensity of the automatic exposure and gain control for the third, center, color camera (if present in the device).
+     * \param intensity The new target intensity.
+     *
+     * Intensities are measured from 0.0 to 1.0, with 0.0 being the darkest,
+     * and 1.0 the brightest possible pixel intensity.
+     */
+    void setAutoTargetIntensityThirdCamera(double intensity) {
+        writeDoubleParameter("auto_target_intensity_color", intensity);
     }
 
     /**
@@ -520,7 +542,7 @@ public:
     }
 
     /**
-     * \brief Gets the maximum gain that can be selected automatically.
+     * \brief Gets the maximum gain that can be selected automatically for the left and right cameras.
      * \return Maximum gain in dB.
      */
     double getAutoMaxGain() {
@@ -528,7 +550,7 @@ public:
     }
 
     /**
-     * \brief Gets the maximum gain that can be selected automatically.
+     * \brief Gets the maximum gain that can be selected automatically for the left and right cameras.
      * \param gain  Maximum gain in dB.
      */
     void setAutoMaxGain(double gain) {
@@ -536,11 +558,27 @@ public:
     }
 
     /**
-     * \brief Gets the manually selected exposure time.
+     * \brief Gets the maximum gain that can be selected automatically for the third, center, color camera (if present in the device).
+     * \return Maximum gain in dB.
+     */
+    double getAutoMaxGainThirdCamera() {
+        return readDoubleParameter("auto_maximum_gain_color");
+    }
+
+    /**
+     * \brief Gets the maximum gain that can be selected automatically for the third, center, color camera (if present in the device).
+     * \param gain  Maximum gain in dB.
+     */
+    void setAutoMaxGainThirdCamera(double gain) {
+        writeDoubleParameter("auto_maximum_gain_color", gain);
+    }
+
+    /**
+     * \brief Gets the manually selected exposure time for the left and right cameras.
      * \return Exposure time in microseconds.
      *
      * This parameter is only relevant if the auto mode is set to
-     * MANUAL_EXPOSORE_AUTO_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
+     * MANUAL_EXPOSURE_AUTO_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
      *
      * \see setAutoMode
      */
@@ -549,11 +587,11 @@ public:
     }
 
     /**
-     * \brief Sets the manually selected exposure time.
+     * \brief Sets the manually selected exposure time for the left and right cameras.
      * \param time  Exposure time in microseconds.
      *
      * This parameter is only relevant if the auto mode is set to
-     * MANUAL_EXPOSORE_AUTO_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
+     * MANUAL_EXPOSURE_AUTO_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
      *
      * \see setAutoMode
      */
@@ -562,11 +600,37 @@ public:
     }
 
     /**
-     * \brief Gets the manually selected gain.
+     * \brief Gets the manually selected exposure time for the third, center, color camera (if present in the device).
+     * \return Exposure time in microseconds.
+     *
+     * This parameter is only relevant if the auto mode is set to
+     * MANUAL_EXPOSURE_AUTO_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
+     *
+     * \see setAutoMode
+     */
+    double getManualExposureTimeThirdCamera() {
+        return readDoubleParameter("manual_exposure_time_color");
+    }
+
+    /**
+     * \brief Sets the manually selected exposure time for the third, center, color camera (if present in the device).
+     * \param time  Exposure time in microseconds.
+     *
+     * This parameter is only relevant if the auto mode is set to
+     * MANUAL_EXPOSURE_AUTO_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
+     *
+     * \see setAutoMode
+     */
+    void setManualExposureTimeThirdCamera(double time) {
+        writeDoubleParameter("manual_exposure_time_color", time);
+    }
+
+    /**
+     * \brief Gets the manually selected gain for the left and right cameras.
      * \return Gain in dB.
      *
      * This parameter is only relevant if the auto mode is set to
-     * AUTO_EXPOSORE_MANUAL_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
+     * AUTO_EXPOSURE_MANUAL_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
      *
      * \see setAutoMode
      */
@@ -575,16 +639,42 @@ public:
     }
 
     /**
-     * \brief Sets the manually selected gain.
+     * \brief Sets the manually selected gain for the left and right cameras.
      * \param gain Gain in dB.
      *
      * This parameter is only relevant if the auto mode is set to
-     * AUTO_EXPOSORE_MANUAL_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
+     * AUTO_EXPOSURE_MANUAL_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
      *
      * \see setAutoMode
      */
     void setManualGain(double gain) {
         writeDoubleParameter("manual_gain", gain);
+    }
+
+    /**
+     * \brief Gets the manually selected gain for the third, center, color camera (if present in the device).
+     * \return Gain in dB.
+     *
+     * This parameter is only relevant if the auto mode is set to
+     * AUTO_EXPOSURE_MANUAL_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
+     *
+     * \see setAutoMode
+     */
+    double getManualGainThirdCamera() {
+        return readDoubleParameter("manual_gain_color");
+    }
+
+    /**
+     * \brief Sets the manually selected gain for the third, center, color camera (if present in the device).
+     * \param gain Gain in dB.
+     *
+     * This parameter is only relevant if the auto mode is set to
+     * AUTO_EXPOSURE_MANUAL_GAIN or MANUAL_EXPOSURE_MANUAL_GAIN.
+     *
+     * \see setAutoMode
+     */
+    void setManualGainThirdCamera(double gain) {
+        writeDoubleParameter("manual_gain_color", gain);
     }
 
     /**
@@ -640,6 +730,46 @@ public:
         writeIntParameter("auto_exposure_roi_width", width);
         writeIntParameter("auto_exposure_roi_height", height);
     }
+
+    // Gamma settings
+
+    /**
+     * \brief Gets the gamma parameter for the left and right cameras.
+     * \return Current gamma value.
+     *
+     */
+    double getGamma() {
+        return readDoubleParameter("gamma");
+    }
+
+    /**
+     * \brief Sets the gamma parameter for the left and right cameras.
+     * \param gamma New gamma value.
+     *
+     */
+    void setGamma(double gamma) {
+        writeDoubleParameter("gamma", gamma);
+    }
+
+    /**
+     * \brief Gets the gamma parameter for the third, center, color camera (if present in the device).
+     * \return Current gamma value.
+     *
+     */
+    double getGammaThirdCamera() {
+        return readDoubleParameter("gamma_color");
+    }
+
+    /**
+     * \brief Sets the gamma parameter for the third, center, color camera (if present in the device).
+     * \param gamma New gamma value.
+     *
+     */
+    void setGammaThirdCamera(double gamma) {
+        writeDoubleParameter("gamma_color", gamma);
+    }
+
+
 
     // Trigger and pairing settings
 

@@ -27,6 +27,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 // SIMD Headers
 #ifdef __SSE2__
@@ -45,7 +46,8 @@ using namespace std::placeholders;
 #else
     std::ostream& debugStreamPhys = std::cout;
 #endif
-#define DEBUG_PHYS(x) debugStreamPhys << x << std::endl;
+std::chrono::system_clock::time_point debugStreamPhysInitTime = std::chrono::system_clock::now();
+#define DEBUG_PHYS(x) debugStreamPhys << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamPhysInitTime).count() << ": " << x << std::endl;
 #else
 #define DEBUG_PHYS(x) ;
 #endif
@@ -62,9 +64,10 @@ PhysicalDevice::PhysicalDevice(Interface* interface): interface(interface), udp(
 }
 
 PhysicalDevice::~PhysicalDevice() {
-    DEBUG_PHYS("Destroying a PhysicalDevice");
     close();
+    DEBUG_PHYS("Deallocating error event");
     freeErrorEvent();
+    DEBUG_PHYS("Destroying a PhysicalDevice");
 }
 
 Event* PhysicalDevice::allocErrorEvent() {
@@ -92,8 +95,8 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
 
 #ifndef DELIVER_TEST_DATA
         // Initialize network receiver
-        imageTf.reset(new ImageTransfer(host, "7681", udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
-        //asyncTf.reset(new AsyncTransfer(host, "7681", udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
+        asyncTf.reset(new AsyncTransfer(host, "7681",
+            udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
         // Initialize parameter server connection
         DEBUG_PHYS("Creating DeviceParameters");
         deviceParameters.reset(new DeviceParameters(host));
@@ -180,12 +183,16 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
 }
 
 void PhysicalDevice::close() {
+    DEBUG_PHYS("Closing a PhysicalDevice");
     if(threadRunning) {
+        DEBUG_PHYS("Terminating a running physical device receiver thread");
         threadRunning = false;
-        if(receiveThread.joinable()) {
-            receiveThread.join();
-        }
     }
+    if(receiveThread.joinable()) {
+        DEBUG_PHYS("Joining device receiver thread");
+        receiveThread.join();
+    }
+    DEBUG_PHYS("Closed physical device");
 }
 
 void PhysicalDevice::setTestData(ImageSet& receivedSet) {
@@ -229,8 +236,7 @@ void PhysicalDevice::deviceReceiveThread() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #else
             // Receive new image
-            if(!imageTf->receiveImageSet(receivedSet)) {
-            //if(!asyncTf->collectReceivedImageSet(receivedSet)) {
+            if(!asyncTf->collectReceivedImageSet(receivedSet, 1.0)) { // Wait up to 1.0 sec for full image set, then gracefully return to running check
                 // No image available
                 continue;
             }
@@ -306,13 +312,31 @@ void PhysicalDevice::deviceReceiveThread() {
                 }
             }
         }
-    } catch(...) {
+    } catch(std::runtime_error& ex) {
+        DEBUG_PHYS("Runtime error in receiver thread: " << ex.what());
         // Error has occurred
         if(errorEvent != nullptr) {
             errorEvent->emitEvent(GC_ERR_IO);
         }
+        DEBUG_PHYS("Exception in receiver thread: terminating");
+        threadRunning = false;
+    } catch(...) {
+        DEBUG_PHYS("Unhandled exception in receiver thread");
+        // Error has occurred
+        if(errorEvent != nullptr) {
+            errorEvent->emitEvent(GC_ERR_IO);
+        }
+        DEBUG_PHYS("Exception in receiver thread: terminating");
         threadRunning = false;
     }
+#ifndef DELIVER_TEST_DATA
+    // Also re-isolate the parameter event thread from current physical device instance at this point.
+    // This may block briefly until a running parameter callback has completed.
+    if (deviceParameters) {
+        DEBUG_PHYS("Disconnecting device parameter callback");
+        deviceParameters->setParameterUpdateCallback([](const std::string& uid){});
+    }
+#endif
 }
 
 void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
