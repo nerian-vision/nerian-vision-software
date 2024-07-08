@@ -28,6 +28,7 @@
 #include <iostream>
 #include <fstream>
 #include <exception>
+#include <chrono>
 
 #ifdef ENABLE_DEBUGGING
 #include "misc/backward.hpp"
@@ -60,21 +61,28 @@ namespace GenTL {
 #define DEBUG_HIGHLIGHT_SUFFIX ""
 #endif
 
+// Without timestamps:
+//#define DEBUG_TIMESTAMP_MS ""
+// With timestamps:
+std::chrono::system_clock::time_point debugStreamMainInitTime = std::chrono::system_clock::now();
+#define DEBUG_TIMESTAMP_MS std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamMainInitTime).count() << ": "
+
 #define DEBUG_VAL(val)      #val << " = " << (std::string(#val) == "iAddress" ? std::hex : std::dec) << val
-#define DEBUG               {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
-#define DEBUG1(a)           {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
-#define DEBUG2(a, b)        {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
-#define DEBUG3(a, b, c)     {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+#define DEBUG               {debugStream << DEBUG_TIMESTAMP_MS << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG1(a)           {debugStream << DEBUG_TIMESTAMP_MS << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG2(a, b)        {debugStream << DEBUG_TIMESTAMP_MS << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG3(a, b, c)     {debugStream << DEBUG_TIMESTAMP_MS << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
     << "; " << DEBUG_VAL(c) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
-#define DEBUG4(a, b, c, d)  {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+#define DEBUG4(a, b, c, d)  {debugStream << DEBUG_TIMESTAMP_MS << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
     << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
-#define DEBUG5(a, b, c, d, e)  {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+#define DEBUG5(a, b, c, d, e)  {debugStream << DEBUG_TIMESTAMP_MS << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
     << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << "; " << DEBUG_VAL(e) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
-#define DEBUG6(a, b, c, d, e, f)  {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+#define DEBUG6(a, b, c, d, e, f)  {debugStream << DEBUG_TIMESTAMP_MS << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
     << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << "; " << DEBUG_VAL(e) << "; " << DEBUG_VAL(f) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
-#define DEBUG7(a, b, c, d, e, f, g)  {debugStream << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
+#define DEBUG7(a, b, c, d, e, f, g)  {debugStream << DEBUG_TIMESTAMP_MS << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << DEBUG_VAL(a) << "; " << DEBUG_VAL(b) \
     << "; " << DEBUG_VAL(c) << "; " << DEBUG_VAL(d) << "; " << DEBUG_VAL(e) << "; " << DEBUG_VAL(f) \
     << "; " << DEBUG_VAL(g) << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
+#define DEBUG_MSG(m)        {debugStream << DEBUG_TIMESTAMP_MS << DEBUG_HIGHLIGHT_PREFIX << __FUNCTION__ << ": " << m << DEBUG_HIGHLIGHT_SUFFIX << std::endl;}
 
 
 #else
@@ -87,7 +95,7 @@ namespace GenTL {
 #define DEBUG5(a, b, c, d, e)          {}
 #define DEBUG6(a, b, c, d, e, f)       {}
 #define DEBUG7(a, b, c, d, e, f, g)    {}
-
+#define DEBUG_MSG(m)                   {}
 
 #endif
 
@@ -407,8 +415,11 @@ GC_API DevClose(DEV_HANDLE hDevice) {
     if(!verifyHandle(hDevice, Handle::TYPE_DEVICE)) {
         return setLastError(GC_ERR_INVALID_HANDLE);
     } else {
+        DEBUG_MSG("Closing Logical Device");
         GenTL::GC_ERROR error =  reinterpret_cast<LogicalDevice*>(hDevice)->close();
+        DEBUG_MSG("Freeing unused Physical Devices");
         reinterpret_cast<LogicalDevice*>(hDevice)->getPhysicalDevice()->getInterface()->getSystem()->freeUnusedDevices();
+        DEBUG_MSG("Done with DevClose");
         return setLastError(error);
     }
 
