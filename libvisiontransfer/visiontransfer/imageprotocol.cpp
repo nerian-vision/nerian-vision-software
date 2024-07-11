@@ -78,6 +78,8 @@ public:
 
     std::string statusReport();
 
+    bool supportsExtendedConnectionStateProtocol() const;
+
 private:
     unsigned short MAGIC_SEQUECE = 0x3D15;
 
@@ -265,6 +267,10 @@ const unsigned char* ImageProtocol::getNextControlMessage(int& length) {
 
 bool ImageProtocol::newClientConnected() {
     return pimpl->newClientConnected();
+}
+
+bool ImageProtocol::supportsExtendedConnectionStateProtocol() const {
+    return pimpl->supportsExtendedConnectionStateProtocol();
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -975,6 +981,9 @@ std::string ImageProtocol::Pimpl::statusReport() {
     return dataProt.statusReport();
 }
 
+bool ImageProtocol::Pimpl::supportsExtendedConnectionStateProtocol() const {
+    return dataProt.supportsExtendedConnectionStateProtocol();
+}
 
 
 } // namespace

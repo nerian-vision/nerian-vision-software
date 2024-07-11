@@ -585,15 +585,29 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
                 ((fromAddress.sin_addr.s_addr!=remoteAddress.sin_addr.s_addr) || (fromAddress.sin_port!=remoteAddress.sin_port)) &&
                 (remoteAddress.sin_port != 0)
             );
-        if (isServer && newSender && protocol->isConnected()) {
-            // Reject interfering client
-            // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
-            //std::cerr << "DEBUG- Rejecting interfering UDP client" << std::endl;
-            const unsigned char* disconnectionMsg;
-            int disconnectionMsgLen;
-            DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
-            if (disconnectionMsgLen > 0) {
-                sendNetworkMessage(disconnectionMsg, disconnectionMsgLen, &fromAddress);
+        if (isServer && newSender) {
+            if (protocol->isConnected()) {
+                // Reject interfering client
+                // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
+                //std::cerr << "DEBUG- Rejecting interfering UDP client" << std::endl;
+                const unsigned char* disconnectionMsg;
+                int disconnectionMsgLen;
+                DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
+                if (disconnectionMsgLen > 0) {
+                    sendNetworkMessage(disconnectionMsg, disconnectionMsgLen, &fromAddress);
+                }
+            } else {
+                // Welcome client with the knock sequence. Older clients just ignore this,
+                // new clients know they can expect, and may also use, the extended protocol.
+                const unsigned char* heartbeatMsg;
+                int heartbeatMsgLen;
+                DataBlockProtocol::getHeartbeatMessage(heartbeatMsg, heartbeatMsgLen);
+                if (heartbeatMsgLen > 0) {
+                    for (int i=0; i<5; ++i) {
+                        // Send 5 UDP knocks for good measure, the client looks for at least 3 within 0.5 s
+                        sendNetworkMessage(heartbeatMsg, heartbeatMsgLen, &fromAddress);
+                    }
+                }
             }
         } else {
             gotAnyData = true;
@@ -615,17 +629,19 @@ void ImageTransfer::Pimpl::disconnect() {
 
     if(clientSocket != INVALID_SOCKET) {
         if ((!isServer) && isConnected() && protType == ImageProtocol::PROTOCOL_UDP) {
-            // Send a final client-side disconnection request instead of
-            // needing to wait for UDP heartbeat timeout on the device
-            try {
-                const unsigned char* disconnectionMsg;
-                int disconnectionMsgLen;
-                DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
-                if (disconnectionMsgLen > 0) {
-                    sendNetworkMessage(disconnectionMsg, disconnectionMsgLen, &remoteAddress);
+            if (protocol->supportsExtendedConnectionStateProtocol()) {
+                // Send a final client-side disconnection request instead of
+                // needing to wait for UDP heartbeat timeout on the device
+                try {
+                    const unsigned char* disconnectionMsg;
+                    int disconnectionMsgLen;
+                    DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
+                    if (disconnectionMsgLen > 0) {
+                        sendNetworkMessage(disconnectionMsg, disconnectionMsgLen, &remoteAddress);
+                    }
+                } catch(...) {
+                    // Server will see a disconnection (through heartbeat timeout) anyway
                 }
-            } catch(...) {
-                // Server will see a disconnection (through heartbeat timeout) anyway
             }
         }
     }

@@ -57,7 +57,9 @@ DataBlockProtocol::DataBlockProtocol(bool server, ProtocolType protType, int max
         lastRemoteHostActivity(), lastSentHeartbeat(),
         lastReceivedHeartbeat(std::chrono::steady_clock::now()),
         lastReceivedAnything(std::chrono::steady_clock::now()),
-        heartbeatReplyQueued(false),
+        heartbeatKnockCount(0),
+        heartbeatRepliesQueued(0),
+        extendedConnectionStateProtocol(false),
         finishedReception(false), droppedReceptions(0),
         completedReceptions(0), lostSegmentRate(0.0), lostSegmentBytes(0),
         unprocessedMsgLength(0), headerReceived(false) {
@@ -728,14 +730,35 @@ bool DataBlockProtocol::processControlMessage(int length) {
             break;
         }
         case HEARTBEAT_MESSAGE:
-            // A cyclic heartbeat message
-            lastReceivedHeartbeat = std::chrono::steady_clock::now();
-            if (isServer) {
-                // We send back a 'pong' that UDP clients expect so
-                // they can ascertain when a connection is interrupted
-                heartbeatReplyQueued = true;
+            {
+                auto now = std::chrono::steady_clock::now();
+                auto elapsedSinceLast = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastReceivedHeartbeat).count();
+                if (elapsedSinceLast < 200) { // about 3 knocks within 0.5 sec
+                    heartbeatKnockCount++;
+                    if (heartbeatKnockCount >= 3) {
+                        if (!extendedConnectionStateProtocol) {
+                            // Confirmed extended protocol
+                            std::cout << "Extended UDP connection state protocol was signaled" << std::endl;
+                            extendedConnectionStateProtocol = true;
+                            if (!isServer) {
+                                // Client replies with a knock sequence as well
+                                heartbeatRepliesQueued = 5;
+                            }
+                        }
+                    }
+                } else {
+                    heartbeatKnockCount = 0;
+                }
+                // A cyclic heartbeat message
+                lastReceivedHeartbeat = now;
+                if (isServer && (!heartbeatKnockCount)) {
+                    // An isolated heartbeat ping from the client.
+                    // We send back a 'pong' that UDP clients expect so
+                    // they can ascertain when a connection is interrupted
+                    heartbeatRepliesQueued = 1;
+                }
+                break;
             }
-            break;
         case DISCONNECTION_MESSAGE:
             if (isServer) {
                 // Disconnection event in server sent by client: orderly disconnect (instead of heartbeat timeout)
@@ -814,14 +837,14 @@ const unsigned char* DataBlockProtocol::getNextControlMessage(int& length) {
             length = 0;
             return nullptr;
         }
-    } else if(heartbeatReplyQueued ||
+    } else if(heartbeatRepliesQueued ||
             (!isServer && std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - lastSentHeartbeat).count() > HEARTBEAT_INTERVAL_MS)) {
         // Send a heartbeat message
         controlMessageBuffer[0] = HEARTBEAT_MESSAGE;
         length = 1;
         lastSentHeartbeat = std::chrono::steady_clock::now();
-        heartbeatReplyQueued = false; // Replied with 'pong'
+        heartbeatRepliesQueued--; // Replied with 'pong' or part of knock sequence
     } else {
         return nullptr;
     }
@@ -972,6 +995,17 @@ void DataBlockProtocol::getDisconnectionMessage(const unsigned char* &buf, int &
     static const unsigned char DISCONNECTION_MESSAGE_BUFFER[] = { DISCONNECTION_MESSAGE, 0xff, 0xff, 0xff, 0xff };
     buf = DISCONNECTION_MESSAGE_BUFFER;
     sz = sizeof(DISCONNECTION_MESSAGE_BUFFER);
+}
+
+// static
+void DataBlockProtocol::getHeartbeatMessage(const unsigned char* &buf, int &sz) {
+    // A single heartbeat message in the correct control message UDP wire format.
+    // The server sends a few on connection to signal the new protocol. This is because
+    // otherwise control messages are only sent with an image, which may not be
+    // forthcoming with external triggering.
+    static const unsigned char HEARTBEAT_MESSAGE_BUFFER[] = { HEARTBEAT_MESSAGE, 0xff, 0xff, 0xff, 0xff };
+    buf = HEARTBEAT_MESSAGE_BUFFER;
+    sz = sizeof(HEARTBEAT_MESSAGE_BUFFER);
 }
 
 }} // namespace
