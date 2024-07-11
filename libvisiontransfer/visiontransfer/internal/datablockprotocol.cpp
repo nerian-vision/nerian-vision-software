@@ -700,6 +700,7 @@ bool DataBlockProtocol::processControlMessage(int length) {
             connectionConfirmed = true;
             confirmationMessagePending = true;
             clientConnectionPending = true;
+            extendedConnectionStateProtocol = false;
 
             // A connection request is just as good as a heartbeat
             lastReceivedHeartbeat = std::chrono::steady_clock::now();
@@ -738,10 +739,8 @@ bool DataBlockProtocol::processControlMessage(int length) {
                     if (heartbeatKnockCount >= 3) {
                         if (!extendedConnectionStateProtocol) {
                             // Confirmed extended protocol
-                            std::cout << "Extended UDP connection state protocol was signaled" << std::endl;
                             extendedConnectionStateProtocol = true;
                             if (!isServer) {
-                                std::cout << "Sending back five knocks" << std::endl;
                                 // Client replies with a knock sequence as well
                                 heartbeatRepliesQueued = 5;
                             }
