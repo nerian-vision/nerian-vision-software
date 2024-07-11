@@ -586,6 +586,7 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
                 (remoteAddress.sin_port != 0)
             );
         if (isServer && newSender) {
+            std::cout << "New connection" << std::endl;
             if (protocol->isConnected()) {
                 // Reject interfering client
                 // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
@@ -596,19 +597,6 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
                 if (disconnectionMsgLen > 0) {
                     sendNetworkMessage(disconnectionMsg, disconnectionMsgLen, &fromAddress);
                 }
-            } else {
-                // Welcome client with the knock sequence. Older clients just ignore this,
-                // new clients know they can expect, and may also use, the extended protocol.
-                const unsigned char* heartbeatMsg;
-                int heartbeatMsgLen;
-                DataBlockProtocol::getHeartbeatMessage(heartbeatMsg, heartbeatMsgLen);
-                if (heartbeatMsgLen > 0) {
-                    std::cout << "Sending five knocks" << std::endl;
-                    for (int i=0; i<5; ++i) {
-                        // Send 5 UDP knocks for good measure, the client looks for at least 3 within 0.5 s
-                        sendNetworkMessage(heartbeatMsg, heartbeatMsgLen, &fromAddress);
-                    }
-                }
             }
         } else {
             gotAnyData = true;
@@ -616,6 +604,21 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
             if(protocol->newClientConnected()) {
                 // We have just established a new connection
                 memcpy(&remoteAddress, &fromAddress, sizeof(remoteAddress));
+
+                if (protType == ImageProtocol::PROTOCOL_UDP) {
+                    // Welcome client with the knock sequence. Older clients just ignore this,
+                    // new clients know they can expect, and may also use, the extended protocol.
+                    const unsigned char* heartbeatMsg;
+                    int heartbeatMsgLen;
+                    DataBlockProtocol::getHeartbeatMessage(heartbeatMsg, heartbeatMsgLen);
+                    if (heartbeatMsgLen > 0) {
+                        std::cout << "Sending five knocks" << std::endl;
+                        for (int i=0; i<5; ++i) {
+                            // Send 5 UDP knocks for good measure, the client looks for at least 3 within 0.5 s
+                            sendNetworkMessage(heartbeatMsg, heartbeatMsgLen, &fromAddress);
+                        }
+                    }
+                }
             }
         }
     }
