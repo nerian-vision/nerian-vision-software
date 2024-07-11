@@ -1,8 +1,11 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
-1x.x.x (2024-xx-xx)
+10.8.x (2024-xx-xx)
 -------------------
+* Handling for new device behavior which refuses new client
+  connections when a previous one is still active (UDP and TCP)
+* Backward-compatible fast disconnect for UDP clients
 * API
     * C++: moved internal headers to internal/ directory
     * Future-proofed ImageSet and parameter ABIs

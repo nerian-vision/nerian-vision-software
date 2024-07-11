@@ -242,6 +242,12 @@ public:
      */
     const unsigned char* getNextControlMessage(int& length);
 
+    /**
+     * \brief Returns true if the server-client handshake indicated that
+     * UDP disconnection messages are supported.
+     */
+    bool supportsExtendedConnectionStateProtocol() const;
+
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
     /// Prints status information to the console
     std::string statusReport();

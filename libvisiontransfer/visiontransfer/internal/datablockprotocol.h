@@ -302,6 +302,13 @@ public:
     // Obtain a correctly formatted connection-rejected message for an interfering UDP client
     static void getDisconnectionMessage(const unsigned char* &buf, int &sz);
 
+    // Obtain a correctly formatted heartbeat message for our backwards-compatible knock
+    static void getHeartbeatMessage(const unsigned char* &buf, int &sz);
+
+    bool supportsExtendedConnectionStateProtocol() const {
+        return extendedConnectionStateProtocol;
+    }
+
 private:
     // The pimpl idiom is not necessary here, as this class is usually not
     // used directly
@@ -365,7 +372,11 @@ private:
     std::chrono::steady_clock::time_point lastSentHeartbeat;
     std::chrono::steady_clock::time_point lastReceivedHeartbeat;
     std::chrono::steady_clock::time_point lastReceivedAnything;
-    bool heartbeatReplyQueued;
+    int heartbeatKnockCount;
+    int heartbeatRepliesQueued;
+
+    // Run-time protocol negotiation (UDP)
+    bool extendedConnectionStateProtocol;
 
     // Reception related variables
     std::vector<unsigned char, AlignedAllocator<unsigned char> > receiveBuffer;
