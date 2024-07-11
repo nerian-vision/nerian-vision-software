@@ -741,6 +741,7 @@ bool DataBlockProtocol::processControlMessage(int length) {
                             // Confirmed extended protocol
                             extendedConnectionStateProtocol = true;
                             if (!isServer) {
+                                //std::cout << "Sending back five knocks" << std::endl;
                                 // Client replies with a knock sequence as well
                                 heartbeatRepliesQueued = 5;
                             }
@@ -841,6 +842,7 @@ const unsigned char* DataBlockProtocol::getNextControlMessage(int& length) {
             (!isServer && std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - lastSentHeartbeat).count() > HEARTBEAT_INTERVAL_MS)) {
         // Send a heartbeat message
+        //std::cout << "Queued a heartbeat, " << heartbeatRepliesQueued << std::endl;
         controlMessageBuffer[0] = HEARTBEAT_MESSAGE;
         length = 1;
         lastSentHeartbeat = std::chrono::steady_clock::now();
