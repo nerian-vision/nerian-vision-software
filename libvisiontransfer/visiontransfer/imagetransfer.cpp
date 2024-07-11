@@ -603,6 +603,7 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
                 int heartbeatMsgLen;
                 DataBlockProtocol::getHeartbeatMessage(heartbeatMsg, heartbeatMsgLen);
                 if (heartbeatMsgLen > 0) {
+                    std::cout << "Sending five knocks" << std::endl;
                     for (int i=0; i<5; ++i) {
                         // Send 5 UDP knocks for good measure, the client looks for at least 3 within 0.5 s
                         sendNetworkMessage(heartbeatMsg, heartbeatMsgLen, &fromAddress);

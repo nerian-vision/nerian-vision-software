@@ -741,6 +741,7 @@ bool DataBlockProtocol::processControlMessage(int length) {
                             std::cout << "Extended UDP connection state protocol was signaled" << std::endl;
                             extendedConnectionStateProtocol = true;
                             if (!isServer) {
+                                std::cout << "Sending back five knocks" << std::endl;
                                 // Client replies with a knock sequence as well
                                 heartbeatRepliesQueued = 5;
                             }
@@ -844,7 +845,7 @@ const unsigned char* DataBlockProtocol::getNextControlMessage(int& length) {
         controlMessageBuffer[0] = HEARTBEAT_MESSAGE;
         length = 1;
         lastSentHeartbeat = std::chrono::steady_clock::now();
-        heartbeatRepliesQueued--; // Replied with 'pong' or part of knock sequence
+        if (heartbeatRepliesQueued > 0) heartbeatRepliesQueued--; // Replied with 'pong' or part of knock sequence
     } else {
         return nullptr;
     }
