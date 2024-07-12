@@ -147,6 +147,9 @@ void DataBlockProtocol::setTransferHeader(unsigned char* data, int headerSize, i
     unsigned short netHeaderSize = htons(static_cast<unsigned short>(headerSize));
     ourHeader->netHeaderSize = netHeaderSize;
     ourHeader->netTransferSizeDummy = htonl(-1); // clashes on purpose with old recipients
+    for (int i=0; i<MAX_DATA_BLOCKS; ++i) {
+        ourHeader->netTransferSizes[i] = 0;
+    }
 
     headerSize += headerBaseOffset;
 
