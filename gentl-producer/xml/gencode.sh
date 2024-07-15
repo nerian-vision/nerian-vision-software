@@ -34,11 +34,20 @@ for file in *.xml; do
     # Check syntax
     xmllint --noout --schema GenApiSchema_Version_1_1.xsd gen/temp.xml || exit 1
 
-    # Escape string and write to header
-    echo -en "{\"${file}\", FileData($major, $minor, $subminor, std::string(\"\")\n" >> gen/xmlfiles.cpp
-    cat gen/temp.xml | sed -ze 's/\n/\\n\n/g' | sed -e 's/\"/\\\"/g' | \
-        sed -e 's/^\(.*\)$/  + std::string(\"\1\")/' >> gen/xmlfiles.cpp
-    echo -e ")},\n\n" >> gen/xmlfiles.cpp
+    # Escape string and write to header (in 100-line std::string chunks, for the sake of MSVC)
+    echo -en "{\"${file}\", FileData($major, $minor, $subminor, std::string(\n" >> gen/xmlfiles.cpp
+    cat gen/temp.xml | sed -ze 's/\n/\\n\n/g' | sed -e 's/\"/\\\"/g' > .xml.tmp
+    i=0
+    while IFS= read -r line; do
+        i=$(($i+1))
+        if [ $i -gt 100 ]; then
+            i=0
+            echo "    ) + std::string(" >> gen/xmlfiles.cpp
+        fi
+        printf '%s\n' "    \"$line\"" >> gen/xmlfiles.cpp
+    done < .xml.tmp
+    rm -f .xml.tmp
+    echo -e "))},\n\n" >> gen/xmlfiles.cpp
 
     rm gen/temp.xml
 done
