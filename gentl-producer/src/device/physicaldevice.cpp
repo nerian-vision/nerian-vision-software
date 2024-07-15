@@ -41,6 +41,12 @@ namespace GenTL {
 using namespace std::placeholders;
 
 #ifdef ENABLE_DEBUGGING
+#define ENABLE_DEBUGGING_PHYSICALDEVICE
+#endif
+// Extra toggle for just this module
+//#define ENABLE_DEBUGGING_PHYSICALDEVICE
+
+#ifdef ENABLE_DEBUGGING_PHYSICALDEVICE
 #ifdef _WIN32
     std::fstream debugStreamPhys("C:\\debug\\gentl-debug-phys-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
 #else
@@ -460,6 +466,10 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         return;
     }
 
+#ifdef ENABLE_DEBUGGING_PHYSICALDEVICE
+    bufferMapping.dumpToStream(debugStreamPhys);
+#endif
+
     buffer->setIncomplete(false);
     int copiedBytes = -1;
 
@@ -469,6 +479,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         auto sz = bufferMapping.getBufferPartSize(i);
         if (func != ImageSet::IMAGE_UNDEFINED) { // not the point cloud channel
             auto idx = receivedSet.getIndexOf(func);
+            DEBUG_PHYS("Multipart function " << func << " at imageset index " << idx << ", starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
             if (idx != -1) {
                 copiedBytes = copyImageToBufferMemory(receivedSet, idx, &buffer->getData()[offset],
                     static_cast<int>(buffer->getSize()) - offset);
@@ -484,6 +495,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         } else {
             // Special case: point cloud
             if (getComponentEnabledRange() && receivedSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
+                DEBUG_PHYS("Multipart function UNDEF (point cloud) from 3d buf, starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
                 copiedBytes = copy3dDataToBufferMemory(receivedSet, &buffer->getData()[offset],
                     static_cast<int>(buffer->getSize()) - offset);
                 if(copiedBytes < 0) {

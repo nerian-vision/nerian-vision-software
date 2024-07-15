@@ -1239,157 +1239,131 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
                 currentSelectorForLine = newVal;
+                return GC_ERR_SUCCESS;
             }
             break;
-        /*
         case 0x4E: // LineMode (Input / Output: Line0 always Output, Line1 always Output on SceneScan, switchable on others)
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
                 if (currentSelectorForLine == 0) {
                     if (newVal == 1) return GC_ERR_NOT_AVAILABLE;
+                    // No-operation; actual trigger input is only touched if line 1 is selected
                 } else {
+                    device->getPhysicalDevice()->setParameter("trigger_input", newVal); // TODO check interaction with sw trig
                     // trigger_input = 1
                 }
+                return GC_ERR_SUCCESS;
             }
             break;
         case 0x4F: // LineInverter
             {
-                if (currentSelectorForLine == 0) {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_0_polarity").getCurrent<int>();
-                    info.setUInt(val ? 1 : 0);
-                } else {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_1_polarity").getCurrent<int>();
-                    info.setUInt(val ? 1 : 0);
-                }
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter((currentSelectorForLine==0)?"trigger_0_polarity":"trigger_1_polarity", newVal?1:0);
+                return GC_ERR_SUCCESS;
             }
             break;
         case 0x50: // LineSource: FrameTrigger (if 'Enabled' in nvparam), UserOutput0/1 (if 'Disabled with constant' in nvparam)
             {
-                if (currentSelectorForLine == 0) {
-                    int mode = device->getPhysicalDevice()->getParameter("trigger_0_enabled").getCurrent<int>();
-                    int cons = device->getPhysicalDevice()->getParameter("trigger_0_constant").getCurrent<int>();
-                    info.setUInt(mode ? 2 : cons); // 0, 1 = the respective value; 2 = FrameTrigger
-                } else {
-                    int mode = device->getPhysicalDevice()->getParameter("trigger_1_enabled").getCurrent<int>();
-                    int cons = device->getPhysicalDevice()->getParameter("trigger_1_constant").getCurrent<int>();
-                    info.setUInt(mode ? 2 : cons); // 0, 1 = the respective value; 2 = FrameTrigger
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                switch (newVal) {
+                    case 0:
+                        if (currentSelectorForLine == 0) {
+                            device->getPhysicalDevice()->setParameter("trigger_0_constant", 0);
+                            device->getPhysicalDevice()->setParameter("trigger_0_enabled", 0);
+                        } else {
+                            device->getPhysicalDevice()->setParameter("trigger_1_constant", 0);
+                            device->getPhysicalDevice()->setParameter("trigger_1_enabled", 0);
+                        }
+                        break;
+                    case 1:
+                        if (currentSelectorForLine == 0) {
+                            device->getPhysicalDevice()->setParameter("trigger_0_constant", 1);
+                            device->getPhysicalDevice()->setParameter("trigger_0_enabled", 0);
+                        } else {
+                            device->getPhysicalDevice()->setParameter("trigger_1_constant", 1);
+                            device->getPhysicalDevice()->setParameter("trigger_1_enabled", 0);
+                        }
+                        break;
+                    case 2:
+                    default:
+                        if (currentSelectorForLine == 0) {
+                            device->getPhysicalDevice()->setParameter("trigger_0_enabled", 1);
+                        } else {
+                            device->getPhysicalDevice()->setParameter("trigger_1_enabled", 1);
+                        }
                 }
+                return GC_ERR_SUCCESS;
             }
             break;
         case 0x51: // LinePulseWidthSelector (PulseWidth1..8)
             {
-                info.setUInt(currentSelectorForPulseWidth);
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                currentSelectorForPulseWidth = newVal;
+                return GC_ERR_SUCCESS;
             }
             break;
         case 0x52: // LinePulseWidthAlternationMode (Constant / Cycle; Constant restricts LinePulseWidthSelector to 1)
             {
-                if (currentSelectorForLine == 0) {
-                    int mode = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width_mode").getCurrent<int>();
-                    info.setUInt(mode ? 1 : 0);
-                } else {
-                    int mode = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width_mode").getCurrent<int>();
-                    info.setUInt(mode ? 1 : 0);
-                }
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                device->getPhysicalDevice()->setParameter((currentSelectorForLine==0)?"trigger_0_pulse_width_mode":"trigger_1_pulse_width_mode", newVal ? 1 : 0);
+                return GC_ERR_SUCCESS;
             }
             break;
         case 0x53: // LinePulseWidth (trigger_XY_pulse_width, X LineSelector -> 0,1; Y LinePulseWidthSelector -> '','b'..'h')
             {
-                int val = 0;
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
                 if (currentSelectorForLine == 0) {
                     switch (currentSelectorForPulseWidth) {
-                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width").getCurrent<int>(); break;
-                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_0b_pulse_width").getCurrent<int>(); break;
-                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_0c_pulse_width").getCurrent<int>(); break;
-                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_0d_pulse_width").getCurrent<int>(); break;
-                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_0e_pulse_width").getCurrent<int>(); break;
-                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_0f_pulse_width").getCurrent<int>(); break;
-                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_0g_pulse_width").getCurrent<int>(); break;
-                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_0h_pulse_width").getCurrent<int>(); break;
+                        case 0: device->getPhysicalDevice()->setParameter("trigger_0_pulse_width", newVal); break;
+                        case 1: device->getPhysicalDevice()->setParameter("trigger_0b_pulse_width", newVal); break;
+                        case 2: device->getPhysicalDevice()->setParameter("trigger_0c_pulse_width", newVal); break;
+                        case 3: device->getPhysicalDevice()->setParameter("trigger_0d_pulse_width", newVal); break;
+                        case 4: device->getPhysicalDevice()->setParameter("trigger_0e_pulse_width", newVal); break;
+                        case 5: device->getPhysicalDevice()->setParameter("trigger_0f_pulse_width", newVal); break;
+                        case 6: device->getPhysicalDevice()->setParameter("trigger_0g_pulse_width", newVal); break;
+                        case 7: device->getPhysicalDevice()->setParameter("trigger_0h_pulse_width", newVal); break;
                     };
                 } else {
                     switch (currentSelectorForPulseWidth) {
-                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width").getCurrent<int>(); break;
-                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_1b_pulse_width").getCurrent<int>(); break;
-                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_1c_pulse_width").getCurrent<int>(); break;
-                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_1d_pulse_width").getCurrent<int>(); break;
-                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_1e_pulse_width").getCurrent<int>(); break;
-                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_1f_pulse_width").getCurrent<int>(); break;
-                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_1g_pulse_width").getCurrent<int>(); break;
-                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_1h_pulse_width").getCurrent<int>(); break;
+                        case 0: device->getPhysicalDevice()->setParameter("trigger_1_pulse_width", newVal); break;
+                        case 1: device->getPhysicalDevice()->setParameter("trigger_1b_pulse_width", newVal); break;
+                        case 2: device->getPhysicalDevice()->setParameter("trigger_1c_pulse_width", newVal); break;
+                        case 3: device->getPhysicalDevice()->setParameter("trigger_1d_pulse_width", newVal); break;
+                        case 4: device->getPhysicalDevice()->setParameter("trigger_1e_pulse_width", newVal); break;
+                        case 5: device->getPhysicalDevice()->setParameter("trigger_1f_pulse_width", newVal); break;
+                        case 6: device->getPhysicalDevice()->setParameter("trigger_1g_pulse_width", newVal); break;
+                        case 7: device->getPhysicalDevice()->setParameter("trigger_1h_pulse_width", newVal); break;
                     };
                 }
-                info.setUInt(val);
-            }
-            break;
-        case 0x54: // LinePulseWidthMax (max values)
-            {
-                int val = 0;
-                if (currentSelectorForLine == 0) {
-                    switch (currentSelectorForPulseWidth) {
-                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width").getMax<int>(); break;
-                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_0b_pulse_width").getMax<int>(); break;
-                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_0c_pulse_width").getMax<int>(); break;
-                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_0d_pulse_width").getMax<int>(); break;
-                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_0e_pulse_width").getMax<int>(); break;
-                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_0f_pulse_width").getMax<int>(); break;
-                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_0g_pulse_width").getMax<int>(); break;
-                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_0h_pulse_width").getMax<int>(); break;
-                    };
-                } else {
-                    switch (currentSelectorForPulseWidth) {
-                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width").getMax<int>(); break;
-                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_1b_pulse_width").getMax<int>(); break;
-                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_1c_pulse_width").getMax<int>(); break;
-                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_1d_pulse_width").getMax<int>(); break;
-                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_1e_pulse_width").getMax<int>(); break;
-                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_1f_pulse_width").getMax<int>(); break;
-                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_1g_pulse_width").getMax<int>(); break;
-                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_1h_pulse_width").getMax<int>(); break;
-                    };
-                }
-                info.setUInt(val);
+                return GC_ERR_SUCCESS;
             }
             break;
         case 0x55: // LineOffset (trigger offset in ms)
             {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
                 if (currentSelectorForLine == 0) {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_0_offset").getCurrent<int>();
-                    info.setUInt(val);
+                    device->getPhysicalDevice()->setParameter("trigger_0_offset", newVal);
                 } else {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getCurrent<int>();
-                    info.setUInt(val);
+                    device->getPhysicalDevice()->setParameter("trigger_1_offset", newVal);
                 }
-            }
-            break;
-        case 0x56: // LineOffsetMin
-            {
-                if (currentSelectorForLine == 0) {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_0_offset").getMin<int>();
-                    info.setUInt(val);
-                } else {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getMin<int>();
-                    info.setUInt(val);
-                }
-            }
-            break;
-        case 0x57: // LineOffsetMax
-            {
-                if (currentSelectorForLine == 0) {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_0_offset").getMax<int>();
-                    info.setUInt(val);
-                } else {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getMax<int>();
-                    info.setUInt(val);
-                }
+                return GC_ERR_SUCCESS;
             }
             break;
         case 0x58: // UserOutputSelector (for choosing constant-output Off / On)
             {
-                info.setUInt(currentSelectorForUserOutput);
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                currentSelectorForUserOutput = newVal;
+                return GC_ERR_SUCCESS;
             }
             break;
-            */
         case 0xF1: // FlushOutputQueue: force flushing of all DataStreams' output queues
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");

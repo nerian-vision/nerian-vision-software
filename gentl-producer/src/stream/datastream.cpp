@@ -29,6 +29,12 @@ using namespace visiontransfer;
 namespace GenTL {
 
 #ifdef ENABLE_DEBUGGING
+#define ENABLE_DEBUGGING_DATASTREAM
+#endif
+// Extra toggle for just this module
+//#define ENABLE_DEBUGGING_DATASTREAM
+
+#ifdef ENABLE_DEBUGGING_DATASTREAM
 #ifdef _WIN32
     std::fstream debugStreamDataStream("C:\\debug\\gentl-debug-datastream-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
 #else
@@ -134,6 +140,7 @@ bool DataStream::findBuffer(T queue, Buffer* buffer) {
 }
 
 GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate, BUFFER_HANDLE* phBuffer) {
+    DEBUG_DSTREAM("announceBuffer() with size " << iSize);
     //std::cout << "announce" << std::endl;
     if(pBuffer == nullptr || phBuffer == nullptr) {
         return GC_ERR_INVALID_PARAMETER;
@@ -153,6 +160,7 @@ GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate,
 }
 
 GC_ERROR DataStream::allocAndAnnounceBuffer(size_t iBufferSize, void* pPrivate, BUFFER_HANDLE* phBuffer) {
+    DEBUG_DSTREAM("allocAndAnnounceBuffer() with size " << iBufferSize);
     //std::cout << "allocAndAnnounce" << std::endl;
     if(phBuffer == nullptr) {
         return GC_ERR_INVALID_PARAMETER;
@@ -207,6 +215,7 @@ GC_ERROR DataStream::close() {
 }
 
 GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void ** ppPrivate) {
+    DEBUG_DSTREAM("revokeBuffer()");
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
 

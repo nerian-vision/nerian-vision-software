@@ -136,6 +136,9 @@
         <pFeature>GapInterpolationEnabled</pFeature>
         <pFeature>NoiseReductionEnabled</pFeature>
         <pFeature>SpeckleFilterIterations</pFeature>
+        <pFeature>HardwareTriggerInputPresent</pFeature>
+        <pFeature>BalanceControlAvailable</pFeature>
+        <pFeature>ThirdCameraPresent</pFeature>
         <pFeature>FlushOutputQueue</pFeature> <!-- DEBUG -->
     </Category>
 
@@ -258,6 +261,7 @@
     </Enumeration>
 
     <IntSwissKnife Name="HardwareTriggerInputPresent" NameSpace="Custom">
+        <Visibility>Guru</Visibility>
         <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
         <Formula>bitmask &amp; 4</Formula> <!-- Bit 2: availability of hardware trigger input -->
     </IntSwissKnife>
@@ -462,6 +466,7 @@
     <!-- White balance control (inside category Analog) -->
 
     <IntSwissKnife Name="BalanceControlAvailable" NameSpace="Custom">
+        <Visibility>Guru</Visibility>
         <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
         <Formula>bitmask &amp; 2</Formula> <!-- Bit 1: availability of balance control -->
     </IntSwissKnife>
@@ -856,6 +861,7 @@
     <IntSwissKnife Name="ThirdCameraPresent" NameSpace="Custom">
         <ToolTip>Indicates whether this is a three-camera Nerian device.</ToolTip>
         <Description>Indicates whether this is a three-camera Nerian device.</Description>
+        <Visibility>Guru</Visibility>
         <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
         <Formula>bitmask &amp; 1</Formula> <!-- Bit 0: availability of third camera -->
     </IntSwissKnife>
@@ -1094,7 +1100,7 @@
     <IntSwissKnife Name="LineSettableToInput" NameSpace="Custom">
         <pVariable Name="selector">LineSelectorReg</pVariable>
         <pVariable Name="supported">HardwareTriggerInputPresent</pVariable>
-        <Formula>selector &amp; supported</Formula> <!-- Only Line1 is settable to Input, and only on supported devices -->
+        <Formula>selector &amp;&amp; supported</Formula> <!-- Only Line1 is settable to Input, and only on supported devices -->
     </IntSwissKnife>
 
     <Enumeration Name="LineInverter" NameSpace="Standard">
@@ -1777,6 +1783,7 @@
 
     <!-- Integrated IR pattern projector (not available on all models) -->
     <IntSwissKnife Name="PatternProjectorPresent" NameSpace="Custom">
+        <Visibility>Guru</Visibility>
         <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
         <Formula>bitmask &amp; 8</Formula> <!-- Bit 3: availability of pattern projector -->
     </IntSwissKnife>
