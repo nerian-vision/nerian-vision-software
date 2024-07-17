@@ -24,6 +24,7 @@
 #include <iomanip>
 #include <fstream>
 #include <chrono>
+#include <thread>
 
 using namespace visiontransfer;
 
@@ -36,7 +37,8 @@ namespace GenTL {
     std::ostream& debugStreamDevPort = std::cout;
 #endif
 std::chrono::system_clock::time_point debugStreamDevPortInitTime = std::chrono::system_clock::now();
-#define DEBUG_DEVPORT(x) debugStreamDevPort << std::dec << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamDevPortInitTime).count() << ": " <<  x << std::endl;
+#define DEBUG_DEVPORT_THREAD_ID " (thread " << std::this_thread::get_id() << ") "
+#define DEBUG_DEVPORT(x) debugStreamDevPort << std::dec << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamDevPortInitTime).count() << ": " << DEBUG_DEVPORT_THREAD_ID << x << std::endl;
 #else
 #define DEBUG_DEVPORT(x) ;
 #endif
