@@ -50,11 +50,11 @@ public:
 
     bool hasParameter(const std::string& name) const;
 
-    Parameter const& getParameter(const std::string& name) const;
+    Parameter getParameter(const std::string& name) const;
 
     ParameterSet const& getParameterSet() const;
 
-    Parameter const& pollParameter(const std::string& name, bool blockingCall);
+    Parameter pollParameter(const std::string& name, bool blockingCall);
 
     void setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded);
 
@@ -304,27 +304,15 @@ std::map<std::string, ParameterInfo> DeviceParameters::Pimpl::getAllParameters()
 }
 
 bool DeviceParameters::Pimpl::hasParameter(const std::string& name) const {
-    auto const& paramSet = paramTrans.getParameterSet();
-    return paramSet.count(name) != 0;
+    return paramTrans.hasParameter(name);
 }
 
-Parameter const& DeviceParameters::Pimpl::getParameter(const std::string& name) const {
-    auto const& paramSet = paramTrans.getParameterSet();
-    if (paramSet.count(name)) {
-        return paramSet.at(name);
-    } else {
-        throw ParameterException(std::string("Invalid or inaccessible parameter name: ") + name);
-    }
+Parameter DeviceParameters::Pimpl::getParameter(const std::string& name) const {
+    return paramTrans.getParameter(name);
 }
 
-Parameter const& DeviceParameters::Pimpl::pollParameter(const std::string& name, bool blockingCall) {
-    auto const& paramSet = paramTrans.getParameterSet();
-    if (paramSet.count(name)) {
-        paramTrans.pollParameter(name, blockingCall);
-        return paramSet.at(name);
-    } else {
-        throw ParameterException(std::string("Invalid or inaccessible parameter name: ") + name);
-    }
+Parameter DeviceParameters::Pimpl::pollParameter(const std::string& name, bool blockingCall) {
+    return paramTrans.pollParameter(name, blockingCall);
 }
 
 ParameterSet const& DeviceParameters::Pimpl::getParameterSet() const {

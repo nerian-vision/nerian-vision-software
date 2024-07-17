@@ -26,8 +26,10 @@
 #include <algorithm>
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <chrono>
+#include <thread>
 
 // SIMD Headers
 #ifdef __SSE2__
@@ -53,7 +55,8 @@ using namespace std::placeholders;
     std::ostream& debugStreamPhys = std::cout;
 #endif
 std::chrono::system_clock::time_point debugStreamPhysInitTime = std::chrono::system_clock::now();
-#define DEBUG_PHYS(x) debugStreamPhys << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamPhysInitTime).count() << ": " << x << std::endl;
+#define DEBUG_PHYS_THREAD_ID " (thread " << std::this_thread::get_id() << ") "
+#define DEBUG_PHYS(x) debugStreamPhys << std::dec << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamPhysInitTime).count() << ": " << DEBUG_PHYS_THREAD_ID << x << std::endl;
 #else
 #define DEBUG_PHYS(x) ;
 #endif
@@ -106,6 +109,8 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         // Initialize parameter server connection
         DEBUG_PHYS("Creating DeviceParameters");
         deviceParameters.reset(new DeviceParameters(host));
+        // Force waiting for network handshake completion
+        auto paramSet = deviceParameters->getParameterSet(); (void) paramSet;
         deviceParameters->setParameterUpdateCallback(std::bind(&PhysicalDevice::remoteParameterChangeCallback, this, _1));
 #endif
 

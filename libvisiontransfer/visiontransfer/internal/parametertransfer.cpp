@@ -136,7 +136,7 @@ void ParameterTransfer::writeParameter(const char* id, const T& value, bool sync
         // collecting deferred error from background thread
         throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
     }
-    if (!paramSet.count(id)) {
+    if (!hasParameter(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
 
@@ -157,6 +157,7 @@ void ParameterTransfer::writeParameter(const char* id, const T& value, bool sync
             // Local preliminary value update - the (successful!) async remote update may need additional time.
             // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
             // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
+            std::unique_lock<std::mutex> globalLock(mapMutex);
             auto& param = paramSet[id];
             if (param.isScalar()) {
                 param.setCurrent<T>(value);
@@ -182,7 +183,7 @@ void ParameterTransfer::writeParameter(const char* id, const std::string& value,
         // collecting deferred error from background thread
         throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
     }
-    if (!paramSet.count(id)) {
+    if (!hasParameter(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
 
@@ -203,6 +204,7 @@ void ParameterTransfer::writeParameter(const char* id, const std::string& value,
             // Local preliminary value update - the (successful!) async remote update may need additional time.
             // The actual value MIGHT have been revised by the server, but in the vast majority of cases this allows
             // reading back the successfully written parameter. The safest way is via setParameterUpdateCallback.
+            std::unique_lock<std::mutex> globalLock(mapMutex);
             auto& param = paramSet[id];
             if (param.isScalar()) {
                 param.setCurrent<std::string>(value);
@@ -225,7 +227,7 @@ void ParameterTransfer::writeParameterTransactionGuardedImpl(const char* id, con
         throw ParameterException("Writing parameters is not valid inside an unthreaded event handler");
     }
     if (transactionInProgress) {
-        if (!paramSet.count(id)) {
+        if (!hasParameter(id)) {
             throw ParameterException("Invalid parameter: " + std::string(id));
         }
         // Queue is thread_local
@@ -249,7 +251,7 @@ void ParameterTransfer::writeParameterTransactionGuarded(const char* id, const s
         throw ParameterException("Writing parameters is not valid inside an unthreaded event handler");
     }
     if (transactionInProgress) {
-        if (!paramSet.count(id)) {
+        if (!hasParameter(id)) {
             throw ParameterException("Invalid parameter: " + std::string(id));
         }
         // Queue is thread_local
@@ -286,6 +288,7 @@ int ParameterTransfer::readIntParameter(const char* id) {
         // collecting deferred error from background thread
         throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
     }
+    std::unique_lock<std::mutex> globalLock(mapMutex);
     if (!paramSet.count(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
@@ -298,6 +301,7 @@ double ParameterTransfer::readDoubleParameter(const char* id) {
         // collecting deferred error from background thread
         throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
     }
+    std::unique_lock<std::mutex> globalLock(mapMutex);
     if (!paramSet.count(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
@@ -310,6 +314,7 @@ bool ParameterTransfer::readBoolParameter(const char* id) {
         // collecting deferred error from background thread
         throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
     }
+    std::unique_lock<std::mutex> globalLock(mapMutex);
     if (!paramSet.count(id)) {
         throw ParameterException("Invalid parameter: " + std::string(id));
     }
@@ -695,6 +700,32 @@ ParameterSet const& ParameterTransfer::getParameterSet() const {
     return paramSet;
 }
 
+bool ParameterTransfer::hasParameter(const std::string& name) const {
+    waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
+
+    std::lock_guard<std::mutex> mapLock(mapMutex);
+    return paramSet.count(name) != 0;
+}
+
+Parameter ParameterTransfer::getParameter(const std::string& name) const {
+    waitNetworkReady();
+    if (networkError) {
+        // collecting deferred error from background thread
+        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
+
+    std::lock_guard<std::mutex> mapLock(mapMutex);
+    if (paramSet.count(name)) {
+        return paramSet.at(name);
+    } else {
+        throw ParameterException(std::string("Invalid or inaccessible parameter name: ") + name);
+    }
+}
+
 void ParameterTransfer::setParameterUpdateCallback(std::function<void(const std::string& uid)> callback, bool threaded) {
     std::lock_guard<std::mutex> callbackLock(callbackMutex);
     parameterUpdateCallbackThreaded = threaded;
@@ -820,6 +851,8 @@ void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, 
         throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
     }
 
+    std::unique_lock<std::mutex> globalLock(mapMutex);
+    
     std::stringstream ss;
     ss << "p" << "\t" << (synchronous ? getThreadId() : -1) << "\t";   // "p" -> persist request
     bool first = true;
@@ -851,7 +884,7 @@ void ParameterTransfer::persistParameters(const std::vector<std::string>& uids, 
     }
 }
 
-void ParameterTransfer::pollParameter(const std::string& uid, bool synchronous) {
+Parameter ParameterTransfer::pollParameter(const std::string& uid, bool synchronous) {
     if (writingProhibited) {
         throw ParameterException("Polling parameters is not valid inside an unthreaded event handler");
     }
@@ -864,6 +897,9 @@ void ParameterTransfer::pollParameter(const std::string& uid, bool synchronous) 
     if (networkError) {
         // collecting deferred error from background thread
         throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
+    }
+    if (!hasParameter(uid)) {
+        throw ParameterException("Invalid parameter: " + std::string(uid));
     }
 
     std::stringstream ss;
@@ -883,6 +919,8 @@ void ParameterTransfer::pollParameter(const std::string& uid, bool synchronous) 
         // 'Fire and forget' immediate-return mode (force update, do not wait for new value)
         sendNetworkCommand(ss.str(), "parameter poll");
     }
+
+    return getParameter(uid);
 }
 
 void ParameterTransfer::setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback) {

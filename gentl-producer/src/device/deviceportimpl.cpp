@@ -21,9 +21,11 @@
 #include <algorithm>
 
 #include <iostream> // DEBUG
-#include <iomanip>  // DEBUG
-#include <bitset>   // DEBUG
+#include <iomanip>
 #include <fstream>
+#include <chrono>
+#include <thread>
+#include <bitset>
 
 using namespace visiontransfer;
 
@@ -35,7 +37,9 @@ namespace GenTL {
 #else
     std::ostream& debugStreamDevPort = std::cout;
 #endif
-#define DEBUG_DEVPORT(x) debugStreamDevPort << x << std::endl;
+std::chrono::system_clock::time_point debugStreamDevPortInitTime = std::chrono::system_clock::now();
+#define DEBUG_DEVPORT_THREAD_ID " (thread " << std::this_thread::get_id() << ") "
+#define DEBUG_DEVPORT(x) debugStreamDevPort << std::dec << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamDevPortInitTime).count() << ": " << DEBUG_DEVPORT_THREAD_ID << x << std::endl;
 #else
 #define DEBUG_DEVPORT(x) ;
 #endif
