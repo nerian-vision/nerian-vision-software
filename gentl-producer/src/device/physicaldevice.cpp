@@ -100,6 +100,8 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         // Initialize parameter server connection
         DEBUG_PHYS("Creating DeviceParameters");
         deviceParameters.reset(new DeviceParameters(host));
+        // Force waiting for network handshake completion
+        auto paramSet = deviceParameters->getParameterSet(); (void) paramSet;
         deviceParameters->setParameterUpdateCallback(std::bind(&PhysicalDevice::remoteParameterChangeCallback, this, _1));
 
         sendSoftwareTriggerRequest(); // force emission of initial trigger to get at least one set of metadata

@@ -179,6 +179,23 @@ public:
      * \brief Enumerates all parameters as reported by the device.
      */
     std::map<std::string, ParameterInfo> getAllParameters();
+    
+    /**
+     * \brief Returns true if the matching parameter UID is present in the parameter set
+     */
+    bool hasParameter(const std::string& uid) const;
+
+    /**
+     * \brief Returns a disconnected copy of the matching parameter from the parameter set;
+     *   exception if not found
+     */
+    param::Parameter getParameter(const std::string& uid) const;
+
+    /**
+     * \brief Returns a disconnected copy of the matching parameter from the parameter set
+     *   after polling for its current value; exception if not found
+     */
+    param::Parameter pollParameter(const std::string& uid, bool blockingCall);
 
     /**
      * \brief Returns a reference to the internal parameter set (once the network handshake is complete)
@@ -214,11 +231,6 @@ public:
      * \brief Sets the callback function to inform of background disconnection / reconnection
      */
     void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
-
-    /**
-     * \brief Requests to poll for an updated value of the specified parameter UID
-     */
-    void pollParameter(const std::string& uid, bool synchronous=true);
 
 private:
     static constexpr int SOCKET_TIMEOUT_MS = 500;
@@ -263,7 +275,7 @@ private:
     /// Cond for the network-ready wait
     mutable std::condition_variable readyCond;
     /// Mutex to guard the request wait cond/mutex maps for atomic emplacement
-    std::mutex mapMutex;
+    mutable std::mutex mapMutex;
     /// Mutex to guard the socket in case of modification (invalidation by disconnect)
     std::mutex socketModificationMutex;
     /// Mutex for calling or modifying the user callback functions
