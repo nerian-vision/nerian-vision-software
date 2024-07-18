@@ -758,8 +758,7 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
         case 0x55: // LineOffset (trigger offset in ms)
             {
                 if (currentSelectorForLine == 0) {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_0_offset").getCurrent<int>();
-                    info.setUInt(val);
+                    info.setUInt(0);
                 } else {
                     int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getCurrent<int>();
                     info.setUInt(val);
@@ -769,8 +768,7 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
         case 0x56: // LineOffsetMin
             {
                 if (currentSelectorForLine == 0) {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_0_offset").getMin<int>();
-                    info.setUInt(val);
+                    info.setUInt(0);
                 } else {
                     int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getMin<int>();
                     info.setUInt(val);
@@ -780,8 +778,7 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
         case 0x57: // LineOffsetMax
             {
                 if (currentSelectorForLine == 0) {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_0_offset").getMax<int>();
-                    info.setUInt(val);
+                    info.setUInt(0);
                 } else {
                     int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getMax<int>();
                     info.setUInt(val);
@@ -1353,7 +1350,7 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
                 if (currentSelectorForLine == 0) {
-                    device->getPhysicalDevice()->setParameter("trigger_0_offset", newVal);
+                    if (newVal != 0) return GC_ERR_NOT_AVAILABLE;
                 } else {
                     device->getPhysicalDevice()->setParameter("trigger_1_offset", newVal);
                 }
