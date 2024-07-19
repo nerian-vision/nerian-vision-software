@@ -105,7 +105,7 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         deviceParameters.reset(new DeviceParameters(host));
         // Force waiting for network handshake completion
         auto paramSet = deviceParameters->getParameterSet(); (void) paramSet;
-        deviceParameters->setParameterUpdateCallback(std::bind(&PhysicalDevice::remoteParameterChangeCallback, this, _1));
+        deviceParameters->setParameterUpdateCallback(std::bind(&PhysicalDevice::remoteParameterChangeCallback, this, _1), false);
 
         sendSoftwareTriggerRequest(); // force emission of initial trigger to get at least one set of metadata
 #endif
@@ -292,7 +292,7 @@ void PhysicalDevice::deviceReceiveThread() {
     // This may block briefly until a running parameter callback has completed.
     if (deviceParameters) {
         DEBUG_PHYS("Disconnecting device parameter callback");
-        deviceParameters->setParameterUpdateCallback([](const std::string& uid){});
+        deviceParameters->setParameterUpdateCallback([](const std::string& uid){}, false);
     }
 #endif
 }
