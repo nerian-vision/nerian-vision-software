@@ -87,9 +87,11 @@ while(isrunning(vid))
     figure(1);
     imagesc(Z, [0, maxDist]);
 
-    % Display 3D point cloud (rotated)
+    % Display 3D point cloud (rotated); needs Computer Vision Toolbox
     figure(2);
     pcshow(cat(3, X, Z, -Y));
+    % Or a minimalistic plot without that toolbox (thinned to 10% of points):
+    % scatter3(X(1:10:end), Z(1:10:end), -Y(1:10:end), '.');
 
     drawnow;
 end
