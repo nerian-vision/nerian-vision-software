@@ -444,7 +444,7 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             {
                 auto dev = device->getPhysicalDevice();
                 if (dev->hasParameter("projector_brightness")) {
-                    int bri = dev->getParameter("projector_brightness").getCurrent<double>();
+                    double bri = dev->getParameter("projector_brightness").getCurrent<double>();
                     info.setDouble(bri * 100.0);
                 } else {
                     info.setDouble(0.0); // should not happen (feature also set as unavailable)
