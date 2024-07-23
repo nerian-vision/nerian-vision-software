@@ -159,6 +159,7 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
                     case 0x010C0006:
                         // Only one 12 bit output format, 12P
                         fmtInt = 0x010C0047;
+                        break;
                     default:
                         // Directly supported
                         break;
