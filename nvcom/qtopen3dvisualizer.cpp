@@ -228,9 +228,10 @@ bool QtOpen3DVisualizer::setDisplayCloud(std::shared_ptr<open3d::geometry::Point
     }
 
     *cloud = *pointcloud;
-
     updateCloud = true;
-    if(fovHoriz != fov || !validCloud) {
+    double epsilonFOV = 2.0/180.0 * M_PI;
+
+    if((!settings.keep3DView && abs(fovHoriz-fov) > epsilonFOV) || !validCloud) {
         fov = fovHoriz;
         updateView(!validCloud);
         validCloud = true;

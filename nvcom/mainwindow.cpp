@@ -437,6 +437,8 @@ bool MainWindow::parseOptions(QApplication& app) {
     settings.fileNameDateTime = appSettings.value("file_name_date_time", true).toBool();
     settings.disparityOffset = 0.0;
     settings.demoMode = false;
+    settings.logQMatrix = false;
+    settings.keep3DView = false;
 
     QCommandLineOption optColCoding ("c",  "Select color coding scheme (0 = no color, 1 = red / blue, 2 = rainbow)",
         "VAL", QString::number((int)settings.colorScheme));
@@ -455,6 +457,8 @@ bool MainWindow::parseOptions(QApplication& app) {
     QCommandLineOption optBinCloud  ("b",  "Write point clouds in binary rather than text format", "on/off", (settings.binaryPointCloud ? "on" : "off"));
     QCommandLineOption optDispOffset("o",  "Apply constant offset to disparity values", "VAL", QString::number(settings.disparityOffset));
     QCommandLineOption optDemo      ("D",  "Start in demo-mode");
+    QCommandLineOption optQMat      ("q",  "Log Q-matrix to console");
+    QCommandLineOption optKeep3D      ("v",  "Do not modify 3D-view when camera FOV changes");
 #ifdef _WIN32
     QCommandLineOption optConsole   ("C",  "Keep showing console on Windows");
 #endif
@@ -476,6 +480,8 @@ bool MainWindow::parseOptions(QApplication& app) {
     cmdParser.addOption(optBinCloud);
     cmdParser.addOption(optDispOffset);
     cmdParser.addOption(optDemo);
+    cmdParser.addOption(optQMat);
+    cmdParser.addOption(optKeep3D);
 #ifdef _WIN32
     cmdParser.addOption(optConsole);
 #endif
@@ -517,6 +523,8 @@ bool MainWindow::parseOptions(QApplication& app) {
     if(settings.demoMode) {
         fullscreen = true;
     }
+    settings.logQMatrix = cmdParser.isSet(optQMat);
+    settings.keep3DView = cmdParser.isSet(optKeep3D);
 #ifdef _WIN32
     keepConsole = cmdParser.isSet(optConsole);
 #endif

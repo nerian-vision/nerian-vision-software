@@ -58,6 +58,8 @@ struct Settings {
     bool fileNameDateTime;
     double disparityOffset;
     bool demoMode;
+    bool logQMatrix;
+    bool keep3DView;
 
     Settings():
         readDir(""), writeDir(""), writeDirAlwaysAsk(false), writeDirSelected(false), readImages(false),
@@ -69,7 +71,7 @@ struct Settings {
         disableReception(false), printTimestamps(false),
         zoomPercent(100), displayCoordinate(false), writePgm(false),
         adaptiveColorScale(false), view3D(false), convert12Bit(false), fileNameDateTime(false),
-        disparityOffset(0.0), demoMode(false) {
+        disparityOffset(0.0), demoMode(false), logQMatrix(false), keep3DView(false) {
     }
 };
 

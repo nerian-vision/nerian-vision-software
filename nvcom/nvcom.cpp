@@ -127,6 +127,18 @@ void NVCom::mainLoop() {
                     continue;
                 }
 
+                if(settings.logQMatrix) {
+                    cout << "Q-matrix: " << endl;
+                    const float* q = imageSet.getQMatrix();
+                    for(int y=0; y<4; y++) {
+                        for(int x=0; x<4; x++) {
+                            cout << q[y*4 + x] << " ";
+                        }
+                        cout << endl;
+                    }
+                    cout << endl;
+                }
+
                 int minDisp = 0, maxDisp = 0;
                 imageSet.getDisparityRange(minDisp, maxDisp);
 
