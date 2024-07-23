@@ -46,6 +46,9 @@ std::chrono::system_clock::time_point debugStreamDevPortInitTime = std::chrono::
 
 DevicePortImpl::DevicePortImpl(LogicalDevice* device)
     :device(device) {
+    // Device features
+    auto availTrigInputs = device->getPhysicalDevice()->getParameter("trigger_input").getOptions<int>();
+    triggerInputAvailable = std::find(availTrigInputs.begin(), availTrigInputs.end(), 1) != availTrigInputs.end(); // '1' is HW trigger option
     // Set up child selector defaults
     currentSelectorForBalanceRatio = 1;
     currentSelectorForExposure = 0;
@@ -433,14 +436,14 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             break;
         case 0x2d: // TriggerMode
             {
-                // DEPRECATED / unused register
-                info.setUInt(1);
+                int activeTriggerSource = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
+                info.setUInt(activeTriggerSource != 0);
             }
             break;
         case 0x2e: // TriggerSource
             {
                 int activeTriggerSource = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
-                info.setUInt(activeTriggerSource);
+                info.setUInt(activeTriggerSource ? activeTriggerSource : preferredTriggerSource);
             }
             break;
         case 0x2f: // PatternProjectorBrightness
@@ -647,37 +650,58 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setUInt(currentSelectorForLine);
             }
             break;
-        case 0x4E: // LineMode (Input / Output: Line0 always Output, Line1 always Output on SceneScan, switchable on others)
+        case 0x4E: // LineMode
             {
-                if (currentSelectorForLine == 0) {
-                    info.setUInt(0); // always 'Output'
-                } else {
-                    int trigInp = device->getPhysicalDevice()->getParameter("trigger_input").getCurrent<int>();
-                    info.setUInt(trigInp == 1); // 'Input' iff hardware trigger input is active
-                }
+                // DEPRECATED - unused address - defined read-only via XML
+                info.setUInt(0);
             }
             break;
         case 0x4F: // LineInverter
             {
-                if (currentSelectorForLine == 0) {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_0_polarity").getCurrent<int>();
-                    info.setUInt(val ? 1 : 0);
+                if (triggerInputAvailable) {
+                    // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                    if (currentSelectorForLine == 0) {
+                        int val = device->getPhysicalDevice()->getParameter("trigger_1_polarity").getCurrent<int>();
+                        info.setUInt(val ? 1 : 0);
+                    } else {
+                        // LineSelector 1 is the input pin - we report LineInverter=0 for sake of completeness
+                        info.setUInt(0);
+                    }
                 } else {
-                    int val = device->getPhysicalDevice()->getParameter("trigger_1_polarity").getCurrent<int>();
-                    info.setUInt(val ? 1 : 0);
+                    // SceneScan: LineSelector 0 and 1 are trigger_0_... and trigger_1_..., respectively
+                    if (currentSelectorForLine == 0) {
+                        int val = device->getPhysicalDevice()->getParameter("trigger_0_polarity").getCurrent<int>();
+                        info.setUInt(val ? 1 : 0);
+                    } else {
+                        int val = device->getPhysicalDevice()->getParameter("trigger_1_polarity").getCurrent<int>();
+                        info.setUInt(val ? 1 : 0);
+                    }
                 }
             }
             break;
-        case 0x50: // LineSource: FrameTrigger (if 'Enabled' in nvparam), UserOutput0/1 (if 'Disabled with constant' in nvparam)
+        case 0x50: // LineSource: signal source for output pins. FrameTrigger (if 'Enabled' in nvparam), Constant0/1 (if 'Disabled with constant' in nvparam)
             {
-                if (currentSelectorForLine == 0) {
-                    int mode = device->getPhysicalDevice()->getParameter("trigger_0_enabled").getCurrent<int>();
-                    int cons = device->getPhysicalDevice()->getParameter("trigger_0_constant").getCurrent<int>();
-                    info.setUInt(mode ? 2 : cons); // 0, 1 = the respective value; 2 = FrameTrigger
+                if (triggerInputAvailable) {
+                    // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                    if (currentSelectorForLine == 0) {
+                        int enabled = device->getPhysicalDevice()->getParameter("trigger_1_enabled").getCurrent<int>();
+                        int constant = device->getPhysicalDevice()->getParameter("trigger_1_constant").getCurrent<int>();
+                        info.setUInt(enabled ? 2 : constant); // 0, 1 = the respective value; 2 = FrameTrigger
+                    } else {
+                        // LineSelector 1 is the input pin - we report LineSource==FrameTrigger for sake of completeness
+                        info.setUInt(2);
+                    }
                 } else {
-                    int mode = device->getPhysicalDevice()->getParameter("trigger_1_enabled").getCurrent<int>();
-                    int cons = device->getPhysicalDevice()->getParameter("trigger_1_constant").getCurrent<int>();
-                    info.setUInt(mode ? 2 : cons); // 0, 1 = the respective value; 2 = FrameTrigger
+                    // SceneScan: LineSelector 0 and 1 are trigger_0_... and trigger_1_..., respectively
+                    if (currentSelectorForLine == 0) {
+                        int enabled = device->getPhysicalDevice()->getParameter("trigger_0_enabled").getCurrent<int>();
+                        int constant = device->getPhysicalDevice()->getParameter("trigger_0_constant").getCurrent<int>();
+                        info.setUInt(enabled ? 2 : constant); // 0, 1 = the respective value; 2 = FrameTrigger
+                    } else {
+                        int enabled = device->getPhysicalDevice()->getParameter("trigger_1_enabled").getCurrent<int>();
+                        int constant = device->getPhysicalDevice()->getParameter("trigger_1_constant").getCurrent<int>();
+                        info.setUInt(enabled ? 2 : constant); // 0, 1 = the respective value; 2 = FrameTrigger
+                    }
                 }
             }
             break;
@@ -687,7 +711,17 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             }
             break;
         case 0x52: // LinePulseWidthAlternationMode (Constant / Cycle; Constant restricts LinePulseWidthSelector to 1)
-            {
+            if (triggerInputAvailable) {
+                // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                if (currentSelectorForLine == 0) {
+                    int mode = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width_mode").getCurrent<int>();
+                    info.setUInt(mode ? 1 : 0);
+                } else {
+                    // LineSelector 1 is the input pin - we report Constant mode for sake of completeness
+                    info.setUInt(0);
+                }
+            } else {
+                // SceneScan: LineSelector 0 and 1 are trigger_0_... and trigger_1_..., respectively
                 if (currentSelectorForLine == 0) {
                     int mode = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width_mode").getCurrent<int>();
                     info.setUInt(mode ? 1 : 0);
@@ -699,64 +733,103 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             break;
         case 0x53: // LinePulseWidth (trigger_XY_pulse_width, X LineSelector -> 0,1; Y LinePulseWidthSelector -> '','b'..'h')
             {
-                int val = 0;
-                if (currentSelectorForLine == 0) {
-                    switch (currentSelectorForPulseWidth) {
-                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width").getCurrent<int>(); break;
-                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_0b_pulse_width").getCurrent<int>(); break;
-                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_0c_pulse_width").getCurrent<int>(); break;
-                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_0d_pulse_width").getCurrent<int>(); break;
-                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_0e_pulse_width").getCurrent<int>(); break;
-                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_0f_pulse_width").getCurrent<int>(); break;
-                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_0g_pulse_width").getCurrent<int>(); break;
-                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_0h_pulse_width").getCurrent<int>(); break;
-                    };
+                int triggerIndex = -1;
+                if (triggerInputAvailable) {
+                    // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                    if (currentSelectorForLine == 0) {
+                        triggerIndex = 1;
+                    } else {
+                        // LineSelector 1 is the input pin - we report pulse width 0 for sake of completeness
+                        info.setUInt(0);
+                    }
                 } else {
-                    switch (currentSelectorForPulseWidth) {
-                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width").getCurrent<int>(); break;
-                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_1b_pulse_width").getCurrent<int>(); break;
-                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_1c_pulse_width").getCurrent<int>(); break;
-                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_1d_pulse_width").getCurrent<int>(); break;
-                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_1e_pulse_width").getCurrent<int>(); break;
-                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_1f_pulse_width").getCurrent<int>(); break;
-                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_1g_pulse_width").getCurrent<int>(); break;
-                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_1h_pulse_width").getCurrent<int>(); break;
-                    };
+                    // SceneScan: LineSelector 0 and 1 are trigger_0_... and trigger_1_..., respectively
+                    triggerIndex = currentSelectorForLine;
                 }
-                info.setUInt(val);
+                if (triggerIndex > -1) {
+                    int val = 0;
+                    if (triggerIndex == 0) {
+                        switch (currentSelectorForPulseWidth) {
+                            case 0: val = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width").getCurrent<int>(); break;
+                            case 1: val = device->getPhysicalDevice()->getParameter("trigger_0b_pulse_width").getCurrent<int>(); break;
+                            case 2: val = device->getPhysicalDevice()->getParameter("trigger_0c_pulse_width").getCurrent<int>(); break;
+                            case 3: val = device->getPhysicalDevice()->getParameter("trigger_0d_pulse_width").getCurrent<int>(); break;
+                            case 4: val = device->getPhysicalDevice()->getParameter("trigger_0e_pulse_width").getCurrent<int>(); break;
+                            case 5: val = device->getPhysicalDevice()->getParameter("trigger_0f_pulse_width").getCurrent<int>(); break;
+                            case 6: val = device->getPhysicalDevice()->getParameter("trigger_0g_pulse_width").getCurrent<int>(); break;
+                            case 7: val = device->getPhysicalDevice()->getParameter("trigger_0h_pulse_width").getCurrent<int>(); break;
+                        };
+                    } else {
+                        switch (currentSelectorForPulseWidth) {
+                            case 0: val = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width").getCurrent<int>(); break;
+                            case 1: val = device->getPhysicalDevice()->getParameter("trigger_1b_pulse_width").getCurrent<int>(); break;
+                            case 2: val = device->getPhysicalDevice()->getParameter("trigger_1c_pulse_width").getCurrent<int>(); break;
+                            case 3: val = device->getPhysicalDevice()->getParameter("trigger_1d_pulse_width").getCurrent<int>(); break;
+                            case 4: val = device->getPhysicalDevice()->getParameter("trigger_1e_pulse_width").getCurrent<int>(); break;
+                            case 5: val = device->getPhysicalDevice()->getParameter("trigger_1f_pulse_width").getCurrent<int>(); break;
+                            case 6: val = device->getPhysicalDevice()->getParameter("trigger_1g_pulse_width").getCurrent<int>(); break;
+                            case 7: val = device->getPhysicalDevice()->getParameter("trigger_1h_pulse_width").getCurrent<int>(); break;
+                        };
+                    }
+                    info.setUInt(val);
+                }
             }
             break;
         case 0x54: // LinePulseWidthMax (max values)
             {
-                int val = 0;
-                if (currentSelectorForLine == 0) {
-                    switch (currentSelectorForPulseWidth) {
-                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width").getMax<int>(); break;
-                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_0b_pulse_width").getMax<int>(); break;
-                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_0c_pulse_width").getMax<int>(); break;
-                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_0d_pulse_width").getMax<int>(); break;
-                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_0e_pulse_width").getMax<int>(); break;
-                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_0f_pulse_width").getMax<int>(); break;
-                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_0g_pulse_width").getMax<int>(); break;
-                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_0h_pulse_width").getMax<int>(); break;
-                    };
+                int triggerIndex = -1;
+                if (triggerInputAvailable) {
+                    // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                    if (currentSelectorForLine == 0) {
+                        triggerIndex = 1;
+                    } else {
+                        // LineSelector 1 is the input pin - we report pulse width 0 for sake of completeness
+                        info.setUInt(0);
+                    }
                 } else {
-                    switch (currentSelectorForPulseWidth) {
-                        case 0: val = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width").getMax<int>(); break;
-                        case 1: val = device->getPhysicalDevice()->getParameter("trigger_1b_pulse_width").getMax<int>(); break;
-                        case 2: val = device->getPhysicalDevice()->getParameter("trigger_1c_pulse_width").getMax<int>(); break;
-                        case 3: val = device->getPhysicalDevice()->getParameter("trigger_1d_pulse_width").getMax<int>(); break;
-                        case 4: val = device->getPhysicalDevice()->getParameter("trigger_1e_pulse_width").getMax<int>(); break;
-                        case 5: val = device->getPhysicalDevice()->getParameter("trigger_1f_pulse_width").getMax<int>(); break;
-                        case 6: val = device->getPhysicalDevice()->getParameter("trigger_1g_pulse_width").getMax<int>(); break;
-                        case 7: val = device->getPhysicalDevice()->getParameter("trigger_1h_pulse_width").getMax<int>(); break;
-                    };
+                    // SceneScan: LineSelector 0 and 1 are trigger_0_... and trigger_1_..., respectively
+                    triggerIndex = currentSelectorForLine;
                 }
-                info.setUInt(val);
+                if (triggerIndex > -1) {
+                    int val = 0;
+                    if (triggerIndex == 0) {
+                        switch (currentSelectorForPulseWidth) {
+                            case 0: val = device->getPhysicalDevice()->getParameter("trigger_0_pulse_width").getMax<int>(); break;
+                            case 1: val = device->getPhysicalDevice()->getParameter("trigger_0b_pulse_width").getMax<int>(); break;
+                            case 2: val = device->getPhysicalDevice()->getParameter("trigger_0c_pulse_width").getMax<int>(); break;
+                            case 3: val = device->getPhysicalDevice()->getParameter("trigger_0d_pulse_width").getMax<int>(); break;
+                            case 4: val = device->getPhysicalDevice()->getParameter("trigger_0e_pulse_width").getMax<int>(); break;
+                            case 5: val = device->getPhysicalDevice()->getParameter("trigger_0f_pulse_width").getMax<int>(); break;
+                            case 6: val = device->getPhysicalDevice()->getParameter("trigger_0g_pulse_width").getMax<int>(); break;
+                            case 7: val = device->getPhysicalDevice()->getParameter("trigger_0h_pulse_width").getMax<int>(); break;
+                        };
+                    } else {
+                        switch (currentSelectorForPulseWidth) {
+                            case 0: val = device->getPhysicalDevice()->getParameter("trigger_1_pulse_width").getMax<int>(); break;
+                            case 1: val = device->getPhysicalDevice()->getParameter("trigger_1b_pulse_width").getMax<int>(); break;
+                            case 2: val = device->getPhysicalDevice()->getParameter("trigger_1c_pulse_width").getMax<int>(); break;
+                            case 3: val = device->getPhysicalDevice()->getParameter("trigger_1d_pulse_width").getMax<int>(); break;
+                            case 4: val = device->getPhysicalDevice()->getParameter("trigger_1e_pulse_width").getMax<int>(); break;
+                            case 5: val = device->getPhysicalDevice()->getParameter("trigger_1f_pulse_width").getMax<int>(); break;
+                            case 6: val = device->getPhysicalDevice()->getParameter("trigger_1g_pulse_width").getMax<int>(); break;
+                            case 7: val = device->getPhysicalDevice()->getParameter("trigger_1h_pulse_width").getMax<int>(); break;
+                        };
+                    }
+                    info.setUInt(val);
+                }
             }
             break;
         case 0x55: // LineOffset (trigger offset in ms)
-            {
+            if (triggerInputAvailable) {
+                // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                if (currentSelectorForLine == 0) {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getCurrent<int>();
+                    info.setUInt(val);
+                } else {
+                    info.setUInt(0);
+                }
+            } else {
+                // SceneScan: only the secondary output has a configurable offset parameter
                 if (currentSelectorForLine == 0) {
                     info.setUInt(0);
                 } else {
@@ -766,7 +839,16 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             }
             break;
         case 0x56: // LineOffsetMin
-            {
+            if (triggerInputAvailable) {
+                // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                if (currentSelectorForLine == 0) {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getMin<int>();
+                    info.setUInt(val);
+                } else {
+                    info.setUInt(0);
+                }
+            } else {
+                // SceneScan: only the secondary output has a configurable offset parameter
                 if (currentSelectorForLine == 0) {
                     info.setUInt(0);
                 } else {
@@ -776,7 +858,16 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             }
             break;
         case 0x57: // LineOffsetMax
-            {
+            if (triggerInputAvailable) {
+                // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                if (currentSelectorForLine == 0) {
+                    int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getMax<int>();
+                    info.setUInt(val);
+                } else {
+                    info.setUInt(0);
+                }
+            } else {
+                // SceneScan: only the secondary output has a configurable offset parameter
                 if (currentSelectorForLine == 0) {
                     info.setUInt(0);
                 } else {
@@ -787,6 +878,7 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             break;
         case 0x58: // UserOutputSelector (for choosing constant-output Off / On)
             {
+                // DEPRECATED - unused register
                 info.setUInt(currentSelectorForUserOutput);
             }
             break;
@@ -800,10 +892,7 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 // Bit 1: Availability of Nerian software white balance
                 featureMap |= dev->hasParameter("white_balance_mode") ? 2 : 0;
                 // Bit 2: Availability of hardware trigger input
-                auto availTrigInputs = dev->getParameter("trigger_input").getOptions<int>();
-                // - device parameter enum option '1' corresponds to hardware trigger as well
-                auto trigInpHardwareAvail = std::find(availTrigInputs.begin(), availTrigInputs.end(), 1) != availTrigInputs.end();
-                featureMap |= trigInpHardwareAvail ? 4 : 0;
+                featureMap |= triggerInputAvailable ? 4 : 0;
                 // Bit 3: Availability of pattern projector
                 featureMap |= dev->hasParameter("projector_brightness") ? 8 : 0;
                 // Feature bitmap complete
@@ -1027,7 +1116,8 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 // DEPRECATED / unused register
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                if (newVal != 1) return GC_ERR_ERROR;
+                auto dev = device->getPhysicalDevice();
+                dev->setParameter("trigger_input", (newVal==0) ? 0 : preferredTriggerSource);
                 return GC_ERR_SUCCESS;
             }
             break;
@@ -1035,9 +1125,15 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                preferredTriggerSource = newVal;
                 auto dev = device->getPhysicalDevice();
-                // values: 0 (disabled, i.e. internal trigger); 1 (ext hw trigger input); 2 (software)
-                dev->setParameter("trigger_input", newVal);
+                auto currentVal = dev->getParameter("trigger_input").getCurrent<int>();
+                if (currentVal) {
+                    // Toggle between SW and ext immediately
+                    dev->setParameter("trigger_input", preferredTriggerSource);
+                } else {
+                    // TriggerMode was off - don't send anything until it is changed to on
+                }
                 return GC_ERR_SUCCESS;
             }
             break;
@@ -1246,55 +1342,81 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
         case 0x4E: // LineMode (Input / Output: Line0 always Output, Line1 always Output on SceneScan, switchable on others)
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
-                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                if (currentSelectorForLine == 0) {
-                    if (newVal == 1) return GC_ERR_NOT_AVAILABLE;
-                    // No-operation; actual trigger input is only touched if line 1 is selected
-                } else {
-                    device->getPhysicalDevice()->setParameter("trigger_input", newVal); // TODO check interaction with sw trig
-                    // trigger_input = 1
-                }
-                return GC_ERR_SUCCESS;
+                // DEPRECATED - unused address - defined read-only via XML
+                return GC_ERR_NOT_AVAILABLE;
             }
             break;
         case 0x4F: // LineInverter
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                device->getPhysicalDevice()->setParameter((currentSelectorForLine==0)?"trigger_0_polarity":"trigger_1_polarity", newVal?1:0);
+                if (triggerInputAvailable) {
+                    // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                    if (currentSelectorForLine == 0) {
+                        device->getPhysicalDevice()->setParameter("trigger_1_polarity", newVal?1:0);
+                    } else {
+                        // LineSelector 1 is the input pin - we cannot change polarity
+                        return GC_ERR_NOT_AVAILABLE;
+                    }
+                } else {
+                    // SceneScan: LineSelector 0 and 1 are trigger_0_... and trigger_1_..., respectively
+                    device->getPhysicalDevice()->setParameter((currentSelectorForLine==0)?"trigger_0_polarity":"trigger_1_polarity", newVal?1:0);
+                }
                 return GC_ERR_SUCCESS;
             }
             break;
-        case 0x50: // LineSource: FrameTrigger (if 'Enabled' in nvparam), UserOutput0/1 (if 'Disabled with constant' in nvparam)
+        case 0x50: // LineSource: signal source for output pins. FrameTrigger (if 'Enabled' in nvparam), Constant0/1 (if 'Disabled with constant' in nvparam)
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                switch (newVal) {
-                    case 0:
-                        if (currentSelectorForLine == 0) {
-                            device->getPhysicalDevice()->setParameter("trigger_0_constant", 0);
-                            device->getPhysicalDevice()->setParameter("trigger_0_enabled", 0);
-                        } else {
-                            device->getPhysicalDevice()->setParameter("trigger_1_constant", 0);
-                            device->getPhysicalDevice()->setParameter("trigger_1_enabled", 0);
+                if (triggerInputAvailable) {
+                    // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                    if (currentSelectorForLine == 0) {
+                        switch (newVal) {
+                            case 0:
+                                device->getPhysicalDevice()->setParameter("trigger_1_constant", 0);
+                                device->getPhysicalDevice()->setParameter("trigger_1_enabled", 0);
+                                break;
+                            case 1:
+                                device->getPhysicalDevice()->setParameter("trigger_1_constant", 1);
+                                device->getPhysicalDevice()->setParameter("trigger_1_enabled", 0);
+                                break;
+                            case 2:
+                                device->getPhysicalDevice()->setParameter("trigger_1_enabled", 1);
                         }
-                        break;
-                    case 1:
-                        if (currentSelectorForLine == 0) {
-                            device->getPhysicalDevice()->setParameter("trigger_0_constant", 1);
-                            device->getPhysicalDevice()->setParameter("trigger_0_enabled", 0);
-                        } else {
-                            device->getPhysicalDevice()->setParameter("trigger_1_constant", 1);
-                            device->getPhysicalDevice()->setParameter("trigger_1_enabled", 0);
-                        }
-                        break;
-                    case 2:
-                    default:
-                        if (currentSelectorForLine == 0) {
-                            device->getPhysicalDevice()->setParameter("trigger_0_enabled", 1);
-                        } else {
-                            device->getPhysicalDevice()->setParameter("trigger_1_enabled", 1);
-                        }
+                    } else {
+                        // LineSelector 1 is the input pin - we cannot change LineSource
+                        return GC_ERR_NOT_AVAILABLE;
+                    }
+                } else {
+                    // SceneScan: LineSelector 0 and 1 are trigger_0_... and trigger_1_..., respectively
+                    switch (newVal) {
+                        case 0:
+                            if (currentSelectorForLine == 0) {
+                                device->getPhysicalDevice()->setParameter("trigger_0_constant", 0);
+                                device->getPhysicalDevice()->setParameter("trigger_0_enabled", 0);
+                            } else {
+                                device->getPhysicalDevice()->setParameter("trigger_1_constant", 0);
+                                device->getPhysicalDevice()->setParameter("trigger_1_enabled", 0);
+                            }
+                            break;
+                        case 1:
+                            if (currentSelectorForLine == 0) {
+                                device->getPhysicalDevice()->setParameter("trigger_0_constant", 1);
+                                device->getPhysicalDevice()->setParameter("trigger_0_enabled", 0);
+                            } else {
+                                device->getPhysicalDevice()->setParameter("trigger_1_constant", 1);
+                                device->getPhysicalDevice()->setParameter("trigger_1_enabled", 0);
+                            }
+                            break;
+                        case 2:
+                        default:
+                            if (currentSelectorForLine == 0) {
+                                device->getPhysicalDevice()->setParameter("trigger_0_enabled", 1);
+                            } else {
+                                device->getPhysicalDevice()->setParameter("trigger_1_enabled", 1);
+                            }
+                    }
                 }
                 return GC_ERR_SUCCESS;
             }
@@ -1311,7 +1433,18 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                device->getPhysicalDevice()->setParameter((currentSelectorForLine==0)?"trigger_0_pulse_width_mode":"trigger_1_pulse_width_mode", newVal ? 1 : 0);
+                if (triggerInputAvailable) {
+                    // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                    if (currentSelectorForLine == 0) {
+                        device->getPhysicalDevice()->setParameter("trigger_1_pulse_width_mode", newVal ? 1 : 0);
+                    } else {
+                        // LineSelector 1 is the input pin - we cannot change pulse width settings
+                        return GC_ERR_NOT_AVAILABLE;
+                    }
+                } else {
+                    // SceneScan: LineSelector 0 and 1 are trigger_0_... and trigger_1_..., respectively
+                    device->getPhysicalDevice()->setParameter((currentSelectorForLine==0)?"trigger_0_pulse_width_mode":"trigger_1_pulse_width_mode", newVal ? 1 : 0);
+                }
                 return GC_ERR_SUCCESS;
             }
             break;
@@ -1319,7 +1452,21 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                if (currentSelectorForLine == 0) {
+                int triggerIndex = -1;
+                if (triggerInputAvailable) {
+                    // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                    if (currentSelectorForLine == 0) {
+                        triggerIndex = 1;
+                    } else {
+                        // LineSelector 1 is the input pin - we cannot change pulse width settings
+                        return GC_ERR_NOT_AVAILABLE;
+                    }
+                } else {
+                    // SceneScan: LineSelector 0 and 1 are trigger_0_... and trigger_1_..., respectively
+                    triggerIndex = currentSelectorForLine;
+                }
+
+                if (triggerIndex == 0) {
                     switch (currentSelectorForPulseWidth) {
                         case 0: device->getPhysicalDevice()->setParameter("trigger_0_pulse_width", newVal); break;
                         case 1: device->getPhysicalDevice()->setParameter("trigger_0b_pulse_width", newVal); break;
@@ -1349,10 +1496,21 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                if (currentSelectorForLine == 0) {
-                    if (newVal != 0) return GC_ERR_NOT_AVAILABLE;
+                if (triggerInputAvailable) {
+                    // Not SceneScan: LineSelector 0 is the only output pin, named trigger_1_...
+                    if (currentSelectorForLine == 0) {
+                        device->getPhysicalDevice()->setParameter("trigger_1_offset", newVal);
+                    } else {
+                        // LineSelector 1 is the input pin
+                        return GC_ERR_NOT_AVAILABLE;
+                    }
                 } else {
-                    device->getPhysicalDevice()->setParameter("trigger_1_offset", newVal);
+                    // SceneScan: only the secondary output has a configurable offset parameter
+                    if (currentSelectorForLine == 0) {
+                        if (newVal != 0) return GC_ERR_NOT_AVAILABLE;
+                    } else {
+                        device->getPhysicalDevice()->setParameter("trigger_1_offset", newVal);
+                    }
                 }
                 return GC_ERR_SUCCESS;
             }
@@ -1360,9 +1518,8 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
         case 0x58: // UserOutputSelector (for choosing constant-output Off / On)
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
-                int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                currentSelectorForUserOutput = newVal;
-                return GC_ERR_SUCCESS;
+                // DEPRECATED - unused register
+                return GC_ERR_NOT_AVAILABLE;
             }
             break;
         case 0xF1: // FlushOutputQueue: force flushing of all DataStreams' output queues

@@ -101,8 +101,6 @@
         <pFeature>LineMode</pFeature>
         <pFeature>LineInverter</pFeature>
         <pFeature>LineSource</pFeature>
-        <pFeature>UserOutputSelector</pFeature>
-        <pFeature>UserOutputValue</pFeature>
     </Category>
 
     <Category Name="Nerian" NameSpace="Custom">
@@ -253,12 +251,22 @@
     </Enumeration>
 
     <Enumeration Name="TriggerMode" NameSpace="Standard">
-        <ImposedAccessMode>RO</ImposedAccessMode>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <EnumEntry Name="Off" NameSpace="Standard">
+            <Value>0</Value>
+        </EnumEntry>
         <EnumEntry Name="On" NameSpace="Standard">
             <Value>1</Value>
         </EnumEntry>
-        <Value>1</Value>
+        <pValue>TriggerModeReg</pValue>
     </Enumeration>
+    <IntReg Name="TriggerModeReg" NameSpace="Custom">
+        <Address>0xC002D000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
 
     <IntSwissKnife Name="HardwareTriggerInputPresent" NameSpace="Custom">
         <Visibility>Guru</Visibility>
@@ -269,11 +277,6 @@
         <ToolTip>Trigger source, selected between internal trigger generator (Line0) or available external triggering modes</ToolTip>
         <Description>Trigger source, selected between internal trigger generator (Line0) or available external triggering modes</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
-        <EnumEntry Name="Line0" NameSpace="Standard">
-            <ToolTip>Line0 represents the internal trigger generator</ToolTip>
-            <Description>Line0 represents the internal trigger generator</Description>
-            <Value>0</Value>
-        </EnumEntry>
         <EnumEntry Name="Line1" NameSpace="Standard">
             <ToolTip>Line1 represents the external trigger line (if set to Input mode)</ToolTip>
             <Description>Line1 represents the external trigger line (if set to Input mode)</Description>
@@ -1046,8 +1049,8 @@
     <!-- Digital I/O control -->
 
     <Enumeration Name="LineSelector" NameSpace="Standard">
-        <ToolTip>Selector for the (virtual) digital I/O lines. Line0 is the primary internal camera trigger, Line1 is the external trigger I/O connection.</ToolTip>
-        <Description>Selector for the (virtual) digital I/O lines. Line0 is the primary internal camera trigger, Line1 is the external trigger I/O connection.</Description>
+        <ToolTip>Selector for the (virtual) digital I/O lines. On SceneScan, Line0 and Line1 are the trigger output channels. On other devices, Line0 is the trigger output and Line1 is the trigger input.</ToolTip>
+        <Description>Selector for the (virtual) digital I/O lines. On SceneScan, Line0 and Line1 are the trigger output channels. On other devices, Line0 is the trigger output and Line1 is the trigger input.</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Line0" NameSpace="Standard">
             <Value>0</Value>
@@ -1057,11 +1060,12 @@
         </EnumEntry>
         <pValue>LineSelectorReg</pValue>
         <pSelected>LineMode</pSelected>
-        <pSelected>LineModeReg</pSelected>
         <pSelected>LineInverter</pSelected>
         <pSelected>LineInverterReg</pSelected>
         <pSelected>LineSource</pSelected>
         <pSelected>LineSourceReg</pSelected>
+        <pSelected>LinePulseWidthSelector</pSelected>
+        <pSelected>LinePulseWidthSelectorReg</pSelected>
         <pSelected>LinePulseWidthAlternationMode</pSelected>
         <pSelected>LinePulseWidthAlternationModeReg</pSelected>
         <pSelected>LinePulseWidth</pSelected>
@@ -1078,29 +1082,21 @@
     </IntReg>
 
     <Enumeration Name="LineMode" NameSpace="Standard">
-        <ToolTip>Mode for digital I/O. Line0 (primary internal camera trigger) is always in Output mode. Line1 operates as a secondary Output, or as the hardware trigger Input (on devices that support it).</ToolTip>
-        <Description>Mode for digital I/O. Line0 (primary internal camera trigger) is always in Output mode. Line1 operates as a secondary Output, or as the hardware trigger Input (on devices that support it).</Description>
-        <ImposedAccessMode>RW</ImposedAccessMode>
+        <ToolTip>Mode for digital I/O. On SceneScan, Line0 and Line1 are the two trigger outputs. On other devices, Line0 is the output line and Line1 is the external trigger input line.</ToolTip>
+        <Description>Mode for digital I/O. On SceneScan, Line0 and Line1 are the two trigger outputs. On other devices, Line0 is the output line and Line1 is the external trigger input line.</Description>
+        <ImposedAccessMode>RO</ImposedAccessMode>
         <EnumEntry Name="Output" NameSpace="Standard">
             <Value>0</Value>
         </EnumEntry>
         <EnumEntry Name="Input" NameSpace="Standard">
-            <pIsAvailable>LineSettableToInput</pIsAvailable>
             <Value>1</Value>
         </EnumEntry>
-        <pValue>LineModeReg</pValue>
+        <pValue>LineModeInt</pValue>
     </Enumeration>
-    <IntReg Name="LineModeReg" NameSpace="Custom">
-        <Address>0xC004E000</Address>
-        <Length>4</Length>
-        <AccessMode>RW</AccessMode>
-        <pPort>Device</pPort>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-    <IntSwissKnife Name="LineSettableToInput" NameSpace="Custom">
+    <IntSwissKnife Name="LineModeInt" NameSpace="Custom">
         <pVariable Name="selector">LineSelectorReg</pVariable>
         <pVariable Name="supported">HardwareTriggerInputPresent</pVariable>
-        <Formula>selector &amp;&amp; supported</Formula> <!-- Only Line1 is settable to Input, and only on supported devices -->
+        <Formula>selector &amp;&amp; supported</Formula> <!-- Line1 works as Input on devices that have one -->
     </IntSwissKnife>
 
     <Enumeration Name="LineInverter" NameSpace="Standard">
@@ -1124,13 +1120,13 @@
     </IntReg>
 
     <Enumeration Name="LineSource" NameSpace="Standard">
-        <ToolTip>Output source for the given I/O line (unless set to Input mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; UserOutput0: emit constant logical 0 (before any inversion); UserOutput1: emit constant logical 1 (before any inversion).</ToolTip>
-        <Description>Output source for the given I/O line (unless set to Input mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; UserOutput0: emit constant logical 0 (before any inversion); UserOutput1: emit constant logical 1 (before any inversion).</Description>
+        <ToolTip>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</ToolTip>
+        <Description>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
-        <EnumEntry Name="UserOutput0" NameSpace="Standard">
+        <EnumEntry Name="Constant0" NameSpace="Custom">
             <Value>0</Value>
         </EnumEntry>
-        <EnumEntry Name="UserOutput1" NameSpace="Standard">
+        <EnumEntry Name="Constant1" NameSpace="Custom">
             <Value>1</Value>
         </EnumEntry>
         <EnumEntry Name="FrameTrigger" NameSpace="Standard">
@@ -1146,35 +1142,6 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
 
-    <Enumeration Name="UserOutputSelector" NameSpace="Standard">
-        <ToolTip>Selector for the user output data, set to constant 0 and 1 for emitting constant levels if configured.</ToolTip>
-        <Description>Selector for the user output data, set to constant 0 and 1 for emitting constant levels if configured.</Description>
-        <Visibility>Expert</Visibility>
-        <ImposedAccessMode>RW</ImposedAccessMode>
-        <EnumEntry Name="UserOutput0" NameSpace="Standard">
-            <Value>0</Value>
-        </EnumEntry>
-        <EnumEntry Name="UserOutput1" NameSpace="Standard">
-            <Value>1</Value>
-        </EnumEntry>
-        <pValue>UserOutputSelectorReg</pValue>
-        <pSelected>UserOutputValue</pSelected>
-    </Enumeration>
-    <IntReg Name="UserOutputSelectorReg" NameSpace="Custom">
-        <Address>0xC0058000</Address>
-        <Length>4</Length>
-        <AccessMode>RW</AccessMode>
-        <pPort>Device</pPort>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
-
-    <Integer Name="UserOutputValue" NameSpace="Standard">
-        <Visibility>Expert</Visibility>
-        <ImposedAccessMode>RO</ImposedAccessMode>
-        <pValue>UserOutputSelectorReg</pValue>
-        <!-- The value mirrors the index (0, 1); convenient selection of constant values -->
-    </Integer>
-
     <!-- Nerian-specific features -->
 
     <!-- Digital I/O control: custom Nerian extensions -->
@@ -1184,6 +1151,7 @@
         <Description>Selector for accessing the n-th pulse width when LinePulseWidthAlternationMode is 'Cycle'. A zero width terminates the alternation sequence.</Description>
         <Visibility>Expert</Visibility>
         <ImposedAccessMode>RW</ImposedAccessMode>
+        <pInvalidator>LineSelector</pInvalidator> <!-- Changing the pin forces reevaluation of pulse width selector -->
         <pInvalidator>LinePulseWidthAlternationMode</pInvalidator> <!-- Constant mode resets selector to first pulse -->
         <EnumEntry Name="PulseWidth1" NameSpace="Custom"> <Value>0</Value> </EnumEntry>
         <EnumEntry Name="PulseWidth2" NameSpace="Custom"> <pIsAvailable>LinePulseWidthAlternationMode</pIsAvailable> <Value>1</Value> </EnumEntry>

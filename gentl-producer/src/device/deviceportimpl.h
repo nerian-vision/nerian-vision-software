@@ -40,6 +40,7 @@ protected:
 
 private:
     LogicalDevice* device;
+    bool triggerInputAvailable;
     int currentSelectorForBalanceRatio;
     int currentSelectorForExposure;
     int currentSelectorForGain;
