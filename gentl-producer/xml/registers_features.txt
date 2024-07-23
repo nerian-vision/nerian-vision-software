@@ -88,7 +88,7 @@ Idx Mode Feature-Name [(comments)]
 [0x4C] RW InputPixelFormatSelector [RESERVED for now; custom pixel format typically not settable for center cam]
 
 0x4D RW LineSelector (Line0 available on SceneScan only; Line1 all devices)
-[0x4E] RW LineMode (Input / Output: Line0 always Output, Line1 always Output on SceneScan, switchable on others)  -- Unused - replaced by fixed mapping of I/O to separate pins
+[0x4E] RW LineMode [RESERVED for now; replaced by fixed mapping of Input/Output on separate pins depending on device]
 0x4F RW LineInverter (<=> trigger_X_polarity)
 0x50 RW LineSource: FrameTrigger (if 'Enabled' in nvparam), UserOutput0/1 (if 'Disabled with constant' in nvparam)
 0x51 RW LinePulseWidthSelector (PulseWidth1..8)
@@ -98,8 +98,6 @@ Idx Mode Feature-Name [(comments)]
 0x55 RW LineOffset (trigger offset in ms)
 0x56 RO LineOffsetMin
 0x57 RO LineOffsetMax
-[0x58] RW UserOutputSelector (for choosing constant-output Off / On)      Unused - using custom values Constant0 / Constant1 instead
-[0x59] RW UserOutputValue (<=> trigger_X_constant) [RESERVED, value mirrors selector index]
 
 -----------------
 0xff RO Special: device-reported feature flags, for conditional XML (CUSTOM)

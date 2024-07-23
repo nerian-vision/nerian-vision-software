@@ -213,8 +213,8 @@
     </Enumeration>
 
     <Float Name="AcquisitionFrameRate" NameSpace="Standard">
-        <ToolTip>The trigger frequency for the primary internal camera trigger generator (Line0), which is also the frequency for an enabled trigger output (Line1). Only used when TriggerSource is set to Line0.</ToolTip>
-        <Description>The trigger frequency for the primary internal camera trigger generator (Line0), which is also the frequency for an enabled trigger output (Line1). Only used when TriggerSource is set to Line0.</Description>
+        <ToolTip>The trigger frequency for the primary internal camera trigger generator, used when TriggerMode is Off. Also limits the maximum external trigger rate when TriggerMode is On.</ToolTip>
+        <Description>The trigger frequency for the primary internal camera trigger generator, used when TriggerMode is Off. Also limits the maximum external trigger rate when TriggerMode is On.</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>AcquisitionFrameRateReg</pValue>
         <Min>0</Min>
@@ -251,6 +251,8 @@
     </Enumeration>
 
     <Enumeration Name="TriggerMode" NameSpace="Standard">
+        <ToolTip>Trigger mode: Off means internal triggering at AcquisitionFrameRate, On means to follow the configured TriggerSource.</ToolTip>
+        <Description>Trigger mode: Off means internal triggering at AcquisitionFrameRate, On means to follow the configured TriggerSource.</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Off" NameSpace="Standard">
             <Value>0</Value>
@@ -271,21 +273,21 @@
     <IntSwissKnife Name="HardwareTriggerInputPresent" NameSpace="Custom">
         <Visibility>Guru</Visibility>
         <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
-        <Formula>bitmask &amp; 4</Formula> <!-- Bit 2: availability of hardware trigger input -->
+        <Formula>( bitmask &amp; 4 ) ? 1 : 0</Formula> <!-- Bit 2: availability of hardware trigger input -->
     </IntSwissKnife>
     <Enumeration Name="TriggerSource" NameSpace="Standard">
-        <ToolTip>Trigger source, selected between internal trigger generator (Line0) or available external triggering modes</ToolTip>
-        <Description>Trigger source, selected between internal trigger generator (Line0) or available external triggering modes</Description>
+        <ToolTip>Source of external trigger signal, selected between Software triggering and hardware trigger input (if available on device).</ToolTip>
+        <Description>Source of external trigger signal, selected between Software triggering and hardware trigger input (if available on device).</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Line1" NameSpace="Standard">
-            <ToolTip>Line1 represents the external trigger line (if set to Input mode)</ToolTip>
-            <Description>Line1 represents the external trigger line (if set to Input mode)</Description>
+            <ToolTip>Line1 represents the external trigger line (if available)</ToolTip>
+            <Description>Line1 represents the external trigger line (if available)</Description>
             <pIsAvailable>HardwareTriggerInputPresent</pIsAvailable>
             <Value>1</Value>
         </EnumEntry>
         <EnumEntry Name="Software" NameSpace="Standard">
-            <ToolTip>Software triggering via TCP, use TriggerSoftware command to emit</ToolTip>
-            <Description>Software triggering via TCP, use TriggerSoftware command to emit</Description>
+            <ToolTip>Software triggering over TCP connection, use TriggerSoftware command to emit</ToolTip>
+            <Description>Software triggering over TCP connection, use TriggerSoftware command to emit</Description>
             <Value>2</Value>
         </EnumEntry>
         <pValue>TriggerSourceReg</pValue>
@@ -471,7 +473,7 @@
     <IntSwissKnife Name="BalanceControlAvailable" NameSpace="Custom">
         <Visibility>Guru</Visibility>
         <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
-        <Formula>bitmask &amp; 2</Formula> <!-- Bit 1: availability of balance control -->
+        <Formula>( bitmask &amp; 2 ) ? 1 : 0</Formula> <!-- Bit 1: availability of balance control -->
     </IntSwissKnife>
     <Enumeration Name="BalanceRatioSelector" NameSpace="Standard">
         <ToolTip>Selector for color channel to white balance; Red or Blue (Green is reference).</ToolTip>
@@ -1120,8 +1122,8 @@
     </IntReg>
 
     <Enumeration Name="LineSource" NameSpace="Standard">
-        <ToolTip>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</ToolTip>
-        <Description>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</Description>
+        <ToolTip>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit pulse when a frame is being triggered; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</ToolTip>
+        <Description>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit pulse when a frame is being triggered; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</Description>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <EnumEntry Name="Constant0" NameSpace="Custom">
             <Value>0</Value>
@@ -1753,7 +1755,7 @@
     <IntSwissKnife Name="PatternProjectorPresent" NameSpace="Custom">
         <Visibility>Guru</Visibility>
         <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
-        <Formula>bitmask &amp; 8</Formula> <!-- Bit 3: availability of pattern projector -->
+        <Formula>( bitmask &amp; 8 ) ? 1 : 0</Formula> <!-- Bit 3: availability of pattern projector -->
     </IntSwissKnife>
     <Float Name="PatternProjectorBrightness" NameSpace="Custom">
         <pIsAvailable>PatternProjectorPresent</pIsAvailable>

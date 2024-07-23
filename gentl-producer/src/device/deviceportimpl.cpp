@@ -55,7 +55,6 @@ DevicePortImpl::DevicePortImpl(LogicalDevice* device)
     currentSelectorForGain = 0;
     currentSelectorForLine = 0;
     currentSelectorForPulseWidth = 0;
-    currentSelectorForUserOutput = 0;
     currentIndexForQMatrix = 0;
     preferredTriggerSource = 2; // SW trigger is preselected (available everywhere)
 }
@@ -876,12 +875,6 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 }
             }
             break;
-        case 0x58: // UserOutputSelector (for choosing constant-output Off / On)
-            {
-                // DEPRECATED - unused register
-                info.setUInt(currentSelectorForUserOutput);
-            }
-            break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
             {
                 auto dev = device->getPhysicalDevice();
@@ -1513,13 +1506,6 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                     }
                 }
                 return GC_ERR_SUCCESS;
-            }
-            break;
-        case 0x58: // UserOutputSelector (for choosing constant-output Off / On)
-            {
-                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
-                // DEPRECATED - unused register
-                return GC_ERR_NOT_AVAILABLE;
             }
             break;
         case 0xF1: // FlushOutputQueue: force flushing of all DataStreams' output queues

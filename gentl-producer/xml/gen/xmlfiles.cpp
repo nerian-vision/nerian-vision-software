@@ -435,7 +435,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 ))},
 
 
-{"remote.xml", FileData(24, 205, 34188, std::string(
+{"remote.xml", FileData(24, 205, 35910, std::string(
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
     "<RegisterDescription\n"
     "    ModelName=\"SceneScan_SceneScanPro_Scarlet\"\n"
@@ -447,9 +447,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    SchemaSubMinorVersion=\"0\"\n"
     "    MajorVersion=\"24\"\n"
     "    MinorVersion=\"205\"\n"
-    "    SubMinorVersion=\"34188\"\n"
+    "    SubMinorVersion=\"35910\"\n"
     "    ProductGuid=\"ac1c6f72-b410-41b7-82e6-fa049db075a4\"\n"
-    "    VersionGuid=\"9db2df60-0099-fb8b-05bc-8585fe234c77\"\n"
+    "    VersionGuid=\"9aa46c76-58d8-122d-14cb-98bb76859b0e\"\n"
     "    xmlns=\"http://www.genicam.org/GenApi/Version_1_1\"\n"
     "    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
     "    xsi:schemaLocation=\"http://www.genicam.org/GenApi/Version_1_1 http://www.genicam.org/GenApi/GenApiSchema_Version_1_1.xsd\">\n"
@@ -653,8 +653,8 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    </Enumeration>\n"
     "\n"
     "    <Float Name=\"AcquisitionFrameRate\" NameSpace=\"Standard\">\n"
-    "        <ToolTip>The trigger frequency for the primary internal camera trigger generator (Line0), which is also the frequency for an enabled trigger output (Line1). Only used when TriggerSource is set to Line0.</ToolTip>\n"
-    "        <Description>The trigger frequency for the primary internal camera trigger generator (Line0), which is also the frequency for an enabled trigger output (Line1). Only used when TriggerSource is set to Line0.</Description>\n"
+    "        <ToolTip>The trigger frequency for the primary internal camera trigger generator, used when TriggerMode is Off. Also limits the maximum external trigger rate when TriggerMode is On.</ToolTip>\n"
+    "        <Description>The trigger frequency for the primary internal camera trigger generator, used when TriggerMode is Off. Also limits the maximum external trigger rate when TriggerMode is On.</Description>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <pValue>AcquisitionFrameRateReg</pValue>\n"
     "        <Min>0</Min>\n"
@@ -691,6 +691,8 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    </Enumeration>\n"
     "\n"
     "    <Enumeration Name=\"TriggerMode\" NameSpace=\"Standard\">\n"
+    "        <ToolTip>Trigger mode: Off means internal triggering at AcquisitionFrameRate, On means to follow the configured TriggerSource.</ToolTip>\n"
+    "        <Description>Trigger mode: Off means internal triggering at AcquisitionFrameRate, On means to follow the configured TriggerSource.</Description>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <EnumEntry Name=\"Off\" NameSpace=\"Standard\">\n"
     "            <Value>0</Value>\n"
@@ -711,11 +713,11 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    <IntSwissKnife Name=\"HardwareTriggerInputPresent\" NameSpace=\"Custom\">\n"
     "        <Visibility>Guru</Visibility>\n"
     "        <pVariable Name=\"bitmask\">DeviceFeatureReg</pVariable>\n"
-    "        <Formula>bitmask &amp; 4</Formula> <!-- Bit 2: availability of hardware trigger input -->\n"
+    "        <Formula>( bitmask &amp; 4 ) ? 1 : 0</Formula> <!-- Bit 2: availability of hardware trigger input -->\n"
     "    </IntSwissKnife>\n"
     "    <Enumeration Name=\"TriggerSource\" NameSpace=\"Standard\">\n"
-    "        <ToolTip>Trigger source, selected between internal trigger generator (Line0) or available external triggering modes</ToolTip>\n"
-    "        <Description>Trigger source, selected between internal trigger generator (Line0) or available external triggering modes</Description>\n"
+    "        <ToolTip>Trigger source, selected between Software triggering and hardware trigger input (if available on device)</ToolTip>\n"
+    "        <Description>Trigger source, selected between Software triggering and hardware trigger input (if available on device)</Description>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <EnumEntry Name=\"Line1\" NameSpace=\"Standard\">\n"
     "            <ToolTip>Line1 represents the external trigger line (if set to Input mode)</ToolTip>\n"
@@ -738,9 +740,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
     "\n"
+    ) + std::string(
     "    <Command Name=\"TriggerSoftware\" NameSpace=\"Standard\">\n"
     "        <ImposedAccessMode>WO</ImposedAccessMode>\n"
-    ) + std::string(
     "        <pValue>TriggerSoftwareBool</pValue>\n"
     "        <CommandValue>1</CommandValue>\n"
     "    </Command>\n"
@@ -840,9 +842,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    <Enumeration Name=\"GainSelector\" NameSpace=\"Standard\">\n"
     "        <ToolTip>Selector for gain. Left and right camera are always tied, but on three-sensor models, the settings for the center (color) camera can be set independently.</ToolTip>\n"
     "        <Description>Selector for gain. Left and right camera are always tied, but on three-sensor models, the settings for the center (color) camera can be set independently.</Description>\n"
+    ) + std::string(
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <EnumEntry Name=\"StereoCamera\" NameSpace=\"Custom\">\n"
-    ) + std::string(
     "            <Value>0</Value>\n"
     "        </EnumEntry>\n"
     "        <EnumEntry Name=\"ColorCamera\" NameSpace=\"Custom\">\n"
@@ -913,7 +915,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    <IntSwissKnife Name=\"BalanceControlAvailable\" NameSpace=\"Custom\">\n"
     "        <Visibility>Guru</Visibility>\n"
     "        <pVariable Name=\"bitmask\">DeviceFeatureReg</pVariable>\n"
-    "        <Formula>bitmask &amp; 2</Formula> <!-- Bit 1: availability of balance control -->\n"
+    "        <Formula>( bitmask &amp; 2 ) ? 1 : 0</Formula> <!-- Bit 1: availability of balance control -->\n"
     "    </IntSwissKnife>\n"
     "    <Enumeration Name=\"BalanceRatioSelector\" NameSpace=\"Standard\">\n"
     "        <ToolTip>Selector for color channel to white balance; Red or Blue (Green is reference).</ToolTip>\n"
@@ -942,9 +944,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    </IntReg>\n"
     "    <Float Name=\"BalanceRatio\" NameSpace=\"Standard\">\n"
     "        <ToolTip>White balance factor, relative to a constant Green of 1.0.</ToolTip>\n"
+    ) + std::string(
     "        <Description>White balance factor, relative to a constant Green of 1.0.</Description>\n"
     "        <pIsAvailable>BalanceControlAvailable</pIsAvailable>\n"
-    ) + std::string(
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <pValue>BalanceRatioReg</pValue>\n"
     "        <pMin>BalanceRatioMinReg</pMin>\n"
@@ -1044,9 +1046,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Value>1</Value>\n"
     "        <Min>1</Min>\n"
     "        <Max>1</Max>\n"
+    ) + std::string(
     "    </Integer>\n"
     "\n"
-    ) + std::string(
     "    <Enumeration Name=\"PixelFormat\" NameSpace=\"Standard\">\n"
     "        <ToolTip>The pixel format for the component. This is not necessarily identical to InputPixelFormat: converted / debayered output from the FPGA will always arrive as Mono8, Mono12, or RGB8.</ToolTip>\n"
     "        <ImposedAccessMode>RO</ImposedAccessMode>\n"
@@ -1146,9 +1148,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Length>4</Length>\n"
     "        <AccessMode>RO</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
+    ) + std::string(
     "        <Sign>Unsigned</Sign>\n"
     "        <Endianess>LittleEndian</Endianess>\n"
-    ) + std::string(
     "    </IntReg>\n"
     "\n"
     "    <Integer Name=\"OffsetX\" NameSpace=\"Standard\">\n"
@@ -1248,9 +1250,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        </EnumEntry>\n"
     "\n"
     "        <pValue>ComponentSelectorReg</pValue>\n"
+    ) + std::string(
     "        <pSelected>PixelFormat</pSelected>\n"
     "        <pSelected>ComponentEnable</pSelected>\n"
-    ) + std::string(
     "        <pSelected>ComponentIDValue</pSelected>\n"
     "        <pSelected>Scan3dInvalidDataFlag</pSelected>\n"
     "        <pSelected>Scan3dInvalidDataValue</pSelected>\n"
@@ -1350,9 +1352,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <pInvalidator>Height</pInvalidator>\n"
     "        <pValue>PayloadSizeReg</pValue>\n"
     "        <Min>1</Min>\n"
+    ) + std::string(
     "        <Max>0xFFFFFFFF</Max>\n"
     "    </Integer>\n"
-    ) + std::string(
     "    <IntReg Name=\"PayloadSizeReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC0003000</Address>\n"
     "        <Length>4</Length>\n"
@@ -1452,9 +1454,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </FloatReg>\n"
     "\n"
+    ) + std::string(
     "    <Float Name=\"Scan3dPrincipalPointV\" NameSpace=\"Standard\">\n"
     "        <Visibility>Expert</Visibility>\n"
-    ) + std::string(
     "        <ImposedAccessMode>RO</ImposedAccessMode>\n"
     "        <pValue>Scan3dPrincipalPointVReg</pValue>\n"
     "    </Float>\n"
@@ -1554,9 +1556,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <EnumEntry Name=\"False\" NameSpace=\"Standard\">\n"
     "            <Value>0</Value>\n"
     "        </EnumEntry>\n"
+    ) + std::string(
     "        <EnumEntry Name=\"True\" NameSpace=\"Standard\">\n"
     "            <Value>1</Value>\n"
-    ) + std::string(
     "        </EnumEntry>\n"
     "        <pValue>LineInverterReg</pValue>\n"
     "    </Enumeration>\n"
@@ -1569,8 +1571,8 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    </IntReg>\n"
     "\n"
     "    <Enumeration Name=\"LineSource\" NameSpace=\"Standard\">\n"
-    "        <ToolTip>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</ToolTip>\n"
-    "        <Description>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit internal trigger with configured AcquisitionFrameRate; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</Description>\n"
+    "        <ToolTip>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit pulse when a frame is being triggered; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</ToolTip>\n"
+    "        <Description>Output source for the given I/O line (if in Output line mode). FrameTrigger: emit pulse when a frame is being triggered; Constant0 / Constant1: emit logical 0 or 1, respectively (before any inversion).</Description>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <EnumEntry Name=\"Constant0\" NameSpace=\"Custom\">\n"
     "            <Value>0</Value>\n"
@@ -1656,9 +1658,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Address>0xC0053000</Address>\n"
     "        <Length>4</Length>\n"
     "        <AccessMode>RW</AccessMode>\n"
+    ) + std::string(
     "        <pPort>Device</pPort>\n"
     "        <Endianess>LittleEndian</Endianess>\n"
-    ) + std::string(
     "    </IntReg>\n"
     "    <IntReg Name=\"LinePulseWidthMaxReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC0054000</Address>\n"
@@ -1758,9 +1760,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
     "\n"
+    ) + std::string(
     "    <Enumeration Name=\"InputPixelFormat\" NameSpace=\"Custom\">\n"
     "        <ToolTip>The pixel format for the stereo camera sensors. Not the same as the output PixelFormat: the FPGA may convert the format.</ToolTip>\n"
-    ) + std::string(
     "        <Description>The pixel format for the stereo camera sensors. Not the same as the output PixelFormat: the FPGA may convert the format.</Description>\n"
     "        <Visibility>Expert</Visibility>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
@@ -1860,9 +1862,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    </Integer>\n"
     "    <IntReg Name=\"DisparityOffsetReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC0034000</Address>\n"
+    ) + std::string(
     "        <Length>4</Length>\n"
     "        <AccessMode>RW</AccessMode>\n"
-    ) + std::string(
     "        <pPort>Device</pPort>\n"
     "        <pInvalidator>NumberOfDisparities</pInvalidator>\n"
     "        <pInvalidator>NumberOfDisparitiesReg</pInvalidator>\n"
@@ -1962,9 +1964,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <AccessMode>RW</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
     "        <Sign>Unsigned</Sign>\n"
+    ) + std::string(
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
-    ) + std::string(
     "\n"
     "    <Boolean Name=\"SubpixelOptimizationROIEnabled\" NameSpace=\"Custom\">\n"
     "        <Visibility>Expert</Visibility>\n"
@@ -2064,9 +2066,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <pValue>ConsistencyCheckEnabledReg</pValue>\n"
     "    </Boolean>\n"
     "    <IntReg Name=\"ConsistencyCheckEnabledReg\" NameSpace=\"Custom\">\n"
+    ) + std::string(
     "        <Address>0xC0040000</Address>\n"
     "        <Length>4</Length>\n"
-    ) + std::string(
     "        <AccessMode>RW</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
     "        <Sign>Unsigned</Sign>\n"
@@ -2166,9 +2168,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    <Boolean Name=\"NoiseReductionEnabled\" NameSpace=\"Custom\">\n"
     "        <Visibility>Expert</Visibility>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
+    ) + std::string(
     "        <pValue>NoiseReductionEnabledReg</pValue>\n"
     "    </Boolean>\n"
-    ) + std::string(
     "    <IntReg Name=\"NoiseReductionEnabledReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC0047000</Address>\n"
     "        <Length>4</Length>\n"
@@ -2208,7 +2210,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    <IntSwissKnife Name=\"PatternProjectorPresent\" NameSpace=\"Custom\">\n"
     "        <Visibility>Guru</Visibility>\n"
     "        <pVariable Name=\"bitmask\">DeviceFeatureReg</pVariable>\n"
-    "        <Formula>bitmask &amp; 8</Formula> <!-- Bit 3: availability of pattern projector -->\n"
+    "        <Formula>( bitmask &amp; 8 ) ? 1 : 0</Formula> <!-- Bit 3: availability of pattern projector -->\n"
     "    </IntSwissKnife>\n"
     "    <Float Name=\"PatternProjectorBrightness\" NameSpace=\"Custom\">\n"
     "        <pIsAvailable>PatternProjectorPresent</pIsAvailable>\n"
@@ -2268,9 +2270,9 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <pValue>FlushOutputQueueReg</pValue>\n"
     "    </Boolean>\n"
     "\n"
+    ) + std::string(
     "    <IntReg Name=\"FlushOutputQueueReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC00F1000</Address>\n"
-    ) + std::string(
     "        <Length>4</Length>\n"
     "        <AccessMode>WO</AccessMode>\n"
     "        <pPort>Device</pPort>\n"

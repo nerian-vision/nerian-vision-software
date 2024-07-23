@@ -48,7 +48,6 @@ private:
     int preferredTriggerSource;
     int currentSelectorForLine;
     int currentSelectorForPulseWidth;
-    int currentSelectorForUserOutput;
 };
 
 }

@@ -32,6 +32,7 @@ LogicalDevice::LogicalDevice(PhysicalDevice* physicalDevice, const std::string& 
             remotePort.setSelector(0);
             break;
         case DataStream::IMAGE_RIGHT_STREAM:
+        case DataStream::IMAGE_THIRD_COLOR_STREAM:
             // Not available in multipart stream
             break;
         case DataStream::DISPARITY_STREAM:

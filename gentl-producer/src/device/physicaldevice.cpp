@@ -128,11 +128,44 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         int channelIdx = 0;
         try {
             auto paramSet = deviceParameters->getParameterSet();
-            auto imgSize = paramSet["RT_output_image_size"].getTensorData();
+            std::vector<double> imgSize;
+            if (paramSet.count("RT_output_image_size")) {
+                imgSize = paramSet["RT_output_image_size"].getTensorData();
+            } else {
+                // Fallback read of configured calibrated ROI
+                imgSize = paramSet["calib_image_size"].getTensorData();
+                std::cerr << "Caution: device does not report RT_output_image_size; consider updating the firmware. Inferred output size " << ((int)imgSize.at(0)) << "x" << ((int)imgSize.at(1)) << std::endl;
+                DEBUG_PHYS("Caution: device does not report RT_output_image_size; consider updating the firmware. Inferred output size " << ((int)imgSize.at(0)) << "x" << ((int)imgSize.at(1)));
+            }
             bool enabledLeft = paramSet["output_channel_left_enabled"].getCurrent<bool>();
             bool enabledDisparity = paramSet["output_channel_disparity_enabled"].getCurrent<bool>();
             bool enabledRight = paramSet["output_channel_right_enabled"].getCurrent<bool>();
-            int fmtInt = paramSet["RT_output_format"].getCurrent<int>();
+            int fmtInt;
+            if (paramSet.count("RT_output_format")) {
+                fmtInt = paramSet["RT_output_format"].getCurrent<int>();
+            } else {
+                // Fallback read of capture format - converted by FPGA by rules below.
+                fmtInt = paramSet["capture_pixel_format"].getCurrent<int>();
+                switch (fmtInt) {
+                    case 0x01080008:
+                    case 0x01080009:
+                    case 0x0108000a:
+                    case 0x0108000b:
+                        // Bayer was converted to RGB8
+                        fmtInt = 0x02180014;
+                        break;
+                    case 0x01100005:
+                    case 0x010C0047:
+                    case 0x010C0006:
+                        // Only one 12 bit output format, 12P
+                        fmtInt = 0x010C0047;
+                    default:
+                        // Directly supported
+                        break;
+                }
+                std::cerr << "Caution: device does not report RT_output_format; consider updating the firmware. Inferred L/R pixel format " << fmtInt << std::endl;
+                DEBUG_PHYS("Caution: device does not report RT_output_format; consider updating the firmware. Inferred L/R pixel format " << fmtInt);
+            }
             // Note: when outputPixelFormat of FPGA is 12P, receive buffer is unpacked to 12 (in 16)
             ImageSet::ImageFormat outputPixelFormat = (fmtInt==0x010C0047)?ImageSet::FORMAT_12_BIT_MONO:((fmtInt==0x02180014)?ImageSet::FORMAT_8_BIT_RGB:ImageSet::FORMAT_8_BIT_MONO);
             bool enabledColor = paramSet.count("output_channel_color_enabled") && paramSet["output_channel_color_enabled"].getCurrent<bool>();
@@ -443,10 +476,7 @@ int PhysicalDevice::copy3dDataToBufferMemory(const ImageSet& receivedSet, unsign
         // GenTL does not support padding between pixels. Let's only
         // copy the non-padding bytes
 
-        float* inputPtr = reconstruct.createPointMap((unsigned short*)receivedSet.getPixelData(ImageSet::IMAGE_DISPARITY),
-            receivedSet.getWidth(), receivedSet.getHeight(),
-            receivedSet.getRowStride(ImageSet::IMAGE_DISPARITY), receivedSet.getQMatrix(), 0,
-            receivedSet.getSubpixelFactor(), maxDisparity);
+        float* inputPtr = reconstruct.createPointMap(receivedSet, 0, maxDisparity);
 
         float* outputPtr = reinterpret_cast<float*>(dst);
 #ifdef __SSE2__
