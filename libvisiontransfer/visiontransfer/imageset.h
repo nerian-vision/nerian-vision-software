@@ -440,6 +440,17 @@ public:
      */
     void getLastSyncPulse(int& seconds, int& microsec) const;
 
+    /**
+     * \brief Sets the index of the trigger pulse in a cycle sequence.
+     */
+    void setTriggerPulseSequenceIndex(int idx);
+
+    /**
+     * \brief Gets the index of the trigger pulse in a cycle sequence.
+     *  (0 if in constant trigger mode or if independently triggered).
+     */
+    int getTriggerPulseSequenceIndex() const;
+
 };
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS

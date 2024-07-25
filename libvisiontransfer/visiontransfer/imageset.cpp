@@ -213,6 +213,14 @@ public:
         microsec = lastSyncPulseMicrosec;
     }
 
+    void setTriggerPulseSequenceIndex(int idx) {
+        triggerPulseSequenceIndex = idx;
+    }
+
+    int getTriggerPulseSequenceIndex() const {
+        return triggerPulseSequenceIndex;
+    }
+
 private:
     int width;
     int height;
@@ -237,6 +245,7 @@ private:
     int exposureTime;
     int lastSyncPulseSec;
     int lastSyncPulseMicrosec;
+    int triggerPulseSequenceIndex;
 
     void copyData(ImageSet::Pimpl& dest, const ImageSet::Pimpl& src, bool countRef);
     void decrementReference();
@@ -247,7 +256,7 @@ ImageSet::Pimpl::Pimpl()
     : width(0), height(0), qMatrix(NULL), timeSec(0), timeMicrosec(0),
         seqNum(0), minDisparity(0), maxDisparity(0), subpixelFactor(16),
         referenceCounter(NULL), numberOfImages(2), indexLeftImage(0), indexRightImage(1), indexDisparityImage(-1),
-        indexColorImage(-1), exposureTime(0), lastSyncPulseSec(0), lastSyncPulseMicrosec(0) {
+        indexColorImage(-1), exposureTime(0), lastSyncPulseSec(0), lastSyncPulseMicrosec(0), triggerPulseSequenceIndex(0) {
     for (int i=0; i<ImageSet::MAX_SUPPORTED_IMAGES; ++i) {
         formats[i] = ImageSet::FORMAT_8_BIT_MONO;
         data[i] = NULL;
@@ -298,6 +307,7 @@ void ImageSet::Pimpl::copyData(ImageSet::Pimpl& dest, const ImageSet::Pimpl& src
     dest.exposureTime = src.exposureTime;
     dest.lastSyncPulseSec = src.lastSyncPulseSec;
     dest.lastSyncPulseMicrosec = src.lastSyncPulseMicrosec;
+    dest.triggerPulseSequenceIndex = src.triggerPulseSequenceIndex;
 
     if(dest.referenceCounter != nullptr && countRef) {
         (*dest.referenceCounter)++;
@@ -642,6 +652,14 @@ void ImageSet::setLastSyncPulse(int seconds, int microsec) {
 
 void ImageSet::getLastSyncPulse(int& seconds, int& microsec) const {
     pimpl->getLastSyncPulse(seconds, microsec);
+}
+
+void ImageSet::setTriggerPulseSequenceIndex(int idx) {
+    pimpl->setTriggerPulseSequenceIndex(idx);
+}
+
+int ImageSet::getTriggerPulseSequenceIndex() const {
+    return pimpl->getTriggerPulseSequenceIndex();
 }
 
 // static
