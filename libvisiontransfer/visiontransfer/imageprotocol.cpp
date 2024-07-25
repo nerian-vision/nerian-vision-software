@@ -144,9 +144,9 @@ private:
     struct HeaderDataV5: public HeaderDataV4 {
         unsigned char format3;
     };
-    // Header data v6, adds trigger pulse sequence index
+    // Header data v6, adds trigger pulse sequence index for up to 5 channels
     struct HeaderData: public HeaderDataV5 {
-        unsigned char triggerPulseSequenceIndex;
+        unsigned char triggerPulseSequenceIndex[5];
     };
 #pragma pack(pop)
 
@@ -431,6 +431,10 @@ void ImageProtocol::Pimpl::copyHeaderToBuffer(const ImageSet& imageSet,
     transferHeader->lastSyncPulseSec = htonl(timeSec);
     transferHeader->lastSyncPulseMicrosec = htonl(timeMicrosec);
 
+    for (int i=0; i<ImageSet::MAX_SUPPORTED_TRIGGER_CHANNELS; ++i) {
+        transferHeader->triggerPulseSequenceIndex[i] = (unsigned char) imageSet.getTriggerPulseSequenceIndex(i);
+    }
+
     transferHeader->totalHeaderSize = htons(sizeof(HeaderData));
     transferHeader->flags = htons(HeaderData::FlagBits::NEW_STYLE_TRANSFER | HeaderData::FlagBits::HEADER_V3
         | HeaderData::FlagBits::HEADER_V4 | HeaderData::FlagBits::HEADER_V5 | HeaderData::FlagBits::HEADER_V6);
@@ -699,7 +703,9 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
             }
             // Header v6 enhancement
             if (hasTriggerPulseSequenceIndex) {
-                imageSet.setTriggerPulseSequenceIndex((int) receiveHeader.triggerPulseSequenceIndex);
+                for (int i=0; i<ImageSet::MAX_SUPPORTED_TRIGGER_CHANNELS; ++i) {
+                    imageSet.setTriggerPulseSequenceIndex(i, (int) receiveHeader.triggerPulseSequenceIndex[i]);
+                }
             }
         }
 

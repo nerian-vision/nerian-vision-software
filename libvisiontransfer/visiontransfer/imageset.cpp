@@ -213,12 +213,19 @@ public:
         microsec = lastSyncPulseMicrosec;
     }
 
-    void setTriggerPulseSequenceIndex(int idx) {
-        triggerPulseSequenceIndex = idx;
+    void setTriggerPulseSequenceIndex(int channel, int idx) {
+        if (channel<0 || channel>=MAX_SUPPORTED_TRIGGER_CHANNELS) {
+            throw std::runtime_error("Invalid trigger channel!");
+        }
+        triggerPulseSequenceIndex[channel] = idx;
     }
 
-    int getTriggerPulseSequenceIndex() const {
-        return triggerPulseSequenceIndex;
+    int getTriggerPulseSequenceIndex(int channel) const {
+        if (channel < 0) channel = 0; // Default to first trigger channel
+        if (channel>=MAX_SUPPORTED_TRIGGER_CHANNELS) {
+            throw std::runtime_error("Invalid trigger channel!");
+        }
+        return triggerPulseSequenceIndex[channel];
     }
 
 private:
@@ -245,7 +252,7 @@ private:
     int exposureTime;
     int lastSyncPulseSec;
     int lastSyncPulseMicrosec;
-    int triggerPulseSequenceIndex;
+    int triggerPulseSequenceIndex[MAX_SUPPORTED_TRIGGER_CHANNELS];
 
     void copyData(ImageSet::Pimpl& dest, const ImageSet::Pimpl& src, bool countRef);
     void decrementReference();
@@ -256,7 +263,7 @@ ImageSet::Pimpl::Pimpl()
     : width(0), height(0), qMatrix(NULL), timeSec(0), timeMicrosec(0),
         seqNum(0), minDisparity(0), maxDisparity(0), subpixelFactor(16),
         referenceCounter(NULL), numberOfImages(2), indexLeftImage(0), indexRightImage(1), indexDisparityImage(-1),
-        indexColorImage(-1), exposureTime(0), lastSyncPulseSec(0), lastSyncPulseMicrosec(0), triggerPulseSequenceIndex(0) {
+        indexColorImage(-1), exposureTime(0), lastSyncPulseSec(0), lastSyncPulseMicrosec(0), triggerPulseSequenceIndex{0} {
     for (int i=0; i<ImageSet::MAX_SUPPORTED_IMAGES; ++i) {
         formats[i] = ImageSet::FORMAT_8_BIT_MONO;
         data[i] = NULL;
@@ -307,7 +314,10 @@ void ImageSet::Pimpl::copyData(ImageSet::Pimpl& dest, const ImageSet::Pimpl& src
     dest.exposureTime = src.exposureTime;
     dest.lastSyncPulseSec = src.lastSyncPulseSec;
     dest.lastSyncPulseMicrosec = src.lastSyncPulseMicrosec;
-    dest.triggerPulseSequenceIndex = src.triggerPulseSequenceIndex;
+
+    for (int i=0; i<ImageSet::MAX_SUPPORTED_TRIGGER_CHANNELS; ++i) {
+        dest.triggerPulseSequenceIndex[i] = src.triggerPulseSequenceIndex[i];
+    }
 
     if(dest.referenceCounter != nullptr && countRef) {
         (*dest.referenceCounter)++;
@@ -654,12 +664,12 @@ void ImageSet::getLastSyncPulse(int& seconds, int& microsec) const {
     pimpl->getLastSyncPulse(seconds, microsec);
 }
 
-void ImageSet::setTriggerPulseSequenceIndex(int idx) {
-    pimpl->setTriggerPulseSequenceIndex(idx);
+void ImageSet::setTriggerPulseSequenceIndex(int triggerChannel, int idx) {
+    pimpl->setTriggerPulseSequenceIndex(triggerChannel, idx);
 }
 
-int ImageSet::getTriggerPulseSequenceIndex() const {
-    return pimpl->getTriggerPulseSequenceIndex();
+int ImageSet::getTriggerPulseSequenceIndex(int triggerChannel_RESERVED) const {
+    return pimpl->getTriggerPulseSequenceIndex(triggerChannel_RESERVED);
 }
 
 // static
