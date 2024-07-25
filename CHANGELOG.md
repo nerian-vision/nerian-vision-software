@@ -9,6 +9,15 @@ Changelog for Nerian Vision Software Release
 * API
     * C++: moved internal headers to internal/ directory
     * Future-proofed ImageSet and parameter ABIs
+* GenTL
+    * Added support for configuring trigger output pins
+    * Added feature to change L/R camera input pixel format
+    * Removed need for capturing one frame before connection is
+      completed (better integration with external triggering)
+    * Fixed issue with device enumeration / access from MATLAB
+    * Fixed issue with cleanly closing a device after a
+      network connection is lost (Windows)
+    * Fixed issue with too coarse increments for Width/Height
 
 10.7.0 (2024-05-03)
 -------------------

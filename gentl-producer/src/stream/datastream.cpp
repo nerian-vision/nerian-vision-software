@@ -32,6 +32,12 @@ using namespace visiontransfer;
 namespace GenTL {
 
 #ifdef ENABLE_DEBUGGING
+#define ENABLE_DEBUGGING_DATASTREAM
+#endif
+// Extra toggle for just this module
+//#define ENABLE_DEBUGGING_DATASTREAM
+
+#ifdef ENABLE_DEBUGGING_DATASTREAM
 #ifdef _WIN32
     std::fstream debugStreamDataStream("C:\\debug\\gentl-debug-datastream-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
 #else
@@ -139,6 +145,7 @@ bool DataStream::findBuffer(T queue, Buffer* buffer) {
 }
 
 GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate, BUFFER_HANDLE* phBuffer) {
+    DEBUG_DSTREAM("announceBuffer() with size " << iSize);
     //std::cout << "announce" << std::endl;
     if(pBuffer == nullptr || phBuffer == nullptr) {
         return GC_ERR_INVALID_PARAMETER;
@@ -158,7 +165,7 @@ GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate,
 }
 
 GC_ERROR DataStream::allocAndAnnounceBuffer(size_t iBufferSize, void* pPrivate, BUFFER_HANDLE* phBuffer) {
-    //std::cout << "allocAndAnnounce" << std::endl;
+    DEBUG_DSTREAM("allocAndAnnounceBuffer() with size " << iBufferSize);
     if(phBuffer == nullptr) {
         return GC_ERR_INVALID_PARAMETER;
     }
@@ -185,7 +192,6 @@ void DataStream::updateBufferMapping() {
 }
 
 GC_ERROR DataStream::open() {
-    //std::cout << "DataStream::open() for " << logicalDevice->getId() << std::endl;
     if(opened) {
         return GC_ERR_RESOURCE_IN_USE;
     } else {
@@ -199,7 +205,6 @@ GC_ERROR DataStream::open() {
 }
 
 GC_ERROR DataStream::close() {
-    //std::cout << "DataStream::close() for " << logicalDevice->getId() << std::endl;
     if(!opened) {
         return GC_ERR_INVALID_HANDLE;
     } else {
@@ -212,6 +217,7 @@ GC_ERROR DataStream::close() {
 }
 
 GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void ** ppPrivate) {
+    DEBUG_DSTREAM("revokeBuffer()");
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
 
@@ -245,7 +251,6 @@ GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void 
 }
 
 GC_ERROR DataStream::queueBuffer(BUFFER_HANDLE hBuffer) {
-    //std::cout << "queue" << std::endl;
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
 
@@ -270,14 +275,12 @@ GC_ERROR DataStream::getParentDev(DEV_HANDLE* phDevice) {
 }
 
 GC_ERROR DataStream::startAcquisition(ACQ_START_FLAGS iStartFlags, uint64_t iNumToAcquire) {
-    //std::cout << "start" << std::endl;
     framesToAquire = iNumToAcquire;
     numDelivered = 0;
     return GC_ERR_SUCCESS;
 }
 
 GC_ERROR DataStream::stopAcquisition(ACQ_STOP_FLAGS iStopFlags) {
-    //std::cout << "stop" << std::endl;
     framesToAquire = 0;
     return GC_ERR_SUCCESS;
 }
@@ -596,7 +599,6 @@ GC_ERROR DataStream::getInfo(STREAM_INFO_CMD iInfoCmd, INFO_DATATYPE* piType,
             info.setUInt64(numCaptured);
             break;
         case STREAM_INFO_PAYLOAD_SIZE:
-            //std::cout << "getInfo payload_size" << std::endl;
             info.setSizeT(getPayloadSize());
             break;
         case STREAM_INFO_IS_GRABBING:
@@ -663,7 +665,6 @@ GC_ERROR DataStream::getBufferPartInfo(BUFFER_HANDLE hBuffer, uint32_t iPartInde
     };
 
     DEBUG_DSTREAM("getBufferPartInfo idx=" << iPartIndex << " cmd=" << iInfoCmd);
-    //std::cout << "getBufferPartInfo idx=" << iPartIndex << " cmd=" << (infoNames.count(iInfoCmd) ? infoNames[iInfoCmd] : std::to_string(iInfoCmd)) << std::endl;
 
     int partIndex = static_cast<int>(iPartIndex);
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);

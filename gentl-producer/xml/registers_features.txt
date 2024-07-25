@@ -5,12 +5,12 @@ available standard feature names (unless specified as a custom feature)
 
 0x00 RW ComponentSelector
 
-== Device params in 0xC000'0000 range; reg no. 0x0a <-> 0xC000A000 etc. ==
+== Device params in 0xC00x'y000 range; reg no. 0x1a <-> 0xC001A000 etc. ==
 
 Idx Mode Feature-Name [(comments)]
 ---- -- --------------------------
-0x00 RO SensorWidth / WidthMax   (currently the calib-time 'max' resolution)
-0x01 RO SensorHeight / HeightMax ('')
+0x00 RO SensorWidth   (currently the calib-time 'max' resolution)
+0x01 RO SensorHeight  ('')
 0x02 RO PixelFormat
 0x03 RO PayloadSize
 0x04 RW ComponentEnable (Range is switchable; others depend on device cfg)
@@ -83,6 +83,25 @@ Idx Mode Feature-Name [(comments)]
 0x47 RW NoiseReductionEnabled
 0x48 RW SpeckleFilterIterations
 0x49 RO  '' (max valid value)
+0x4A RO InputPixelFormatsAvailable (Bit mask for selectable L/R camera pixel formats)
+0x4B RW InputPixelFormat (Selected pixel format for the L/R sensors; not the output format)
+[0x4C] RW InputPixelFormatSelector [RESERVED for now; custom pixel format typically not settable for center cam]
+
+0x4D RW LineSelector (Line0 available on SceneScan only; Line1 all devices)
+[0x4E] RW LineMode [RESERVED for now; replaced by fixed mapping of Input/Output on separate pins depending on device]
+0x4F RW LineInverter (<=> trigger_X_polarity)
+0x50 RW LineSource: FrameTrigger (if 'Enabled' in nvparam), UserOutput0/1 (if 'Disabled with constant' in nvparam)
+0x51 RW LinePulseWidthSelector (PulseWidth1..8)
+0x52 RW LinePulseWidthAlternationMode (Constant / Cycle; Constant restricts LinePulseWidthSelector to 1)
+0x53 RW LinePulseWidth (trigger_XY_pulse_width, X LineSelector -> 0,1; Y LinePulseWidthSelector -> '','b'..'h')
+0x54 RO LinePulseWidthMax (max values)
+0x55 RW LineOffset (trigger offset in ms)
+0x56 RO LineOffsetMin
+0x57 RO LineOffsetMax
+
+0x58 RO Width (max valid value; not the same as SensorWidth)
+0x59 RO Height (max valid value; not the same as SensorHeight)
+
 -----------------
 0xff RO Special: device-reported feature flags, for conditional XML (CUSTOM)
 

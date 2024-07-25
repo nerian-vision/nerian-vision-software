@@ -65,7 +65,8 @@ int main() {
             float* pointcloud = recon3d.createPointMap(imageSet, 0 /*minimum disparity*/);
             
             // ... insert additional code to process pointcloud ...
-            
+            (void) pointcloud; // (silencing unused warning here)
+
             // Write PLY file
             char fileName[100];
             snprintf(fileName, sizeof(fileName), "pointcloud%03d.ply", imgNum);

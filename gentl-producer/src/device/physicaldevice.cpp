@@ -43,6 +43,12 @@ namespace GenTL {
 using namespace std::placeholders;
 
 #ifdef ENABLE_DEBUGGING
+#define ENABLE_DEBUGGING_PHYSICALDEVICE
+#endif
+// Extra toggle for just this module
+//#define ENABLE_DEBUGGING_PHYSICALDEVICE
+
+#ifdef ENABLE_DEBUGGING_PHYSICALDEVICE
 #ifdef _WIN32
     std::fstream debugStreamPhys("C:\\debug\\gentl-debug-phys-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
 #else
@@ -106,8 +112,6 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         // Force waiting for network handshake completion
         auto paramSet = deviceParameters->getParameterSet(); (void) paramSet;
         deviceParameters->setParameterUpdateCallback(std::bind(&PhysicalDevice::remoteParameterChangeCallback, this, _1), false);
-
-        sendSoftwareTriggerRequest(); // force emission of initial trigger to get at least one set of metadata
 #endif
 
         // Initialize data streams
@@ -119,23 +123,103 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         logicalDevices[ID_DISPARITY].reset(new LogicalDevice(this, baseURL + "/disparity", DataStream::DISPARITY_STREAM));
         logicalDevices[ID_POINTCLOUD].reset(new LogicalDevice(this, baseURL + "/pointcloud", DataStream::POINTCLOUD_STREAM));
 
-        bool success = false;
-        {
+        // Infer initial metadata from nvparam (later overridden by incoming frames)
+        int numChannels = -1;
+        int channelIdx = 0;
+        try {
+            auto paramSet = deviceParameters->getParameterSet();
+            std::vector<double> imgSize;
+            if (paramSet.count("RT_output_image_size")) {
+                imgSize = paramSet["RT_output_image_size"].getTensorData();
+            } else {
+                // Fallback read of configured calibrated ROI
+                imgSize = paramSet["calib_image_size"].getTensorData();
+                std::cerr << "Caution: device does not report RT_output_image_size; consider updating the firmware. Inferred output size " << ((int)imgSize.at(0)) << "x" << ((int)imgSize.at(1)) << std::endl;
+                DEBUG_PHYS("Caution: device does not report RT_output_image_size; consider updating the firmware. Inferred output size " << ((int)imgSize.at(0)) << "x" << ((int)imgSize.at(1)));
+            }
+            bool enabledLeft = paramSet["output_channel_left_enabled"].getCurrent<bool>();
+            bool enabledDisparity = paramSet["output_channel_disparity_enabled"].getCurrent<bool>();
+            bool enabledRight = paramSet["output_channel_right_enabled"].getCurrent<bool>();
+            int fmtInt;
+            if (paramSet.count("RT_output_format")) {
+                fmtInt = paramSet["RT_output_format"].getCurrent<int>();
+            } else {
+                // Fallback read of capture format - converted by FPGA by rules below.
+                fmtInt = paramSet["capture_pixel_format"].getCurrent<int>();
+                switch (fmtInt) {
+                    case 0x01080008:
+                    case 0x01080009:
+                    case 0x0108000a:
+                    case 0x0108000b:
+                        // Bayer was converted to RGB8
+                        fmtInt = 0x02180014;
+                        break;
+                    case 0x01100005:
+                    case 0x010C0047:
+                    case 0x010C0006:
+                        // Only one 12 bit output format, 12P
+                        fmtInt = 0x010C0047;
+                        break;
+                    default:
+                        // Directly supported
+                        break;
+                }
+                std::cerr << "Caution: device does not report RT_output_format; consider updating the firmware. Inferred L/R pixel format " << fmtInt << std::endl;
+                DEBUG_PHYS("Caution: device does not report RT_output_format; consider updating the firmware. Inferred L/R pixel format " << fmtInt);
+            }
+            // Note: when outputPixelFormat of FPGA is 12P, receive buffer is unpacked to 12 (in 16)
+            ImageSet::ImageFormat outputPixelFormat = (fmtInt==0x010C0047)?ImageSet::FORMAT_12_BIT_MONO:((fmtInt==0x02180014)?ImageSet::FORMAT_8_BIT_RGB:ImageSet::FORMAT_8_BIT_MONO);
+            bool enabledColor = paramSet.count("output_channel_color_enabled") && paramSet["output_channel_color_enabled"].getCurrent<bool>();
+            numChannels = (enabledLeft?1:0) + (enabledDisparity?1:0) + (enabledRight?1:0) + (enabledColor?1:0);
+
+            latestMetaData.setWidth(imgSize[0]);
+            latestMetaData.setHeight(imgSize[1]);
+            latestMetaData.setNumberOfImages(numChannels);
+            if (enabledLeft) {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, channelIdx);
+                latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
+                channelIdx++;
+            } else {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, -1);
+            }
+            if (enabledDisparity) {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, channelIdx);
+                latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_12_BIT_MONO);
+                channelIdx++;
+            } else {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, -1);
+            }
+            if (enabledColor) {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, channelIdx);
+                latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_8_BIT_RGB);
+                channelIdx++;
+            } else {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, -1);
+            }
+            if (enabledRight) {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, channelIdx);
+                latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
+                channelIdx++;
+            } else {
+                latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, -1);
+            }
+            // Also set initial values for the Q matrix, so all features can be calculated
+            auto qMatData = paramSet["calib_Q_12"].getTensorData();
+            for (int i=0; i<16; ++i) initialQMatrixData[i] = (float) qMatData[i];
+            latestMetaData.setQMatrix(initialQMatrixData);
+        } catch(std::exception& ex) {
+            std::cerr << "Exception: " << ex.what() << std::endl;
+            throw;
+        }
+        bool valid = (channelIdx==numChannels) && (latestMetaData.getHeight() > 0);
+
+        if(!valid) {
+            threadRunning = false;
+            return GC_ERR_IO;
+        } else {
             std::unique_lock<std::mutex> lock(receiveMutex);
             threadRunning = true;
             receiveThread = std::thread(std::bind(&PhysicalDevice::deviceReceiveThread, this));
-
-            // Wait for first frame
-            std::chrono::milliseconds duration(1000);
-            initializedCondition.wait_for(lock, duration);
-            success = (latestMetaData.getHeight() > 0);
-        }
-
-        if(!success) {
-            threadRunning = false;
-            receiveThread.join();
-            return GC_ERR_IO;
-        } else {
             return GC_ERR_SUCCESS;
         }
     } catch(...) {
@@ -204,6 +288,9 @@ void PhysicalDevice::deviceReceiveThread() {
 #endif
 
             {
+                int sec, usec;
+                receivedSet.getTimestamp(sec, usec);
+                DEBUG_PHYS("Captured a new visiontransfer::ImageSet from " << (this->udp?"UDP":"TCP") << " host " << this->host << " - Timestamp " << ((long long) sec*1000000+usec));
                 std::unique_lock<std::mutex> lock(receiveMutex);
                 // Determine whether new image set is compatible to previous one
                 bool metadataChanged = false;
@@ -326,6 +413,7 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
 
         buffer->setMetaData(receivedSet);
         logicalDevices[id]->getStream()->queueOutputBuffer();
+        DEBUG_PHYS("Queued a single buffer");
 
         if(buffer->isIncomplete()) {
             logicalDevices[id]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);
@@ -389,10 +477,7 @@ int PhysicalDevice::copy3dDataToBufferMemory(const ImageSet& receivedSet, unsign
         // GenTL does not support padding between pixels. Let's only
         // copy the non-padding bytes
 
-        float* inputPtr = reconstruct.createPointMap((unsigned short*)receivedSet.getPixelData(ImageSet::IMAGE_DISPARITY),
-            receivedSet.getWidth(), receivedSet.getHeight(),
-            receivedSet.getRowStride(ImageSet::IMAGE_DISPARITY), receivedSet.getQMatrix(), 0,
-            receivedSet.getSubpixelFactor(), maxDisparity);
+        float* inputPtr = reconstruct.createPointMap(receivedSet, 0, maxDisparity);
 
         float* outputPtr = reinterpret_cast<float*>(dst);
 #ifdef __SSE2__
@@ -417,6 +502,10 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         return;
     }
 
+#ifdef ENABLE_DEBUGGING_PHYSICALDEVICE
+    bufferMapping.dumpToStream(debugStreamPhys);
+#endif
+
     buffer->setIncomplete(false);
     int copiedBytes = -1;
 
@@ -426,6 +515,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         auto sz = bufferMapping.getBufferPartSize(i);
         if (func != ImageSet::IMAGE_UNDEFINED) { // not the point cloud channel
             auto idx = receivedSet.getIndexOf(func);
+            DEBUG_PHYS("Multipart function " << func << " at imageset index " << idx << ", starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
             if (idx != -1) {
                 copiedBytes = copyImageToBufferMemory(receivedSet, idx, &buffer->getData()[offset],
                     static_cast<int>(buffer->getSize()) - offset);
@@ -441,6 +531,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         } else {
             // Special case: point cloud
             if (getComponentEnabledRange() && receivedSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
+                DEBUG_PHYS("Multipart function UNDEF (point cloud) from 3d buf, starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
                 copiedBytes = copy3dDataToBufferMemory(receivedSet, &buffer->getData()[offset],
                     static_cast<int>(buffer->getSize()) - offset);
                 if(copiedBytes < 0) {
@@ -455,6 +546,8 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
     }
     buffer->setMetaData(receivedSet);
     logicalDevices[ID_MULTIPART]->getStream()->queueOutputBuffer();
+
+    DEBUG_PHYS("Queued a multipart buffer");
 
     if(buffer->isIncomplete()) {
         logicalDevices[ID_MULTIPART]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);
@@ -674,6 +767,11 @@ void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
         invalidateFeatureFromAsyncEvent("NoiseReductionEnabled");
     } else if (uid == "speckle_filter_iterations") {
         invalidateFeatureFromAsyncEvent("SpeckleFilterIterations");
+    } else if (uid == "capture_pixel_format") {
+        invalidateFeatureFromAsyncEvent("InputPixelFormatsAvailableReg");
+        invalidateFeatureFromAsyncEvent("InputPixelFormatReg");
+        invalidateFeatureFromAsyncEvent("InputPixelFormatValue");
+        invalidateFeatureFromAsyncEvent("InputPixelFormat");
     } else {
         return; // Unmapped feature - ignore parameter change
     }

@@ -70,6 +70,14 @@ int main(int argc, const char** argv) {
                     if (param.getIncrement<int>() != 1) {
                         std::cout << "  increment " << param.getIncrement<int>();
                     }
+                    if (param.hasOptions()) {
+                        auto opts = param.getOptions<std::string>();
+                        auto descr = param.getOptionDescriptions();
+                        std::cout << "  options: ";
+                        for (int i=0; i<(int) opts.size(); ++i) {
+                            std::cout << opts[i] << "(" << descr[i] << ") ";
+                        }
+                    }
                     std::cout << std::endl;
                     break;
                 }

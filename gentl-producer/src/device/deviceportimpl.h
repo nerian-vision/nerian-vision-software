@@ -40,11 +40,14 @@ protected:
 
 private:
     LogicalDevice* device;
+    bool triggerInputAvailable;
     int currentSelectorForBalanceRatio;
     int currentSelectorForExposure;
     int currentSelectorForGain;
     int currentIndexForQMatrix;
     int preferredTriggerSource;
+    int currentSelectorForLine;
+    int currentSelectorForPulseWidth;
 };
 
 }
