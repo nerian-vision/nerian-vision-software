@@ -9,8 +9,8 @@ available standard feature names (unless specified as a custom feature)
 
 Idx Mode Feature-Name [(comments)]
 ---- -- --------------------------
-0x00 RO SensorWidth / WidthMax   (currently the calib-time 'max' resolution)
-0x01 RO SensorHeight / HeightMax ('')
+0x00 RO SensorWidth   (currently the calib-time 'max' resolution)
+0x01 RO SensorHeight  ('')
 0x02 RO PixelFormat
 0x03 RO PayloadSize
 0x04 RW ComponentEnable (Range is switchable; others depend on device cfg)
@@ -98,6 +98,9 @@ Idx Mode Feature-Name [(comments)]
 0x55 RW LineOffset (trigger offset in ms)
 0x56 RO LineOffsetMin
 0x57 RO LineOffsetMax
+
+0x58 RO Width (max valid value; not the same as SensorWidth)
+0x59 RO Height (max valid value; not the same as SensorHeight)
 
 -----------------
 0xff RO Special: device-reported feature flags, for conditional XML (CUSTOM)

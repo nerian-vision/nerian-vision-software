@@ -435,7 +435,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
 ))},
 
 
-{"remote.xml", FileData(24, 205, 35910, std::string(
+{"remote.xml", FileData(24, 207, 30537, std::string(
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
     "<RegisterDescription\n"
     "    ModelName=\"SceneScan_SceneScanPro_Scarlet\"\n"
@@ -446,10 +446,10 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    SchemaMinorVersion=\"1\"\n"
     "    SchemaSubMinorVersion=\"0\"\n"
     "    MajorVersion=\"24\"\n"
-    "    MinorVersion=\"205\"\n"
-    "    SubMinorVersion=\"35910\"\n"
+    "    MinorVersion=\"207\"\n"
+    "    SubMinorVersion=\"30537\"\n"
     "    ProductGuid=\"ac1c6f72-b410-41b7-82e6-fa049db075a4\"\n"
-    "    VersionGuid=\"9aa46c76-58d8-122d-14cb-98bb76859b0e\"\n"
+    "    VersionGuid=\"630524f1-3f9e-03f0-3db6-c972c14d48de\"\n"
     "    xmlns=\"http://www.genicam.org/GenApi/Version_1_1\"\n"
     "    xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"
     "    xsi:schemaLocation=\"http://www.genicam.org/GenApi/Version_1_1 http://www.genicam.org/GenApi/GenApiSchema_Version_1_1.xsd\">\n"
@@ -716,18 +716,18 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Formula>( bitmask &amp; 4 ) ? 1 : 0</Formula> <!-- Bit 2: availability of hardware trigger input -->\n"
     "    </IntSwissKnife>\n"
     "    <Enumeration Name=\"TriggerSource\" NameSpace=\"Standard\">\n"
-    "        <ToolTip>Trigger source, selected between Software triggering and hardware trigger input (if available on device)</ToolTip>\n"
-    "        <Description>Trigger source, selected between Software triggering and hardware trigger input (if available on device)</Description>\n"
+    "        <ToolTip>Source of external trigger signal, selected between Software triggering and hardware trigger input (if available on device).</ToolTip>\n"
+    "        <Description>Source of external trigger signal, selected between Software triggering and hardware trigger input (if available on device).</Description>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <EnumEntry Name=\"Line1\" NameSpace=\"Standard\">\n"
-    "            <ToolTip>Line1 represents the external trigger line (if set to Input mode)</ToolTip>\n"
-    "            <Description>Line1 represents the external trigger line (if set to Input mode)</Description>\n"
+    "            <ToolTip>Line1 represents the external trigger line (if available)</ToolTip>\n"
+    "            <Description>Line1 represents the external trigger line (if available)</Description>\n"
     "            <pIsAvailable>HardwareTriggerInputPresent</pIsAvailable>\n"
     "            <Value>1</Value>\n"
     "        </EnumEntry>\n"
     "        <EnumEntry Name=\"Software\" NameSpace=\"Standard\">\n"
-    "            <ToolTip>Software triggering via TCP, use TriggerSoftware command to emit</ToolTip>\n"
-    "            <Description>Software triggering via TCP, use TriggerSoftware command to emit</Description>\n"
+    "            <ToolTip>Software triggering over TCP connection, use TriggerSoftware command to emit</ToolTip>\n"
+    "            <Description>Software triggering over TCP connection, use TriggerSoftware command to emit</Description>\n"
     "            <Value>2</Value>\n"
     "        </EnumEntry>\n"
     "        <pValue>TriggerSourceReg</pValue>\n"
@@ -1092,7 +1092,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <pValue>WidthReg</pValue>\n"
     "        <pMin>WidthMinReg</pMin>\n"
-    "        <pMax>SensorWidthReg</pMax>\n"
+    "        <pMax>WidthMaxReg</pMax>\n"
     "        <pInc>WidthIncReg</pInc>\n"
     "    </Integer>\n"
     "    <IntReg Name=\"WidthReg\" NameSpace=\"Custom\">\n"
@@ -1105,6 +1105,14 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    </IntReg>\n"
     "    <IntReg Name=\"WidthMinReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC0020000</Address>\n"
+    "        <Length>4</Length>\n"
+    "        <AccessMode>RO</AccessMode>\n"
+    "        <pPort>Device</pPort>\n"
+    "        <Sign>Unsigned</Sign>\n"
+    "        <Endianess>LittleEndian</Endianess>\n"
+    "    </IntReg>\n"
+    "    <IntReg Name=\"WidthMaxReg\" NameSpace=\"Custom\">\n"
+    "        <Address>0xC0058000</Address>\n"
     "        <Length>4</Length>\n"
     "        <AccessMode>RO</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
@@ -1124,7 +1132,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <pValue>HeightReg</pValue>\n"
     "        <pMin>HeightMinReg</pMin>\n"
-    "        <pMax>SensorHeightReg</pMax>\n"
+    "        <pMax>HeightMaxReg</pMax>\n"
     "        <pInc>HeightIncReg</pInc>\n"
     "    </Integer>\n"
     "    <IntReg Name=\"HeightReg\" NameSpace=\"Custom\">\n"
@@ -1140,6 +1148,15 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Length>4</Length>\n"
     "        <AccessMode>RO</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
+    ) + std::string(
+    "        <Sign>Unsigned</Sign>\n"
+    "        <Endianess>LittleEndian</Endianess>\n"
+    "    </IntReg>\n"
+    "    <IntReg Name=\"HeightMaxReg\" NameSpace=\"Custom\">\n"
+    "        <Address>0xC0059000</Address>\n"
+    "        <Length>4</Length>\n"
+    "        <AccessMode>RO</AccessMode>\n"
+    "        <pPort>Device</pPort>\n"
     "        <Sign>Unsigned</Sign>\n"
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
@@ -1148,7 +1165,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Length>4</Length>\n"
     "        <AccessMode>RO</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
-    ) + std::string(
     "        <Sign>Unsigned</Sign>\n"
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
@@ -1234,6 +1250,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    </IntReg>\n"
     "\n"
     "    <!-- Image format control: active components -->\n"
+    ) + std::string(
     "\n"
     "    <Enumeration Name=\"ComponentSelector\" NameSpace=\"Standard\">\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
@@ -1250,7 +1267,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        </EnumEntry>\n"
     "\n"
     "        <pValue>ComponentSelectorReg</pValue>\n"
-    ) + std::string(
     "        <pSelected>PixelFormat</pSelected>\n"
     "        <pSelected>ComponentEnable</pSelected>\n"
     "        <pSelected>ComponentIDValue</pSelected>\n"
@@ -1336,6 +1352,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    <IntReg Name=\"IntensitySourceReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC0018000</Address>\n"
     "        <Length>4</Length>\n"
+    ) + std::string(
     "        <AccessMode>RW</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
     "        <Endianess>LittleEndian</Endianess>\n"
@@ -1352,7 +1369,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <pInvalidator>Height</pInvalidator>\n"
     "        <pValue>PayloadSizeReg</pValue>\n"
     "        <Min>1</Min>\n"
-    ) + std::string(
     "        <Max>0xFFFFFFFF</Max>\n"
     "    </Integer>\n"
     "    <IntReg Name=\"PayloadSizeReg\" NameSpace=\"Custom\">\n"
@@ -1438,6 +1454,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <AccessMode>RO</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
     "        <pInvalidator>ComponentSelector</pInvalidator>\n"
+    ) + std::string(
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </FloatReg>\n"
     "\n"
@@ -1454,7 +1471,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </FloatReg>\n"
     "\n"
-    ) + std::string(
     "    <Float Name=\"Scan3dPrincipalPointV\" NameSpace=\"Standard\">\n"
     "        <Visibility>Expert</Visibility>\n"
     "        <ImposedAccessMode>RO</ImposedAccessMode>\n"
@@ -1540,6 +1556,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        </EnumEntry>\n"
     "        <EnumEntry Name=\"Input\" NameSpace=\"Standard\">\n"
     "            <Value>1</Value>\n"
+    ) + std::string(
     "        </EnumEntry>\n"
     "        <pValue>LineModeInt</pValue>\n"
     "    </Enumeration>\n"
@@ -1556,7 +1573,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <EnumEntry Name=\"False\" NameSpace=\"Standard\">\n"
     "            <Value>0</Value>\n"
     "        </EnumEntry>\n"
-    ) + std::string(
     "        <EnumEntry Name=\"True\" NameSpace=\"Standard\">\n"
     "            <Value>1</Value>\n"
     "        </EnumEntry>\n"
@@ -1642,6 +1658,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Address>0xC0052000</Address>\n"
     "        <Length>4</Length>\n"
     "        <AccessMode>RW</AccessMode>\n"
+    ) + std::string(
     "        <pPort>Device</pPort>\n"
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
@@ -1658,7 +1675,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Address>0xC0053000</Address>\n"
     "        <Length>4</Length>\n"
     "        <AccessMode>RW</AccessMode>\n"
-    ) + std::string(
     "        <pPort>Device</pPort>\n"
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
@@ -1744,6 +1760,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Formula>bitmask &amp; 256</Formula> <!-- Bit 9: availability of BAYER_BG8 input -->\n"
     "    </IntSwissKnife>\n"
     "    <!--IntSwissKnife Name=\"InputPixelFormatAvailableRGB8Packed\" NameSpace=\"Custom\">\n"
+    ) + std::string(
     "        <pVariable Name=\"bitmask\">InputPixelFormatsAvailableReg</pVariable>\n"
     "        <Formula>bitmask &amp; 512</Formula--> <!-- Bit 5: availability of RGB_8PACKED input -->\n"
     "    <!--/IntSwissKnife-->\n"
@@ -1760,7 +1777,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
     "\n"
-    ) + std::string(
     "    <Enumeration Name=\"InputPixelFormat\" NameSpace=\"Custom\">\n"
     "        <ToolTip>The pixel format for the stereo camera sensors. Not the same as the output PixelFormat: the FPGA may convert the format.</ToolTip>\n"
     "        <Description>The pixel format for the stereo camera sensors. Not the same as the output PixelFormat: the FPGA may convert the format.</Description>\n"
@@ -1846,6 +1862,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <AccessMode>RO</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
     "        <Sign>Unsigned</Sign>\n"
+    ) + std::string(
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
     "\n"
@@ -1862,7 +1879,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    </Integer>\n"
     "    <IntReg Name=\"DisparityOffsetReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC0034000</Address>\n"
-    ) + std::string(
     "        <Length>4</Length>\n"
     "        <AccessMode>RW</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
@@ -1948,6 +1964,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <AccessMode>RW</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
     "        <Sign>Unsigned</Sign>\n"
+    ) + std::string(
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
     "\n"
@@ -1964,7 +1981,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <AccessMode>RW</AccessMode>\n"
     "        <pPort>Device</pPort>\n"
     "        <Sign>Unsigned</Sign>\n"
-    ) + std::string(
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </IntReg>\n"
     "\n"
@@ -2050,6 +2066,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <Visibility>Expert</Visibility>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <pValue>MaskBorderPixelsEnabledReg</pValue>\n"
+    ) + std::string(
     "    </Boolean>\n"
     "    <IntReg Name=\"MaskBorderPixelsEnabledReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC003F000</Address>\n"
@@ -2066,7 +2083,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <pValue>ConsistencyCheckEnabledReg</pValue>\n"
     "    </Boolean>\n"
     "    <IntReg Name=\"ConsistencyCheckEnabledReg\" NameSpace=\"Custom\">\n"
-    ) + std::string(
     "        <Address>0xC0040000</Address>\n"
     "        <Length>4</Length>\n"
     "        <AccessMode>RW</AccessMode>\n"
@@ -2152,6 +2168,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    </IntReg>\n"
     "\n"
     "    <Boolean Name=\"GapInterpolationEnabled\" NameSpace=\"Custom\">\n"
+    ) + std::string(
     "        <Visibility>Expert</Visibility>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
     "        <pValue>GapInterpolationEnabledReg</pValue>\n"
@@ -2168,7 +2185,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "    <Boolean Name=\"NoiseReductionEnabled\" NameSpace=\"Custom\">\n"
     "        <Visibility>Expert</Visibility>\n"
     "        <ImposedAccessMode>RW</ImposedAccessMode>\n"
-    ) + std::string(
     "        <pValue>NoiseReductionEnabledReg</pValue>\n"
     "    </Boolean>\n"
     "    <IntReg Name=\"NoiseReductionEnabledReg\" NameSpace=\"Custom\">\n"
@@ -2254,6 +2270,7 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <pInvalidator>QMatrixIndexReg</pInvalidator>\n"
     "        <Endianess>LittleEndian</Endianess>\n"
     "    </FloatReg>\n"
+    ) + std::string(
     "\n"
     "    <!-- DEBUG STUFF -->\n"
     "\n"
@@ -2270,7 +2287,6 @@ std::map<std::string, XmlFiles::FileData> XmlFiles::xmlFiles =  {
     "        <pValue>FlushOutputQueueReg</pValue>\n"
     "    </Boolean>\n"
     "\n"
-    ) + std::string(
     "    <IntReg Name=\"FlushOutputQueueReg\" NameSpace=\"Custom\">\n"
     "        <Address>0xC00F1000</Address>\n"
     "        <Length>4</Length>\n"

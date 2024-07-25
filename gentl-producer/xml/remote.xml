@@ -648,7 +648,7 @@
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>WidthReg</pValue>
         <pMin>WidthMinReg</pMin>
-        <pMax>SensorWidthReg</pMax>
+        <pMax>WidthMaxReg</pMax>
         <pInc>WidthIncReg</pInc>
     </Integer>
     <IntReg Name="WidthReg" NameSpace="Custom">
@@ -661,6 +661,14 @@
     </IntReg>
     <IntReg Name="WidthMinReg" NameSpace="Custom">
         <Address>0xC0020000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="WidthMaxReg" NameSpace="Custom">
+        <Address>0xC0058000</Address>
         <Length>4</Length>
         <AccessMode>RO</AccessMode>
         <pPort>Device</pPort>
@@ -680,7 +688,7 @@
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>HeightReg</pValue>
         <pMin>HeightMinReg</pMin>
-        <pMax>SensorHeightReg</pMax>
+        <pMax>HeightMaxReg</pMax>
         <pInc>HeightIncReg</pInc>
     </Integer>
     <IntReg Name="HeightReg" NameSpace="Custom">
@@ -693,6 +701,14 @@
     </IntReg>
     <IntReg Name="HeightMinReg" NameSpace="Custom">
         <Address>0xC0023000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="HeightMaxReg" NameSpace="Custom">
+        <Address>0xC0059000</Address>
         <Length>4</Length>
         <AccessMode>RO</AccessMode>
         <pPort>Device</pPort>

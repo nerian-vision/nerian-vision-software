@@ -350,14 +350,14 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setUInt(metaData.getWidth()); // actual current frame width
             }
             break;
-        case 0x20: // Width (min valid value; max is from WidthMax)
+        case 0x20: // Width (min valid value)
             {
-                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_width_min").getCurrent<int>());
+                info.setUInt(device->getPhysicalDevice()->getParameter("capture_roi_width").getMin<int>());
             }
             break;
         case 0x21: // Width (a-priori increment; valid res determined remotely)
             {
-                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_width_inc").getCurrent<int>());
+                info.setUInt(device->getPhysicalDevice()->getParameter("capture_roi_width").getIncrement<int>());
             }
             break;
         case 0x22: // Height
@@ -365,14 +365,14 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setUInt(metaData.getHeight()); // actual current frame height
             }
             break;
-        case 0x23: // Height (min valid value; max is from HeightMax)
+        case 0x23: // Height (min valid value)
             {
-                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_height_min").getCurrent<int>());
+                info.setUInt(device->getPhysicalDevice()->getParameter("capture_roi_height").getMin<int>());
             }
             break;
         case 0x24: // Height (a-priori increment; valid res determined remotely)
             {
-                info.setUInt(device->getPhysicalDevice()->getParameter("RT_input_size_height_inc").getCurrent<int>());
+                info.setUInt(device->getPhysicalDevice()->getParameter("capture_roi_height").getIncrement<int>());
             }
             break;
         case 0x25: // OffsetX
@@ -873,6 +873,16 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                     int val = device->getPhysicalDevice()->getParameter("trigger_1_offset").getMax<int>();
                     info.setUInt(val);
                 }
+            }
+            break;
+        case 0x58: // Width (max valid value)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("capture_roi_width").getMax<int>());
+            }
+            break;
+        case 0x59: // Height (max valid value)
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("capture_roi_height").getMax<int>());
             }
             break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
