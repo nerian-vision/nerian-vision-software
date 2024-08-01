@@ -644,6 +644,7 @@ void ImageTransfer::Pimpl::disconnect() {
                 // Send a final client-side disconnection request instead of
                 // needing to wait for UDP heartbeat timeout on the device
                 try {
+                    std::cerr << "Signaling disconnect over UDP" << std::endl;
                     const unsigned char* disconnectionMsg;
                     int disconnectionMsgLen;
                     DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
