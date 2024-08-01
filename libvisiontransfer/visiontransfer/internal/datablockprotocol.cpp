@@ -742,6 +742,7 @@ bool DataBlockProtocol::processControlMessage(int length) {
                     if (heartbeatKnockCount >= 3) {
                         if (!extendedConnectionStateProtocol) {
                             // Confirmed extended protocol
+                            std::cerr << "Activated extended protocol" << std::endl;
                             extendedConnectionStateProtocol = true;
                             if (!isServer) {
                                 //std::cout << "Sending back five knocks" << std::endl;
@@ -997,6 +998,7 @@ void DataBlockProtocol::getDisconnectionMessage(const unsigned char* &buf, int &
     // its intent to disconnect, so that the heartbeat timeout can be cut short.
     // This is also the only message sent back to a new UDP client that connects to a
     // busy server, explicitly rejecting the interfering client.
+    std::cerr << "getDisconnectionMessage" << std::endl;
     static const unsigned char DISCONNECTION_MESSAGE_BUFFER[] = { DISCONNECTION_MESSAGE, 0xff, 0xff, 0xff, 0xff };
     buf = DISCONNECTION_MESSAGE_BUFFER;
     sz = sizeof(DISCONNECTION_MESSAGE_BUFFER);
@@ -1008,6 +1010,7 @@ void DataBlockProtocol::getHeartbeatMessage(const unsigned char* &buf, int &sz) 
     // The server sends a few on connection to signal the new protocol. This is because
     // otherwise control messages are only sent with an image, which may not be
     // forthcoming with external triggering.
+    std::cerr << "getHeartbeatMessage" << std::endl;
     static const unsigned char HEARTBEAT_MESSAGE_BUFFER[] = { HEARTBEAT_MESSAGE, 0xff, 0xff, 0xff, 0xff };
     buf = HEARTBEAT_MESSAGE_BUFFER;
     sz = sizeof(HEARTBEAT_MESSAGE_BUFFER);
