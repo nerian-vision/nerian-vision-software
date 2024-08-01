@@ -590,7 +590,7 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
             if (protocol->isConnected()) {
                 // Reject interfering client
                 // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
-                std::cerr << "DEBUG- Rejecting interfering UDP client" << std::endl;
+                //std::cerr << "DEBUG- Rejecting interfering UDP client" << std::endl;
                 const unsigned char* disconnectionMsg;
                 int disconnectionMsgLen;
                 DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
