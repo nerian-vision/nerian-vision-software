@@ -697,6 +697,8 @@ bool DataBlockProtocol::processControlMessage(int length) {
         case CONFIRM_MESSAGE:
             // Our connection request has been accepted
             connectionConfirmed = true;
+            // Disregard heartbeats from repeated acks for protocol upgrade (esp. after reconnection)
+            heartbeatKnockCount = 0;
             break;
         case CONNECTION_MESSAGE:
             // We establish a new connection
