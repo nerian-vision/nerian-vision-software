@@ -193,6 +193,21 @@ print('OK')\
         message(WARNING "${wheel_output}")
         message(WARNING "Wheel not found! Not building python wheel packages!")
     endif()
+    
+    # Check numpy version
+    message(STATUS "looking for numpy")
+    execute_process(COMMAND "${Python3_EXECUTABLE}" "-c"
+"\
+import numpy\n\
+print(numpy.__version__.split('.')[0])\
+"
+        OUTPUT_VARIABLE NUMPY_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if("${NUMPY_VERSION}" MATCHES "^[0-9]+$")
+        message(STATUS "Numpy version ${NUMPY_VERSION} found")
+    else()
+        message(FATAL_ERROR "Numpy not found")
+    endif()
 endif()
 
 if(NOT CMAKE_SUBMODULE)

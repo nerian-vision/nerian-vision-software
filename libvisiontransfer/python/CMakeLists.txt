@@ -2,7 +2,6 @@ message(STATUS "Python build uses source directory ${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(LIBVISIONTRANSFER_SRCDIR "${CMAKE_CURRENT_SOURCE_DIR}/.." CACHE PATH "Base directory of libvisiontransfer source package")
 set(LIBVISIONTRANSFER_LIBDIR "${LIBRARY_OUTPUT_PATH}" CACHE PATH "Base directory of built libvisiontransfer libraries")
-set(LIBVISIONTRANSFER_EGGDIR "${LIBRARY_OUTPUT_PATH}/../python3-egg" CACHE PATH "Target directory for Python .egg packaging")
 set(LIBVISIONTRANSFER_WHEELDIR "${LIBRARY_OUTPUT_PATH}/../python3-wheel" CACHE PATH "Target directory for Python .whl packaging")
 
 if (WIN32 OR MINGW)
@@ -46,10 +45,6 @@ add_custom_target(cython ALL
         LIBVISIONTRANSFER_LIBDIR=${LIBVISIONTRANSFER_LIBDIR} LIBVISIONTRANSFER_LIB=${LIBNAME}
         LIBVISIONTRANSFER_EXTRA_LIBS=${LIBVISIONTRANSFER_EXTRA_LIBS}
         ${Python3_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/setup.py build_ext
-    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH="${CMAKE_CURRENT_BINARY_DIR}" LIBVISIONTRANSFER_SRCDIR="${LIBVISIONTRANSFER_SRCDIR}"
-        LIBVISIONTRANSFER_LIBDIR=${LIBVISIONTRANSFER_LIBDIR} LIBVISIONTRANSFER_LIB=${LIBNAME}
-        LIBVISIONTRANSFER_EXTRA_LIBS=${LIBVISIONTRANSFER_EXTRA_LIBS}
-        ${Python3_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/setup.py bdist_egg --dist-dir "${LIBVISIONTRANSFER_EGGDIR}"
 )
 
 # Wheel is built separately as it might not be available on all systems
