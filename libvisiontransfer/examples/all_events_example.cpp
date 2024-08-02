@@ -159,6 +159,10 @@ int main(int argc, char** argv) {
                 // Keep on trying until reception is successful
             }
             std::cout << "Received ImageSet #" << imgNum << " with image size " << imageSet.getWidth() << "x" << imageSet.getHeight() << ":" << std::endl;
+            // Trigger pulse sequence indices (max two channels on current Nerian devices)
+            std::cout << "  Trigger sequence indices: ";
+            for (int chan=0; chan<2; ++chan) std::cout << imageSet.getTriggerPulseSequenceIndex(chan) << " ";
+            std::cout << std::endl;
             // Show contained image channels
             for (int idx=0; idx<imageSet.getNumberOfImages(); ++idx) {
                 std::cout << "  Image " << idx << ": ";

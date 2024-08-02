@@ -219,7 +219,7 @@ cdef class DeviceStatus:
         cdef string s = self.c_obj.getCurrentCaptureSource()
         return s.decode("utf-8")
 
-def create_image_set_from_reduced_data(width, height, nimg, indices, strides, formats, data, qmat, seqnum, subpix, expos, disprange, times, lastsync):
+def create_image_set_from_reduced_data(width, height, nimg, indices, strides, formats, data, qmat, seqnum, subpix, expos, disprange, times, lastsync, pulse_sequence_indices):
     '''Only for internal use (shim for unpickling / copy).'''
     imset = ImageSet()
     imset.set_width(width)
@@ -241,6 +241,8 @@ def create_image_set_from_reduced_data(width, height, nimg, indices, strides, fo
     imset.set_timestamp(a, b)
     a, b = lastsync
     imset.set_last_sync_pulse(a, b)
+    for i in range(5): # max supported hw trigger channels
+        imset.set_trigger_pulse_sequence_index(i, pulse_sequence_indices[i])
     return imset
 
 cdef class ImageSet:
@@ -280,6 +282,7 @@ cdef class ImageSet:
                 self.get_disparity_range(),
                 self.get_timestamp(),
                 self.get_last_sync_pulse(),
+                [self.get_trigger_pulse_sequence_index(i) for i in range(5)], # max supported hardware trigger channels
             ))
 
     def __str__(self):
@@ -317,6 +320,8 @@ no deallocation attempts by the C++ API will ever take place on this clone).
         cloned.set_timestamp(a, b)
         a, b = self.get_last_sync_pulse()
         cloned.set_last_sync_pulse(a, b)
+        for i in range(5): # max supported hw trigger channels
+            cloned.set_trigger_pulse_sequence_index(i, self.get_trigger_pulse_sequence_index(i))
         return cloned
 
     def get_width(self):
@@ -485,6 +490,10 @@ Returns:
         self.c_obj.getLastSyncPulse(sec, usec)
         return sec, usec
 
+    def get_trigger_pulse_sequence_index(self, channel):
+        _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::ImageSet::getTriggerPulseSequenceIndex")
+        return self.c_obj.getTriggerPulseSequenceIndex(channel)
+
     def set_width(self, width):
         _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::ImageSet::setWidth")
         self.c_obj.setWidth(width)
@@ -560,6 +569,9 @@ Returns:
         _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::ImageSet::setLastSyncPulse")
         return self.c_obj.setLastSyncPulse(sec, usec)
 
+    def set_trigger_pulse_sequence_index(self, channel, idx):
+        _SUBSTITUTE_DOCSTRING_FOR_("visiontransfer::ImageSet::setTriggerPulseSequenceIndex")
+        return self.c_obj.setTriggerPulseSequenceIndex(channel, idx)
 
 cdef class ImageTransfer:
     '''

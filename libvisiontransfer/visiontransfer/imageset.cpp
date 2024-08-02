@@ -221,8 +221,7 @@ public:
     }
 
     int getTriggerPulseSequenceIndex(int channel) const {
-        if (channel < 0) channel = 0; // Default to first trigger channel
-        if (channel>=MAX_SUPPORTED_TRIGGER_CHANNELS) {
+        if (channel<0 || channel>=MAX_SUPPORTED_TRIGGER_CHANNELS) {
             throw std::runtime_error("Invalid trigger channel!");
         }
         return triggerPulseSequenceIndex[channel];

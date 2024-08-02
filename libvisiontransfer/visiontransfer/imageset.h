@@ -450,7 +450,7 @@ public:
      * \brief Gets the index of the trigger pulse in a cycle sequence.
      *  (0 if in constant trigger mode or if independently triggered).
      */
-    int getTriggerPulseSequenceIndex(int triggerChannel_RESERVED=-1) const;
+    int getTriggerPulseSequenceIndex(int triggerChannel) const;
 
 };
 

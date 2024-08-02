@@ -129,6 +129,7 @@ cdef extern from "visiontransfer/imageset.h" namespace "visiontransfer":
         bool hasImageType(ImageType what) except +
         int getExposureTime() except +
         void getLastSyncPulse(int& seconds, int& microsec) except +
+        int getTriggerPulseSequenceIndex(int channel) except +
         # Setters, primarily for deserialization
         void setWidth(int width) except +
         void setHeight(int height) except +
@@ -144,6 +145,7 @@ cdef extern from "visiontransfer/imageset.h" namespace "visiontransfer":
         void setIndexOf(ImageType what, int idx) except +
         void setExposureTime(int timeMicrosec) except +
         void setLastSyncPulse(int seconds, int microsec) except +
+        void setTriggerPulseSequenceIndex(int channel, int index) except +
         # Utility functions
         void writePgmFile(int imageNumber, const char* fileName) except +
 
