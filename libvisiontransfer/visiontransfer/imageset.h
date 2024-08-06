@@ -44,6 +44,7 @@ private:
 
 public:
     static const int MAX_SUPPORTED_IMAGES = 4;
+    static const int MAX_SUPPORTED_TRIGGER_CHANNELS = 5;
     /**
      * \brief Image formats that can be transferred.
      */
@@ -439,6 +440,17 @@ public:
      *        a resolution of 1 microsecond.
      */
     void getLastSyncPulse(int& seconds, int& microsec) const;
+
+    /**
+     * \brief Sets the index of the trigger pulse in a cycle sequence.
+     */
+    void setTriggerPulseSequenceIndex(int triggerChannel, int indexValue);
+
+    /**
+     * \brief Gets the index of the trigger pulse in a cycle sequence.
+     *  (0 if in constant trigger mode or if independently triggered).
+     */
+    int getTriggerPulseSequenceIndex(int triggerChannel) const;
 
 };
 

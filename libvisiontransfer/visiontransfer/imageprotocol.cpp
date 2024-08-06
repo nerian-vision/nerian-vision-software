@@ -122,6 +122,7 @@ private:
             HEADER_V3 = 2,
             HEADER_V4 = 4,
             HEADER_V5 = 8,
+            HEADER_V6 = 16,
             // future protocol extensions should mark a new bit here
         };
     };
@@ -140,8 +141,12 @@ private:
         int lastSyncPulseMicrosec;
     };
     // Header data v5, adds format for 4th image
-    struct HeaderData: public HeaderDataV4{
+    struct HeaderDataV5: public HeaderDataV4 {
         unsigned char format3;
+    };
+    // Header data v6, adds trigger pulse sequence index for up to 5 channels
+    struct HeaderData: public HeaderDataV5 {
+        unsigned char triggerPulseSequenceIndex[5];
     };
 #pragma pack(pop)
 
@@ -426,9 +431,13 @@ void ImageProtocol::Pimpl::copyHeaderToBuffer(const ImageSet& imageSet,
     transferHeader->lastSyncPulseSec = htonl(timeSec);
     transferHeader->lastSyncPulseMicrosec = htonl(timeMicrosec);
 
+    for (int i=0; i<ImageSet::MAX_SUPPORTED_TRIGGER_CHANNELS; ++i) {
+        transferHeader->triggerPulseSequenceIndex[i] = (unsigned char) imageSet.getTriggerPulseSequenceIndex(i);
+    }
+
     transferHeader->totalHeaderSize = htons(sizeof(HeaderData));
     transferHeader->flags = htons(HeaderData::FlagBits::NEW_STYLE_TRANSFER | HeaderData::FlagBits::HEADER_V3
-        | HeaderData::FlagBits::HEADER_V4 | HeaderData::FlagBits::HEADER_V5);
+        | HeaderData::FlagBits::HEADER_V4 | HeaderData::FlagBits::HEADER_V5 | HeaderData::FlagBits::HEADER_V6);
 
     int minDisp = 0, maxDisp = 0;
     imageSet.getDisparityRange(minDisp, maxDisp);
@@ -605,10 +614,12 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
         bool isInterleaved = (receiveHeader.flags & HeaderData::FlagBits::NEW_STYLE_TRANSFER) == 0;
         bool arbitraryChannels = (receiveHeader.flags & HeaderData::FlagBits::HEADER_V3) > 0;
         bool hasExposureTime = (receiveHeader.flags & HeaderData::FlagBits::HEADER_V4) > 0;
+        bool hasTriggerPulseSequenceIndex = (receiveHeader.flags & HeaderData::FlagBits::HEADER_V6) > 0;
 
         // Forward compatibility check: mask out all known flag bits and see what remains
         unsigned short unaccountedFlags = receiveHeader.flags & ~(HeaderData::FlagBits::NEW_STYLE_TRANSFER
-            | HeaderData::FlagBits::HEADER_V3 | HeaderData::FlagBits::HEADER_V4 | HeaderData::FlagBits::HEADER_V5);
+            | HeaderData::FlagBits::HEADER_V3 | HeaderData::FlagBits::HEADER_V4 | HeaderData::FlagBits::HEADER_V5
+            | HeaderData::FlagBits::HEADER_V6);
         if (unaccountedFlags != 0) {
             // Newer protocol (unknown flag present) - we will try to continue
             //   since connection has not been refused earlier
@@ -689,6 +700,12 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
             if(hasExposureTime) {
                 imageSet.setExposureTime(receiveHeader.exposureTime);
                 imageSet.setLastSyncPulse(receiveHeader.lastSyncPulseSec, receiveHeader.lastSyncPulseMicrosec);
+            }
+            // Header v6 enhancement
+            if (hasTriggerPulseSequenceIndex) {
+                for (int i=0; i<ImageSet::MAX_SUPPORTED_TRIGGER_CHANNELS; ++i) {
+                    imageSet.setTriggerPulseSequenceIndex(i, (int) receiveHeader.triggerPulseSequenceIndex[i]);
+                }
             }
         }
 

@@ -66,7 +66,6 @@ class App(QtWidgets.QMainWindow):
         #
         self.main_frame = QtWidgets.QFrame(self)
         self.main_frame.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
-        self.main_frame.setStyleSheet('background-color:rgb(222,222,222);')
         self.setCentralWidget(self.main_frame)
         self.main_vbox = QtWidgets.QVBoxLayout(self.main_frame)
 
@@ -272,7 +271,8 @@ class App(QtWidgets.QMainWindow):
         for i in range(imgset.get_number_of_images()):
             imgformat.append(imgset.get_pixel_format(i))
         format_description = ' / '.join([f.name[7:] for f in imgformat])
-        self.formatlabel.setText(f'  {width}x{height}    {format_description}')
+        pulse0, pulse1 = [imgset.get_trigger_pulse_sequence_index(i) for i in range(2)]
+        self.formatlabel.setText(f' {width}x{height} {format_description}   Trigger pulse indices: {pulse0} {pulse1}')
 
         # Show all received images
         for i in range(imgset.get_number_of_images()):
