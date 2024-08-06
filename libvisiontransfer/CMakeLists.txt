@@ -195,18 +195,20 @@ print('OK')\
     endif()
     
     # Check numpy version
-    message(STATUS "looking for numpy")
-    execute_process(COMMAND "${Python3_EXECUTABLE}" "-c"
+    if(BUILD_CYTHON)
+        message(STATUS "looking for numpy")
+        execute_process(COMMAND "${Python3_EXECUTABLE}" "-c"
 "\
 import numpy\n\
 print(numpy.__version__.split('.')[0])\
 "
-        OUTPUT_VARIABLE NUMPY_VERSION
-        OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if("${NUMPY_VERSION}" MATCHES "^[0-9]+$")
-        message(STATUS "Numpy version ${NUMPY_VERSION} found")
-    else()
-        message(FATAL_ERROR "Numpy not found")
+            OUTPUT_VARIABLE NUMPY_VERSION
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if("${NUMPY_VERSION}" MATCHES "^[0-9]+$")
+            message(STATUS "Numpy version ${NUMPY_VERSION} found")
+        else()
+            message(FATAL_ERROR "Numpy not found")
+        endif()
     endif()
 endif()
 
