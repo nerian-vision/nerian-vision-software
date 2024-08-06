@@ -1,7 +1,7 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
-10.8.x (2024-xx-xx)
+10.8.0 (2024-08-06)
 -------------------
 * Handling for new device behavior which refuses new client
   connections when a previous one is still active (UDP and TCP)
