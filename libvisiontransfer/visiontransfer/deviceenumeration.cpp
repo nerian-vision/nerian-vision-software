@@ -119,12 +119,8 @@ void DeviceEnumeration::Pimpl::sendDiscoverBroadcast() {
         if (sendResult != sizeof(InternalInformation::DISCOVERY_BROADCAST_MSG)-1) {
             hadError = true;
         }
-#ifndef _WIN32
-        const unsigned char* addrp = reinterpret_cast<const unsigned char*>(&(addr.sin_addr.s_addr));
-        ss << " " << ((int) addrp[0]) << "." << ((int) addrp[1]) << "." << ((int) addrp[2]) << "." << ((int) addrp[3]) << "(" << Networking::getLastErrorString() << "/" << sendResult << ")";
-#else
-        ss << " " << addr.sin_addr.s_b1 << "." << addr.sin_addr.s_b2 << "." << addr.sin_addr.s_b3 << "." << addr.sin_addr.s_b3 << "(" << Networking::getLastErrorString() << "/" << sendResult << ")";
-#endif
+        char* ipStr = inet_ntoa(addr.sin_addr);
+        ss << " " << ipStr << "(" << Networking::getLastErrorString() << "/" << sendResult << ")";
     }
     if (hadError) {
         throw std::runtime_error(ss.str());
