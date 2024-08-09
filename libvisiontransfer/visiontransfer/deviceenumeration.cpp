@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <sstream>
 
 #include "visiontransfer/deviceenumeration.h"
 #include "visiontransfer/exceptions.h"
@@ -105,16 +106,28 @@ DeviceInfo* DeviceEnumeration::Pimpl::getDevicesPointer(int* numDevices) {
 }
 
 void DeviceEnumeration::Pimpl::sendDiscoverBroadcast() {
+    bool hadError = false;
+    std::stringstream ss;
+    ss << "Error sending broadcast message:";
     std::vector<sockaddr_in> addresses = findBroadcastAddresses();
     for(sockaddr_in addr: addresses) {
         addr.sin_port = htons(InternalInformation::DISCOVERY_BROADCAST_PORT);
 
-        if (sendto(sock, InternalInformation::DISCOVERY_BROADCAST_MSG,
+        int sendResult = (int) sendto(sock, InternalInformation::DISCOVERY_BROADCAST_MSG,
                 sizeof(InternalInformation::DISCOVERY_BROADCAST_MSG)-1, 0,
-                (struct sockaddr *) &addr, sizeof(addr))
-                != sizeof(InternalInformation::DISCOVERY_BROADCAST_MSG)-1) {
-            throw std::runtime_error("Error sending broadcast message");
+                (struct sockaddr *) &addr, sizeof(addr));
+        if (sendResult != sizeof(InternalInformation::DISCOVERY_BROADCAST_MSG)-1) {
+            hadError = true;
         }
+#ifndef _WIN32
+        const unsigned char* addrp = reinterpret_cast<const unsigned char*>(&(addr.sin_addr.s_addr));
+        ss << " " << ((int) addrp[0]) << "." << ((int) addrp[1]) << "." << ((int) addrp[2]) << "." << ((int) addrp[3]) << "(" << Networking::getLastErrorString() << "/" << sendResult << ")";
+#else
+        ss << " " << addr.sin_addr.s_b1 << "." << addr.sin_addr.s_b2 << "." << addr.sin_addr.s_b3 << "." << addr.sin_addr.s_b3 << "(" << Networking::getLastErrorString() << "/" << sendResult << ")";
+#endif
+    }
+    if (hadError) {
+        throw std::runtime_error(ss.str());
     }
 }
 
