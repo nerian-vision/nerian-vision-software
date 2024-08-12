@@ -15,6 +15,8 @@
 #include <cstdint>
 #include <cstring>
 #include <sstream>
+#include <chrono>
+#include <thread>
 
 #include "visiontransfer/deviceenumeration.h"
 #include "visiontransfer/exceptions.h"
@@ -130,6 +132,9 @@ void DeviceEnumeration::Pimpl::sendDiscoverBroadcast() {
 DeviceEnumeration::DeviceList DeviceEnumeration::Pimpl::collectDiscoverResponses() {
     DeviceList ret;
 
+    constexpr long MAX_MS_WAIT_FOR_REPLIES = 500;
+
+    std::chrono::steady_clock::time_point tStart = std::chrono::steady_clock::now();
     while(true) {
         InternalInformation::DiscoveryMessage msg;
         sockaddr_in senderAddress;
@@ -140,7 +145,10 @@ DeviceEnumeration::DeviceList DeviceEnumeration::Pimpl::collectDiscoverResponses
 
         if(received < 0) {
             // There are no more replies
-            break;
+            long elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tStart).count();
+            if (elapsed > MAX_MS_WAIT_FOR_REPLIES) break; // Maximum collection time exceeded
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
         }
         bool isLegacy = received == (int) sizeof(InternalInformation::DiscoveryMessageBasic);
         bool isLegacyWithStatusInfo = received == (int) sizeof(InternalInformation::DiscoveryMessageWithStatus);
@@ -210,12 +218,11 @@ std::vector<sockaddr_in> DeviceEnumeration::Pimpl::findBroadcastAddresses() {
             if(p->ifa_dstaddr != nullptr && p->ifa_dstaddr->sa_family == AF_INET) {
                 sockaddr_in* sinp = reinterpret_cast<sockaddr_in*>(p->ifa_dstaddr);
                 const unsigned char* ipParts = reinterpret_cast<const unsigned char*>(&(sinp->sin_addr.s_addr));
-                if (    (ipParts[0]==127 && ipParts[1]==0 && ipParts[2]==0 && ipParts[3]==1)  // exclude loopback 127.0.0.1
+                if (!(  (ipParts[0]==127 && ipParts[1]==0 && ipParts[2]==0 && ipParts[3]==1)  // exclude loopback 127.0.0.1
                      || (ipParts[0]==169 && ipParts[1]==254)                                  // exclude link-local 169.254.x.x
-                    ) {
-                    continue;
+                     )) {
+                    ret.push_back(*sinp);
                 }
-                ret.push_back(*sinp);
             }
             p = p->ifa_next;
         }
