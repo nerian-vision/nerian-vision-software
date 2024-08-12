@@ -208,7 +208,14 @@ std::vector<sockaddr_in> DeviceEnumeration::Pimpl::findBroadcastAddresses() {
         struct ifaddrs * p = ifap;
         while(p) {
             if(p->ifa_dstaddr != nullptr && p->ifa_dstaddr->sa_family == AF_INET) {
-                ret.push_back(*reinterpret_cast<sockaddr_in*>(p->ifa_dstaddr));
+                sockaddr_in* sinp = reinterpret_cast<sockaddr_in*>(p->ifa_dstaddr);
+                const unsigned char* ipParts = reinterpret_cast<const unsigned char*>(&(sinp->sin_addr.s_addr));
+                if (    (ipParts[0]==127 && ipParts[1]==0 && ipParts[2]==0 && ipParts[3]==1)  // exclude loopback 127.0.0.1
+                     || (ipParts[0]==169 && ipParts[1]==254)                                  // exclude link-local 169.254.x.x
+                    ) {
+                    continue;
+                }
+                ret.push_back(*sinp);
             }
             p = p->ifa_next;
         }
@@ -245,6 +252,12 @@ std::vector<sockaddr_in> DeviceEnumeration::Pimpl::findBroadcastAddresses() {
             const MIB_IPADDRROW & row = ipTable->table[i];
 
             uint32_t ipAddr  = row.dwAddr;
+            const unsigned char* ipParts = reinterpret_cast<const unsigned char*>(&ipAddr);
+            if (    (ipParts[0]==127 && ipParts[1]==0 && ipParts[2]==0 && ipParts[3]==1)  // exclude loopback 127.0.0.1
+                 || (ipParts[0]==169 && ipParts[1]==254)                                  // exclude link-local 169.254.x.x
+                ) {
+                continue;
+            }
             uint32_t netmask = row.dwMask;
             uint32_t baddr   = ipAddr & netmask;
             if (row.dwBCastAddr) {
