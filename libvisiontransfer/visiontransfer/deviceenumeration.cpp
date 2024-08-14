@@ -210,12 +210,11 @@ std::vector<sockaddr_in> DeviceEnumeration::Pimpl::findBroadcastAddresses() {
             if(p->ifa_dstaddr != nullptr && p->ifa_dstaddr->sa_family == AF_INET) {
                 sockaddr_in* sinp = reinterpret_cast<sockaddr_in*>(p->ifa_dstaddr);
                 const unsigned char* ipParts = reinterpret_cast<const unsigned char*>(&(sinp->sin_addr.s_addr));
-                if (    (ipParts[0]==127 && ipParts[1]==0 && ipParts[2]==0 && ipParts[3]==1)  // exclude loopback 127.0.0.1
+                if (!(  (ipParts[0]==127 && ipParts[1]==0 && ipParts[2]==0 && ipParts[3]==1)  // exclude loopback 127.0.0.1
                      || (ipParts[0]==169 && ipParts[1]==254)                                  // exclude link-local 169.254.x.x
-                    ) {
-                    continue;
+                    )) {
+                    ret.push_back(*sinp);
                 }
-                ret.push_back(*sinp);
             }
             p = p->ifa_next;
         }
