@@ -37,6 +37,7 @@ ClientSideDataChannelIMUBNO080::ClientSideDataChannelIMUBNO080()
 }
 
 int ClientSideDataChannelIMUBNO080::handleSensorInputRecord(unsigned char* data, int datalen, uint64_t baseTime) {
+    (void) datalen; // ununsed now
     int sensorid = data[0];
     unsigned char status =   data[2] & 3;
     int delay =    ((data[2] & 0xfc) << 6) | data[3];

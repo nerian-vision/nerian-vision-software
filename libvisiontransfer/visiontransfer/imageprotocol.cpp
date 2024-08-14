@@ -415,7 +415,7 @@ void ImageProtocol::Pimpl::copyHeaderToBuffer(const ImageSet& imageSet,
     transferHeader->height = htons((short) imageSet.getHeight());
     transferHeader->firstTileWidth = htons((short) firstTileWidth);
     transferHeader->lastTileWidth = htons((short) lastTileWidth);
-    transferHeader->middleTilesWidth = htons(middleTilesWidth);
+    transferHeader->middleTilesWidth = htons((short) middleTilesWidth);
     transferHeader->format0 = static_cast<unsigned char>(imageSet.getPixelFormat(0));
     transferHeader->format1 = (imageSet.getNumberOfImages() <= 1) ? 0 : static_cast<unsigned char>(imageSet.getPixelFormat(1));
     transferHeader->seqNum = static_cast<unsigned int>(htonl(imageSet.getSequenceNumber()));
