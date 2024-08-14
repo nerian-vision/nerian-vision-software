@@ -83,6 +83,8 @@ endif()
 if(WIN32)
     target_link_libraries(visiontransfer${LIB_SUFFIX} ws2_32 Iphlpapi)
     target_link_libraries(visiontransfer-static${LIB_SUFFIX} ws2_32 Iphlpapi)
+    target_compile_options(visiontransfer${LIB_SUFFIX} PRIVATE /W4)
+    target_compile_options(visiontransfer-static${LIB_SUFFIX} PRIVATE /W4)
 else()
     set_target_properties(visiontransfer-static${LIB_SUFFIX}
        PROPERTIES COMPILE_FLAGS "-fPIC")

@@ -94,9 +94,9 @@ private:
     void setSocketOptions();
 
     // Network socket initialization
-    void initTcpServer(const addrinfo* addressInfo);
-    void initTcpClient(const addrinfo* addressInfo);
-    void initUdp(const addrinfo* addressInfo);
+    void initTcpServer();
+    void initTcpClient();
+    void initUdp();
 
     // Data reception
     bool receiveNetworkData(bool block);
@@ -217,11 +217,11 @@ void ImageTransfer::Pimpl::establishConnection() {
 
     try {
         if(protType == ImageProtocol::PROTOCOL_UDP) {
-            initUdp(addressInfo);
+            initUdp();
         } else if(protType == ImageProtocol::PROTOCOL_TCP && isServer) {
-            initTcpServer(addressInfo);
+            initTcpServer();
         } else {
-            initTcpClient(addressInfo);
+            initTcpClient();
         }
     } catch(...) {
         throw;
@@ -250,7 +250,7 @@ ImageTransfer::Pimpl::~Pimpl() {
 
 }
 
-void ImageTransfer::Pimpl::initTcpClient(const addrinfo* addressInfo) {
+void ImageTransfer::Pimpl::initTcpClient() {
     protocol.reset(new ImageProtocol(isServer, ImageProtocol::PROTOCOL_TCP));
     clientSocket = Networking::connectTcpSocket(addressInfo);
     memcpy(&remoteAddress, addressInfo->ai_addr, sizeof(remoteAddress));
@@ -259,7 +259,7 @@ void ImageTransfer::Pimpl::initTcpClient(const addrinfo* addressInfo) {
     setSocketOptions();
 }
 
-void ImageTransfer::Pimpl::initTcpServer(const addrinfo* addressInfo) {
+void ImageTransfer::Pimpl::initTcpServer() {
     protocol.reset(new ImageProtocol(isServer, ImageProtocol::PROTOCOL_TCP));
 
     // Create socket
@@ -284,7 +284,7 @@ void ImageTransfer::Pimpl::initTcpServer(const addrinfo* addressInfo) {
     listen(tcpServerSocket, 1);
 }
 
-void ImageTransfer::Pimpl::initUdp(const addrinfo* addressInfo) {
+void ImageTransfer::Pimpl::initUdp() {
     protocol.reset(new ImageProtocol(isServer, ImageProtocol::PROTOCOL_UDP, maxUdpPacketSize));
     // Create sockets
     clientSocket = socket(AF_INET, SOCK_DGRAM, 0);

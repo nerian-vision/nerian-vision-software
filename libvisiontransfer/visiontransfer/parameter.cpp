@@ -78,7 +78,7 @@ public:
         defaultValue.setTensorData(data);
         return *this;
     }
-    inline Pimpl& setName(const std::string& name) { this->name = name;         return *this; }
+    inline Pimpl& setName(const std::string& n) { this->name = n;         return *this; }
     inline Pimpl& setModuleName(const std::string& n) { this->modulename = n; return *this; }
     inline Pimpl& setCategoryName(const std::string& n) { this->categoryname = n; return *this; }
     inline Pimpl& setDescription(const std::string& d) { this->description = d; return *this; }
@@ -351,7 +351,7 @@ std::string Parameter::Pimpl::interpolateCommandLine(const ParameterValue& newVa
     std::set<char> subst{'P', 'O', 'N', 'E', 'D'};
     std::ostringstream ss;
     char what;
-    size_t where = -1;
+    int where = -1;
     while (true) {
         int foundAt = -1;
         int foundRightmost = -1;
@@ -359,7 +359,7 @@ std::string Parameter::Pimpl::interpolateCommandLine(const ParameterValue& newVa
         for (auto ch: subst) {
             std::string lookfor = "%";
             lookfor += ch;
-            foundAt = (int) result.rfind(lookfor, where);
+            foundAt = (int) result.rfind(lookfor, (size_t) where);
             if (foundAt > foundRightmost) {
                 foundRightmost = foundAt;
                 what = ch;

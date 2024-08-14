@@ -181,8 +181,7 @@ private:
 
     int getNumTiles(int width, int firstTileWidth, int middleTilesWidth, int lastTileWidth);
 
-    int getFrameSize(int width, int height, int firstTileWidth, int middleTilesWidth,
-        int lastTileWidth, int totalBits);
+    int getFrameSize(int width, int height, int totalBits);
 
     int getFormatBits(ImageSet::ImageFormat format, bool afterDecode);
 
@@ -304,7 +303,7 @@ void ImageProtocol::Pimpl::setTransferImageSet(const ImageSet& imageSet) {
     dataProt.setTransferHeader(&headerBuffer[IMAGE_HEADER_OFFSET], sizeof(HeaderData), numTransferBlocks);
     for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
         int bits = getFormatBits(imageSet.getPixelFormat(i), false);
-        int rawDataLength = getFrameSize(imageSet.getWidth(), imageSet.getHeight(), 0, 0, 0, bits);
+        int rawDataLength = getFrameSize(imageSet.getWidth(), imageSet.getHeight(), bits);
         dataProt.setTransferBytes(i, rawDataLength);
     }
 
@@ -346,8 +345,7 @@ void ImageProtocol::Pimpl::setRawTransferData(const ImageSet& metaData, const st
     dataProt.setTransferHeader(&headerBuffer[IMAGE_HEADER_OFFSET], sizeof(HeaderData), numTransferBlocks);
     // Now set the size per channel (replaces old final size argument to setTransferHeader()
     for (int i=0; i<metaData.getNumberOfImages(); ++i) {
-        int rawDataLength = getFrameSize(metaData.getWidth(), metaData.getHeight(),
-          firstTileWidth, middleTilesWidth, lastTileWidth, metaData.getBitsPerPixel(i));
+        int rawDataLength = getFrameSize(metaData.getWidth(), metaData.getHeight(), metaData.getBitsPerPixel(i));
         dataProt.setTransferBytes(i, rawDataLength);
     }
 
@@ -387,8 +385,7 @@ int ImageProtocol::Pimpl::getNumTiles(int width, int firstTileWidth, int middleT
     }
 }
 
-int ImageProtocol::Pimpl::getFrameSize(int width, int height, int firstTileWidth,
-        int middleTilesWidth, int lastTileWidth, int totalBits) {
+int ImageProtocol::Pimpl::getFrameSize(int width, int height, int totalBits) {
     return (width * height * totalBits) /8;
 }
 
@@ -414,10 +411,10 @@ void ImageProtocol::Pimpl::copyHeaderToBuffer(const ImageSet& imageSet,
     transferHeader->magic = htons(MAGIC_SEQUECE);
     transferHeader->protocolVersion = InternalInformation::CURRENT_PROTOCOL_VERSION;
     transferHeader->isRawImagePair_OBSOLETE = 0;
-    transferHeader->width = htons(imageSet.getWidth());
-    transferHeader->height = htons(imageSet.getHeight());
-    transferHeader->firstTileWidth = htons(firstTileWidth);
-    transferHeader->lastTileWidth = htons(lastTileWidth);
+    transferHeader->width = htons((short) imageSet.getWidth());
+    transferHeader->height = htons((short) imageSet.getHeight());
+    transferHeader->firstTileWidth = htons((short) firstTileWidth);
+    transferHeader->lastTileWidth = htons((short) lastTileWidth);
     transferHeader->middleTilesWidth = htons(middleTilesWidth);
     transferHeader->format0 = static_cast<unsigned char>(imageSet.getPixelFormat(0));
     transferHeader->format1 = (imageSet.getNumberOfImages() <= 1) ? 0 : static_cast<unsigned char>(imageSet.getPixelFormat(1));
@@ -435,16 +432,16 @@ void ImageProtocol::Pimpl::copyHeaderToBuffer(const ImageSet& imageSet,
         transferHeader->triggerPulseSequenceIndex[i] = (unsigned char) imageSet.getTriggerPulseSequenceIndex(i);
     }
 
-    transferHeader->totalHeaderSize = htons(sizeof(HeaderData));
-    transferHeader->flags = htons(HeaderData::FlagBits::NEW_STYLE_TRANSFER | HeaderData::FlagBits::HEADER_V3
-        | HeaderData::FlagBits::HEADER_V4 | HeaderData::FlagBits::HEADER_V5 | HeaderData::FlagBits::HEADER_V6);
+    transferHeader->totalHeaderSize = htons((short) sizeof(HeaderData));
+    transferHeader->flags = htons((short) (HeaderData::FlagBits::NEW_STYLE_TRANSFER | HeaderData::FlagBits::HEADER_V3
+        | HeaderData::FlagBits::HEADER_V4 | HeaderData::FlagBits::HEADER_V5 | HeaderData::FlagBits::HEADER_V6));
 
     int minDisp = 0, maxDisp = 0;
     imageSet.getDisparityRange(minDisp, maxDisp);
-    transferHeader->minDisparity = minDisp;
-    transferHeader->maxDisparity = maxDisp;
+    transferHeader->minDisparity = (unsigned short) minDisp;
+    transferHeader->maxDisparity = (unsigned short) maxDisp;
 
-    transferHeader->subpixelFactor = imageSet.getSubpixelFactor();
+    transferHeader->subpixelFactor = (unsigned char) imageSet.getSubpixelFactor();
 
     imageSet.getTimestamp(timeSec, timeMicrosec);
     transferHeader->timeSec = static_cast<int>(htonl(static_cast<unsigned int>(timeSec)));
@@ -738,6 +735,7 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
 
 unsigned char* ImageProtocol::Pimpl::decodeNoninterleaved(int imageNumber, int numImages, int receivedBytes,
         unsigned char* data, int& validRows, int& rowStride) {
+    (void) numImages; // unused now
     ImageSet::ImageFormat format;
     int bits = 8;
     switch (imageNumber) {
@@ -886,7 +884,7 @@ void ImageProtocol::Pimpl::allocateDecodeBuffer(int imageNumber) {
     }
 }
 
-void ImageProtocol::Pimpl::decodeTiledImage(int imageNumber, int lastReceivedPayloadBytes, int receivedPayloadBytes,
+void ImageProtocol::Pimpl::decodeTiledImage(int imageNumber, int lastReceivedPayloadBytesThisImage, int receivedPayloadBytes,
         const unsigned char* data, int firstTileStride, int middleTilesStride, int lastTileStride, int& validRows,
         ImageSet::ImageFormat format, bool dataIsInterleaved) {
     // Allocate a decoding buffer
@@ -914,7 +912,7 @@ void ImageProtocol::Pimpl::decodeTiledImage(int imageNumber, int lastReceivedPay
             tileWidth = receiveHeader.middleTilesWidth;
         }
 
-        int tileStart = std::max(0, (lastReceivedPayloadBytes - payloadOffset) / tileStride);
+        int tileStart = std::max(0, (lastReceivedPayloadBytesThisImage - payloadOffset) / tileStride);
         int tileStop = std::min(std::max(0, (receivedPayloadBytes - payloadOffset) / tileStride), (int)receiveHeader.height);
         int tileOffset;
         if (dataIsInterleaved) {

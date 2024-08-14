@@ -38,7 +38,7 @@ ClientSideDataChannelIMUBNO080::ClientSideDataChannelIMUBNO080()
 
 int ClientSideDataChannelIMUBNO080::handleSensorInputRecord(unsigned char* data, int datalen, uint64_t baseTime) {
     int sensorid = data[0];
-    int status =   data[2] & 3;
+    unsigned char status =   data[2] & 3;
     int delay =    ((data[2] & 0xfc) << 6) | data[3];
     uint64_t myTime = baseTime + delay;
     switch (sensorid) {
@@ -50,7 +50,7 @@ int ClientSideDataChannelIMUBNO080::handleSensorInputRecord(unsigned char* data,
         case SH2Constants::SENSOR_GRAVITY:             //0x06
             {
                 double x, y, z;
-                auto q = sh2GetSensorQPoint(sensorid);
+                unsigned char q = (unsigned char) sh2GetSensorQPoint(sensorid);
                 x = sh2ConvertFixedQ16(sh2GetU16(data+4), q);
                 y = sh2ConvertFixedQ16(sh2GetU16(data+6), q);
                 z = sh2ConvertFixedQ16(sh2GetU16(data+8), q);
@@ -66,7 +66,7 @@ int ClientSideDataChannelIMUBNO080::handleSensorInputRecord(unsigned char* data,
             {
                 double x, y, z, w;
                 double accuracy = -1.0;
-                auto q = sh2GetSensorQPoint(sensorid);
+                unsigned char q = (unsigned char) sh2GetSensorQPoint(sensorid);
                 x = sh2ConvertFixedQ16(sh2GetU16(data+4), q);
                 y = sh2ConvertFixedQ16(sh2GetU16(data+6), q);
                 z = sh2ConvertFixedQ16(sh2GetU16(data+8), q);
@@ -84,7 +84,7 @@ int ClientSideDataChannelIMUBNO080::handleSensorInputRecord(unsigned char* data,
         case SH2Constants::SENSOR_PRESSURE:            // 0x0a
         case SH2Constants::SENSOR_AMBIENT_LIGHT:       // 0x0b
             {
-                signed short svalue = sh2GetU32(data+4);
+                signed long svalue = sh2GetU32(data+4);
                 double value = (double) svalue / (double)(1 << sh2GetSensorQPoint(sensorid));
                 lastScalar[sensorid - 0x0a] = TimestampedScalar((int) (myTime/1000000), (int) (myTime%1000000), status, value);
                 ringbufScalar[sensorid - 0x0a].pushData(lastScalar[sensorid - 0x0a]);
@@ -143,6 +143,7 @@ void ClientSideDataChannelIMUBNO080::handleChunk(unsigned char* data, int datale
 }
 
 int ClientSideDataChannelIMUBNO080::handleMessage(DataChannelMessage& message, sockaddr_in* sender) {
+    (void) sender; // unused here
     unsigned char* data = message.payload;
     int datalen = message.header.payloadSize;
     while (datalen > 0) {

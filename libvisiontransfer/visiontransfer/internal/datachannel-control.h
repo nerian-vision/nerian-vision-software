@@ -55,7 +55,7 @@ public:
     static int packAdvertisementMessage(unsigned char* data, int datalen, DataChannelControlCommands::Command cmd, const std::map<DataChannel::ID, std::shared_ptr<DataChannel> >& channels) {
         int origDataLen = datalen;
         if (datalen < 3) throw std::runtime_error("Buffer too small");
-        *((uint16_t*)data) = htons(cmd);
+        *((uint16_t*)data) = htons((short) cmd);
         uint8_t num = (uint8_t) std::min(255, (int) channels.size()); // pack 255 items max
         data[2] = num;
         // payload
@@ -98,7 +98,7 @@ public:
     // Subscriptions (connected services)
     static int packSubscriptionMessage(unsigned char* data, int datalen, DataChannelControlCommands::Command cmd, const std::vector<DataChannel::ID>& subscriptions) {
         if (datalen < 4) throw std::runtime_error("Buffer too small");
-        *((uint16_t*)data) = htons(cmd);
+        *((uint16_t*)data) = htons((short) cmd);
         uint8_t num = (uint8_t) std::min(255, (int) subscriptions.size());
         data[2] = num; // pack 255 items max
         data += 3; datalen -= 3;

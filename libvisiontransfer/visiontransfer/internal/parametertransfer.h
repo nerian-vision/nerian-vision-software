@@ -316,11 +316,6 @@ private:
     void receiverRoutine();
     void process();
 
-    void readParameter(unsigned char messageType, const char* id, unsigned char* dest, int length);
-    void recvData(unsigned char* dest, int length);
-
-    std::map<std::string, ParameterInfo> recvEnumeration();
-
     template<typename T>
     void writeParameterTransactionGuardedImpl(const char* id, const T& value);
 

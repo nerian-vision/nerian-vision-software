@@ -195,8 +195,8 @@ public:
     inline void toOpenCVImage(int imageNumber, cv::Mat& dest, bool convertRgbToBgr = true);
 #endif
 
-    void setExposureTime(int timeMicrosec) {
-        exposureTime = timeMicrosec;
+    void setExposureTime(int exposureTimeMicrosec) {
+        exposureTime = exposureTimeMicrosec;
     }
 
     int getExposureTime() const {
