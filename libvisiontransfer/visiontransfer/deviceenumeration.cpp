@@ -17,6 +17,7 @@
 #include <sstream>
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 #include "visiontransfer/deviceenumeration.h"
 #include "visiontransfer/exceptions.h"
@@ -26,19 +27,6 @@
 using namespace std;
 using namespace visiontransfer;
 using namespace visiontransfer::internal;
-
-
-// DEBUG OUTPUT
-#ifdef _WIN32
-#include <fstream>
-    std::fstream debugStreamDeviceEnum("C:\\debug\\visiontransfer-device-enumeration-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
-#else
-#include <iostream>
-    std::ostream& debugStreamDeviceEnum = std::cout;
-#endif
-std::chrono::system_clock::time_point debugStreamDeviceEnumInitTime = std::chrono::system_clock::now();
-#define DEBUG_DEVICE_ENUM_THREAD_ID " (thread " << std::this_thread::get_id() << ") "
-#define DEBUG_DEVICE_ENUM(x) debugStreamDeviceEnum << std::dec << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamDeviceEnumInitTime).count() << ": " << DEBUG_DEVICE_ENUM_THREAD_ID << x << std::endl;
 
 namespace visiontransfer {
 
@@ -51,25 +39,25 @@ public:
     DeviceInfo* getDevicesPointer(int* numDevices);
 
 private:
-    static constexpr int RESPONSE_WAIT_TIME_MS = 50;
+    static constexpr int RESPONSE_WAIT_TIME_MS_INITIAL = 200;
+    static constexpr int RESPONSE_WAIT_TIME_MS_FOLLOWUP = 50;
     SOCKET sock;
     std::vector<DeviceInfo> deviceList;
 
     std::vector<sockaddr_in> findBroadcastAddresses();
     void sendDiscoverBroadcast();
     DeviceEnumeration::DeviceList collectDiscoverResponses();
+    void setSocketTimeout(int msec);
 };
 
 /******************** Stubs for all public members ********************/
 
 DeviceEnumeration::DeviceEnumeration():
         pimpl(new Pimpl()) {
-    DEBUG_DEVICE_ENUM("DeviceEnumeration()");
     // All initialization in the pimpl class
 }
 
 DeviceEnumeration::~DeviceEnumeration() {
-    DEBUG_DEVICE_ENUM("~DeviceEnumeration()");
     delete pimpl;
 }
 
@@ -96,13 +84,17 @@ DeviceEnumeration::Pimpl::Pimpl() {
         throw ex;
     }
 
+    setSocketTimeout(RESPONSE_WAIT_TIME_MS_INITIAL);
+}
+
+void DeviceEnumeration::Pimpl::setSocketTimeout(int msec) {
     // Set sending and receive timeouts
 #ifdef _WIN32
-    unsigned int timeout = RESPONSE_WAIT_TIME_MS;
+    unsigned int timeout = msec;
 #else
     struct timeval timeout;
     timeout.tv_sec = 0;
-    timeout.tv_usec = RESPONSE_WAIT_TIME_MS*1000;
+    timeout.tv_usec = msec*1000;
 #endif
 
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<char*>(&timeout), sizeof(timeout));
@@ -114,7 +106,9 @@ DeviceEnumeration::Pimpl::~Pimpl() {
 }
 
 DeviceInfo* DeviceEnumeration::Pimpl::getDevicesPointer(int* numDevices) {
-    DEBUG_DEVICE_ENUM("Started discovery");
+    // New discovery call; make sure to reset to default wait time
+    setSocketTimeout(RESPONSE_WAIT_TIME_MS_INITIAL);
+
     sendDiscoverBroadcast();
     deviceList = collectDiscoverResponses();
 
@@ -138,11 +132,10 @@ void DeviceEnumeration::Pimpl::sendDiscoverBroadcast() {
                 (struct sockaddr *) &addr, sizeof(addr));
         if (sendResult != sizeof(InternalInformation::DISCOVERY_BROADCAST_MSG)-1) {
             hadError = true;
-            DEBUG_DEVICE_ENUM("Broadcast FAIL on " << ipStr);
-        } else {
-            DEBUG_DEVICE_ENUM("Broadcast OK on " << ipStr);
+            std::string errStr = Networking::getLastErrorString();
+            std::replace_if(errStr.begin(), errStr.end(), [](const char c){ return (c=='\n' || c=='\r'); }, ' ');
+            ss << " " << ipStr << "(" << errStr << "/" << sendResult << ")";
         }
-        ss << " " << ipStr << "(" << Networking::getLastErrorString() << "/" << sendResult << ")";
     }
     if (hadError) {
         throw std::runtime_error(ss.str());
@@ -152,10 +145,6 @@ void DeviceEnumeration::Pimpl::sendDiscoverBroadcast() {
 DeviceEnumeration::DeviceList DeviceEnumeration::Pimpl::collectDiscoverResponses() {
     DeviceList ret;
 
-    constexpr long MAX_MS_WAIT_FOR_REPLIES = 500;
-
-    DEBUG_DEVICE_ENUM("Collecting responses for " << MAX_MS_WAIT_FOR_REPLIES << " msec");
-    std::chrono::steady_clock::time_point tStart = std::chrono::steady_clock::now();
     while(true) {
         InternalInformation::DiscoveryMessage msg;
         sockaddr_in senderAddress;
@@ -164,19 +153,17 @@ DeviceEnumeration::DeviceList DeviceEnumeration::Pimpl::collectDiscoverResponses
         int received = recvfrom(sock, reinterpret_cast<char*>(&msg), sizeof(msg),
             0, (sockaddr *)&senderAddress, &senderLength);
 
-        long elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tStart).count();
-
         if(received < 0) {
             // There are no more replies
-            if (elapsed > MAX_MS_WAIT_FOR_REPLIES) break; // Maximum collection time exceeded
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            continue;
+            break;
         }
+
+        // Reduce the timeout for additional reply packets
+        setSocketTimeout(RESPONSE_WAIT_TIME_MS_FOLLOWUP);
+
         bool isLegacy = received == (int) sizeof(InternalInformation::DiscoveryMessageBasic);
 
         char* ip_addr = inet_ntoa(senderAddress.sin_addr);
-
-        DEBUG_DEVICE_ENUM("Received reply from " << ip_addr << " at " << elapsed << " msec");
 
         bool isLegacyWithStatusInfo = received == (int) sizeof(InternalInformation::DiscoveryMessageWithStatus);
         if(!(isLegacy||isLegacyWithStatusInfo)) {
@@ -184,7 +171,6 @@ DeviceEnumeration::DeviceList DeviceEnumeration::Pimpl::collectDiscoverResponses
                || ((received < (int) sizeof(InternalInformation::DiscoveryMessageExtensibleV1)) && (msg.discoveryExtensionVersion >= 0x01))
                 ) {
                 // Malformed message, truncated relative to reported format
-                DEBUG_DEVICE_ENUM("  (rejected malformed reply)");
                 continue;
             }
         }
@@ -230,8 +216,6 @@ DeviceEnumeration::DeviceList DeviceEnumeration::Pimpl::collectDiscoverResponses
         ret.push_back(info);
     }
 
-    DEBUG_DEVICE_ENUM("# of received responses: " << ret.size());
-    DEBUG_DEVICE_ENUM("-----------------------------");
     return ret;
 }
 
