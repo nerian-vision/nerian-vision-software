@@ -143,12 +143,13 @@ void internal::DataChannelServiceImpl::unsubscribeAll() {
     sendDataIsolatedPacket((DataChannel::ID) 0x00, DataChannel::Types::CONTROL, data, len, &serverAddr);
 }
 
-int internal::DataChannelServiceImpl::handleChannel0Message(DataChannelMessage& message, sockaddr_in* sender) {
-    auto cmd = DataChannelControlUtil::getCommand(message.payload, message.header.payloadSize);
+int internal::DataChannelServiceImpl::handleChannel0Message(DataChannelMessage& msg, sockaddr_in* sender) {
+    (void) sender; // unused now
+    auto cmd = DataChannelControlUtil::getCommand(msg.payload, msg.header.payloadSize);
     switch (cmd) {
         case DataChannelControlCommands::CTLProvideAdvertisement: {
                 // Update the available channels lists for run-time checks etc.
-                channelsAvailable = DataChannelControlUtil::unpackAdvertisementMessage(message.payload, message.header.payloadSize);
+                channelsAvailable = DataChannelControlUtil::unpackAdvertisementMessage(msg.payload, msg.header.payloadSize);
                 for (auto& dci: channelsAvailable) {
                     channelsAvailableByType[dci.getChannelType()].insert(dci.getChannelID());
                 }

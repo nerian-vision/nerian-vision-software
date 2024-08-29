@@ -249,7 +249,7 @@ std::vector<sockaddr_in> DeviceEnumeration::Pimpl::findBroadcastAddresses() {
                 const unsigned char* ipParts = reinterpret_cast<const unsigned char*>(&(sinp->sin_addr.s_addr));
                 if (!(  (ipParts[0]==127 && ipParts[1]==0 && ipParts[2]==0 && ipParts[3]==1)  // exclude loopback 127.0.0.1
                      || (ipParts[0]==169 && ipParts[1]==254)                                  // exclude link-local 169.254.x.x
-                     )) {
+                    )) {
                     ret.push_back(*sinp);
                 }
             }

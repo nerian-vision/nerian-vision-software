@@ -47,54 +47,54 @@ ParameterInfo::ParameterInfo()
     pimpl = new ParameterInfo::Pimpl();
 }
 
-template<> void ParameterInfo::Pimpl::set(const std::string& name, bool writeable, int value, int min, int max, int inc)
+template<> void ParameterInfo::Pimpl::set(const std::string& name_, bool writeable_, int value_, int min_, int max_, int inc_)
 {
-    this->name = name;
+    this->name = name_;
     this->type = ParameterInfo::TYPE_INT;
-    this->writeable = writeable;
-    this->value.intVal = value;
-    this->min.intVal = min;
-    this->max.intVal = max;
-    this->inc.intVal = inc;
+    this->writeable = writeable_;
+    this->value.intVal = value_;
+    this->min.intVal = min_;
+    this->max.intVal = max_;
+    this->inc.intVal = inc_;
 }
-template<> void ParameterInfo::Pimpl::set(const std::string& name, bool writeable, double value, double min, double max, double inc)
+template<> void ParameterInfo::Pimpl::set(const std::string& name_, bool writeable_, double value_, double min_, double max_, double inc_)
 {
-    this->name = name;
+    this->name = name_;
     this->type = ParameterInfo::TYPE_DOUBLE;
-    this->writeable = writeable;
-    this->value.doubleVal = value;
-    this->min.doubleVal = min;
-    this->max.doubleVal = max;
-    this->inc.doubleVal = inc;
+    this->writeable = writeable_;
+    this->value.doubleVal = value_;
+    this->min.doubleVal = min_;
+    this->max.doubleVal = max_;
+    this->inc.doubleVal = inc_;
 }
-template<> void ParameterInfo::Pimpl::set(const std::string& name, bool writeable, bool value, bool min, bool max, bool inc)
+template<> void ParameterInfo::Pimpl::set(const std::string& name_, bool writeable_, bool value_, bool min_, bool max_, bool inc_)
 {
-    this->name = name;
+    this->name = name_;
     this->type = ParameterInfo::TYPE_BOOL;
-    this->writeable = writeable;
-    this->value.boolVal = value;
-    this->min.boolVal = min;
-    this->max.boolVal = max;
-    this->inc.boolVal = inc;
+    this->writeable = writeable_;
+    this->value.boolVal = value_;
+    this->min.boolVal = min_;
+    this->max.boolVal = max_;
+    this->inc.boolVal = inc_;
 }
 
-ParameterInfo ParameterInfo::fromInt(const std::string& name, bool writeable,
-        int value, int min, int max, int inc) {
+ParameterInfo ParameterInfo::fromInt(const std::string& name_, bool writeable_,
+        int value_, int min_, int max_, int inc_) {
     ParameterInfo pi;
-    pi.pimpl->set<int>(name, writeable, value, min, max, inc);
+    pi.pimpl->set<int>(name_, writeable_, value_, min_, max_, inc_);
     return pi;
 }
 
-ParameterInfo ParameterInfo::fromDouble(const std::string& name, bool writeable,
-        double value, double min, double max, double inc) {
+ParameterInfo ParameterInfo::fromDouble(const std::string& name_, bool writeable_,
+        double value_, double min_, double max_, double inc_) {
     ParameterInfo pi;
-    pi.pimpl->set<double>(name, writeable, value, min, max, inc);
+    pi.pimpl->set<double>(name_, writeable_, value_, min_, max_, inc_);
     return pi;
 }
 
-ParameterInfo ParameterInfo::fromBool(const std::string& name, bool writeable, bool value) {
+ParameterInfo ParameterInfo::fromBool(const std::string& name_, bool writeable_, bool value_) {
     ParameterInfo pi;
-    pi.pimpl->set<bool>(name, writeable, value, 0, 1, 1);
+    pi.pimpl->set<bool>(name_, writeable_, value_, 0, 1, 1);
     return pi;
 }
 

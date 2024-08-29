@@ -146,7 +146,7 @@ void DataBlockProtocol::setTransferHeader(unsigned char* data, int headerSize, i
 
     unsigned short netHeaderSize = htons(static_cast<unsigned short>(headerSize));
     ourHeader->netHeaderSize = netHeaderSize;
-    ourHeader->netTransferSizeDummy = htonl(-1); // clashes on purpose with old recipients
+    ourHeader->netTransferSizeDummy = -1; // clashes on purpose with old recipients
     for (int i=0; i<MAX_DATA_BLOCKS; ++i) {
         ourHeader->netTransferSizes[i] = 0;
     }
@@ -359,8 +359,8 @@ unsigned char* DataBlockProtocol::getNextReceiveBuffer(int maxLength) {
     return &receiveBuffer[receiveOffset];
 }
 
-void DataBlockProtocol::processReceivedMessage(int length, bool& transferComplete) {
-    transferComplete = false;
+void DataBlockProtocol::processReceivedMessage(int length, bool& transferCompleted) {
+    transferCompleted = false;
     if(length <= 0) {
         return; // Nothing received
     }
@@ -375,15 +375,16 @@ void DataBlockProtocol::processReceivedMessage(int length, bool& transferComplet
     lastReceivedAnything = std::chrono::steady_clock::now();
 
     if(protType == PROTOCOL_UDP) {
-        processReceivedUdpMessage(length, transferComplete);
+        processReceivedUdpMessage(length, transferCompleted);
     } else {
-        processReceivedTcpMessage(length, transferComplete);
+        processReceivedTcpMessage(length, transferCompleted);
     }
 
-    transferComplete = finishedReception;
+    transferCompleted = finishedReception;
 }
 
-void DataBlockProtocol::processReceivedUdpMessage(int length, bool& transferComplete) {
+void DataBlockProtocol::processReceivedUdpMessage(int length, bool& transferCompleted) {
+    (void) transferCompleted; // unused now
     if(length < static_cast<int>(sizeof(int)) ||
             0 + length > static_cast<int>(receiveBuffer.size())) {
         throw ProtocolException("Received message size is invalid!");
@@ -502,15 +503,16 @@ void DataBlockProtocol::integrateMissingUdpSegments(int block, int lastSegmentOf
             } else if (missingReceiveSegments[block].size() > 0) {
                 // Another lost segment
                 int newBlock, newOffset;
-                MissingReceiveSegment& firstSeg = missingReceiveSegments[block].front();
-                splitRawOffset(firstSeg.offset, newBlock, newOffset);
+                MissingReceiveSegment& nextSeg = missingReceiveSegments[block].front();
+                splitRawOffset(nextSeg.offset, newBlock, newOffset);
                 blockReceiveOffsets[block] = newOffset;
             }
         }
     }
 }
 
-void DataBlockProtocol::processReceivedTcpMessage(int length, bool& transferComplete) {
+void DataBlockProtocol::processReceivedTcpMessage(int length, bool& transferCompleted) {
+    (void) transferCompleted; // unused now
     // In TCP mode the header must be the first data item to be transmitted
     if(!headerReceived) {
         int totalHeaderSize = parseReceivedHeader(length, 0);

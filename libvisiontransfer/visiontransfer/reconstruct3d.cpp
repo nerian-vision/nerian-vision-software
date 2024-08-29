@@ -554,14 +554,14 @@ void Reconstruct3D::Pimpl::writePlyFile(const char* file, const unsigned short* 
         int imageRowStride, const float* q, double maxZ, bool binary, int subpixelFactor,
         unsigned short maxDisparity) {
 
-    float* pointMap = createPointMap(dispMap, width, height, dispRowStride,
+    float* pointMapTemp = createPointMap(dispMap, width, height, dispRowStride,
         q, 0, subpixelFactor, maxDisparity);
 
     // Count number of valid points
     int pointsCount = 0;
     if(maxZ >= 0) {
         for(int i=0; i<width*height; i++) {
-            if(pointMap[4*i+2] <= maxZ && pointMap[4*i+2] > 0) {
+            if(pointMapTemp[4*i+2] <= maxZ && pointMapTemp[4*i+2] > 0) {
                 pointsCount++;
             }
         }
@@ -596,10 +596,10 @@ void Reconstruct3D::Pimpl::writePlyFile(const char* file, const unsigned short* 
         int y = i / width;
         int x = i % width;
 
-        if((maxZ < 0 || pointMap[4*i+2] <= maxZ) && pointMap[4*i+2] > 0) {
+        if((maxZ < 0 || pointMapTemp[4*i+2] <= maxZ) && pointMapTemp[4*i+2] > 0) {
             if(binary) {
                 // Write binary format
-                strm.write(reinterpret_cast<char*>(&pointMap[4*i]), sizeof(float)*3);
+                strm.write(reinterpret_cast<char*>(&pointMapTemp[4*i]), sizeof(float)*3);
                 if (image == nullptr) {
                     // disparity only, no image data
                 } else if(format == ImageSet::FORMAT_8_BIT_RGB) {
@@ -620,10 +620,10 @@ void Reconstruct3D::Pimpl::writePlyFile(const char* file, const unsigned short* 
                 }
             } else {
                 // Write ASCII format
-                if(std::isfinite(pointMap[4*i + 2])) {
-                    strm << pointMap[4*i]
-                        << " " << pointMap[4*i + 1]
-                        << " " << pointMap[4*i + 2];
+                if(std::isfinite(pointMapTemp[4*i + 2])) {
+                    strm << pointMapTemp[4*i]
+                        << " " << pointMapTemp[4*i + 1]
+                        << " " << pointMapTemp[4*i + 2];
                 } else {
                     strm << "NaN NaN NaN";
                 }

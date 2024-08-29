@@ -108,16 +108,6 @@ void ParameterTransfer::waitNetworkReady() const {
     }
 }
 
-void ParameterTransfer::readParameter(unsigned char messageType, const char* id, unsigned char* dest, int length) {
-    waitNetworkReady();
-    if (networkError) {
-        // collecting deferred error from background thread
-        throw TransferException("ParameterTransfer currently not operational: " + networkErrorString);
-    }
-
-    for (int i=0; i<length; ++i) { dest[i] = '\0'; } // PLACEHOLDER
-}
-
 void ParameterTransfer::sendNetworkCommand(const std::string& cmdline, const std::string& diagStr) {
     std::unique_lock<std::mutex> localLock(socketModificationMutex);
     if (socket == INVALID_SOCKET) {

@@ -194,12 +194,12 @@ public:
      * \brief Handles a received network message.
      *
      * \param length Length of the received network message.
-     * \param transferComplete Set to true if a new transfer is complete after
+     * \param transferCompleted Set to true if a new transfer is complete after
      *        receiving the current packet
      *
      * Please see ImageProtocol::processReceivedMessage() for further details.
      */
-    void processReceivedMessage(int length, bool& transferComplete);
+    void processReceivedMessage(int length, bool& transferCompleted);
 
     /**
      * \brief Returns the data that has been received for the current transfer.
@@ -405,8 +405,8 @@ private:
     void parseResendMessage(int length);
     void parseEofMessage(int length);
     void integrateMissingUdpSegments(int block, int lastSegmentOffset, int lastSegmentSize);
-    void processReceivedUdpMessage(int length, bool& transferComplete);
-    void processReceivedTcpMessage(int length, bool& transferComplete);
+    void processReceivedUdpMessage(int length, bool& transferCompleted);
+    void processReceivedTcpMessage(int length, bool& transferCompleted);
     void resizeReceiveBuffer();
     int parseReceivedHeader(int length, int offset);
     void zeroStructures();

@@ -66,21 +66,21 @@ void DataChannelServiceBase::process() {
         received = recvfrom(dataChannelSocket, (char*) buffer, sizeof(buffer), 0, (sockaddr *)&senderAddress, &senderLength);
         if ((received > 0) && ((unsigned)received >= sizeof(DataChannelMessageHeader))) {
             DataChannelMessageHeader* raw = reinterpret_cast<DataChannelMessageHeader*>(buffer);
-            DataChannelMessage message;
-            message.header.channelID = (DataChannel::ID) raw->channelID;
-            message.header.channelType = (DataChannel::Type) raw->channelType;
-            message.header.payloadSize = ntohl(raw->payloadSize);
-            message.payload = buffer + sizeof(DataChannelMessageHeader);
-            if ((sizeof(DataChannelMessageHeader) + message.header.payloadSize) != (unsigned) received) {
-                std::cerr << "DataChannelServiceBase: Size mismatch in UDP message, type " << (int) message.header.channelType << " ID " << (int) message.header.channelID << " - discarded!" << std::endl;
+            DataChannelMessage msg;
+            msg.header.channelID = (DataChannel::ID) raw->channelID;
+            msg.header.channelType = (DataChannel::Type) raw->channelType;
+            msg.header.payloadSize = ntohl(raw->payloadSize);
+            msg.payload = buffer + sizeof(DataChannelMessageHeader);
+            if ((sizeof(DataChannelMessageHeader) + msg.header.payloadSize) != (unsigned) received) {
+                std::cerr << "DataChannelServiceBase: Size mismatch in UDP message, type " << (int) msg.header.channelType << " ID " << (int) msg.header.channelID << " - discarded!" << std::endl;
             } else {
-                if (!(message.header.channelType)) {
-                    handleChannel0Message(message, &senderAddress);
+                if (!(msg.header.channelType)) {
+                    handleChannel0Message(msg, &senderAddress);
                 } else {
                     // Try to find a matching registered channel to handle the message
-                    auto it = channels.find(message.header.channelID);
+                    auto it = channels.find(msg.header.channelID);
                     if (it != channels.end()) {
-                        it->second->handleMessage(message, &senderAddress);
+                        it->second->handleMessage(msg, &senderAddress);
                     }
                 }
             }
