@@ -38,7 +38,7 @@ public:
     enum ParameterType {
         TYPE_INT                                 = 1,
         TYPE_DOUBLE                              = 2,
-        TYPE_BOOL                                = 3,
+        TYPE_BOOL                                = 3
     };
 
     ParameterInfo();

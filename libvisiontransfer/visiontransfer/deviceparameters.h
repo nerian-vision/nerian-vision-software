@@ -484,7 +484,7 @@ public:
         RIGHT_FRAME = 1,
 
         /// Control using both frames
-        BOTH_FRAMES = 2,
+        BOTH_FRAMES = 2
     };
 
     /**

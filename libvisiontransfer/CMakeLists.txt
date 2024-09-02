@@ -114,6 +114,10 @@ if (MSVC)
     # Enable feature for correct reporting of __cplusplus
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:__cplusplus")
 endif()
+if (NOT WIN32)
+    # Activate more warnings despite the external settings
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+endif()
 
 
 # Search for python3

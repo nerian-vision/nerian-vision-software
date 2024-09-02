@@ -32,7 +32,7 @@
 
 using namespace visiontransfer;
 
-int main(int argc, const char** argv) {
+int main() {
     try {
         // Search for Nerian stereo devices
         DeviceEnumeration deviceEnum;

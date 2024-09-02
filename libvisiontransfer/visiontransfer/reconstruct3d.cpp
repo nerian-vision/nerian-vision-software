@@ -403,7 +403,7 @@ float* Reconstruct3D::Pimpl::createPointMapSSE2(const unsigned short* dispMap, i
     // More constants that we need
     const __m128i minDispVector = _mm_set1_epi16(minDisparity);
     const __m128i maxDispVector = _mm_set1_epi16(maxDisparity);
-    const __m128 scaleVector = _mm_set1_ps(1.0/double(subpixelFactor));
+    const __m128 scaleVector = _mm_set1_ps(1.0f/float(subpixelFactor));
     const __m128i zeroVector = _mm_set1_epi16(0);
 
     float* outputPtr = &pointMap[0];

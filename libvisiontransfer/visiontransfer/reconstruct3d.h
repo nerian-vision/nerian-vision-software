@@ -46,7 +46,7 @@ public:
         /// Copy color data from left camera
         COLOR_LEFT,
         /// Copy color data from 3rd color camera
-        COLOR_THIRD_COLOR,
+        COLOR_THIRD_COLOR
     };
 
     /**

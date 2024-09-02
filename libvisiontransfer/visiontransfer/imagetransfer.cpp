@@ -783,6 +783,7 @@ bool ImageTransfer::Pimpl::isTcpClientClosed(SOCKET sock) {
 }
 
 bool ImageTransfer::Pimpl::selectSocket(bool read, bool wait) {
+    (void) read; // used in Windows
     SOCKET sock;
     {
         unique_lock<recursive_mutex> lock(sendMutex); // Either mutex will do
