@@ -36,7 +36,8 @@ namespace visiontransfer {
 class ImageTransfer::Pimpl {
 public:
     Pimpl(const char* address, const char* service, ImageProtocol::ProtocolType protType,
-        bool server, int bufferSize, int maxUdpPacketSize, int autoReconnectDelay);
+        bool server, int bufferSize, int maxUdpPacketSize, int autoReconnectDelay,
+        const std::vector<ExternalBufferSet>& externalBufferSets);
     ~Pimpl();
 
     // Redeclaration of public members
@@ -90,6 +91,9 @@ private:
     // User callback for connection state changes
     std::function<void(visiontransfer::ConnectionState)> connectionStateChangeCallback;
 
+    // The registered external sets of buffers
+    std::map<ImageSet::ExternalBufferHandle, ExternalBufferSet> externalBufferPool;
+
     // Socket configuration
     void setSocketOptions();
 
@@ -109,21 +113,67 @@ private:
     bool isTcpClientClosed(SOCKET sock);
 };
 
+class ImageTransfer::Config::Pimpl {
+    public:
+        Pimpl(const char* address);
+        Pimpl(DeviceInfo& deviceInfo);
+        //
+        inline void setAddress(const char* address_) { address = address_; address_c = address.c_str(); }
+        inline void setService(const char* service_) { service = service_; service_c = service.c_str(); }
+        inline void setProtocolType(ImageProtocol::ProtocolType protType) { protocolType = protType; }
+        inline void setServer(bool server) { isServer = server; }
+        inline void setBufferSize(int bufferSize_) { bufferSize = bufferSize_; }
+        inline void setMaxUdpPacketSize(int maxUdpPacketSize_) { maxUdpPacketSize = maxUdpPacketSize_; }
+        inline void setAutoReconnectDelay(int autoReconnectDelay_) { autoReconnectDelay = autoReconnectDelay_; }
+        inline void addExternalBufferSet(ExternalBufferSet bufset) { externalBufferSets.push_back(bufset); }
+        //
+        const char* getAddress() const { return address_c; }
+        const char* getService() const { return service_c; }
+        ImageProtocol::ProtocolType getProtocolType() const { return protocolType; }
+        bool getServer() const { return isServer; }
+        int getBufferSize() const { return bufferSize; }
+        int getMaxUdpPacketSize() const { return maxUdpPacketSize; }
+        int getAutoReconnectDelay() const { return autoReconnectDelay; }
+        std::vector<ExternalBufferSet> getExternalBufferSets() const { return externalBufferSets; }
+    private:
+        std::string address;
+        std::string service;
+        const char* address_c;
+        const char* service_c;
+        ImageProtocol::ProtocolType protocolType;
+        bool isServer;
+        int bufferSize;
+        int maxUdpPacketSize;
+        int autoReconnectDelay;
+        std::vector<ExternalBufferSet> externalBufferSets;
+};
+
 /******************** Stubs for all public members ********************/
 
 ImageTransfer::ImageTransfer(const char* address, const char* service,
         ImageProtocol::ProtocolType protType, bool server, int bufferSize, int maxUdpPacketSize,
         int autoReconnectDelay):
         pimpl(new Pimpl(address, service, protType, server, bufferSize, maxUdpPacketSize,
-                autoReconnectDelay)) {
+                autoReconnectDelay, std::vector<ExternalBufferSet>{})) {
     // All initialization in the pimpl class
 }
 
 ImageTransfer::ImageTransfer(const DeviceInfo& device, int bufferSize, int maxUdpPacketSize,
         int autoReconnectDelay):
         pimpl(new Pimpl(device.getIpAddress().c_str(), "7681", static_cast<ImageProtocol::ProtocolType>(device.getNetworkProtocol()),
-        false, bufferSize, maxUdpPacketSize, autoReconnectDelay)) {
+        false, bufferSize, maxUdpPacketSize, autoReconnectDelay, std::vector<ExternalBufferSet>{})) {
     // All initialization in the pimpl class
+}
+
+ImageTransfer::ImageTransfer(const ImageTransfer::Config& conf) {
+    std::vector<ExternalBufferSet> bufferSets;
+    for (size_t i=0; i<conf.getNumExternalBufferSets(); ++i) {
+        bufferSets.push_back(conf.getExternalBufferSet(i));
+    }
+    // All initialization in the pimpl class
+    pimpl = new Pimpl(conf.getAddress(), conf.getService(), conf.getProtocolType(), conf.getServer(),
+            conf.getBufferSize(), conf.getMaxUdpPacketSize(), conf.getAutoReconnectDelay(),
+            bufferSets);
 }
 
 ImageTransfer::~ImageTransfer() {
@@ -185,16 +235,109 @@ void ImageTransfer::setAutoReconnect(int secondsBetweenRetries) {
     pimpl->setAutoReconnect(secondsBetweenRetries);
 }
 
-/******************** Implementation in pimpl class *******************/
+// ImageTransfer::Config
+
+ImageTransfer::Config::Config(const char* address)
+: pimpl( new ImageTransfer::Config::Pimpl(address)) {
+}
+
+ImageTransfer::Config::Config(DeviceInfo& deviceInfo)
+: pimpl( new ImageTransfer::Config::Pimpl(deviceInfo)) {
+}
+ImageTransfer::Config::~Config() {
+    delete pimpl;
+}
+
+ImageTransfer::Config& ImageTransfer::Config::setAddress(const char* address) {
+    pimpl->setAddress(address);
+    return *this;
+}
+ImageTransfer::Config& ImageTransfer::Config::setService(const char* service) {
+    pimpl->setService(service);
+    return *this;
+}
+ImageTransfer::Config& ImageTransfer::Config::setProtocolType(ImageProtocol::ProtocolType protType) {
+    pimpl->setProtocolType(protType);
+    return *this;
+}
+ImageTransfer::Config& ImageTransfer::Config::setServer(bool server) {
+    pimpl->setServer(server);
+    return *this;
+}
+ImageTransfer::Config& ImageTransfer::Config::setBufferSize(int bufferSize) {
+    pimpl->setBufferSize(bufferSize);
+    return *this;
+}
+ImageTransfer::Config& ImageTransfer::Config::setMaxUdpPacketSize(int maxUdpPacketSize) {
+    pimpl->setMaxUdpPacketSize(maxUdpPacketSize);
+    return *this;
+}
+ImageTransfer::Config& ImageTransfer::Config::setAutoReconnectDelay(int autoReconnectDelay) {
+    pimpl->setAutoReconnectDelay(autoReconnectDelay);
+    return *this;
+}
+ImageTransfer::Config& ImageTransfer::Config::addExternalBufferSet(ExternalBufferSet bufset) {
+    pimpl->addExternalBufferSet(bufset);
+    return *this;
+}
+
+const char* ImageTransfer::Config::getAddress() const {
+    return pimpl->getAddress();
+}
+const char* ImageTransfer::Config::getService() const {
+    return pimpl->getService();
+}
+ImageProtocol::ProtocolType ImageTransfer::Config::getProtocolType() const {
+    return pimpl->getProtocolType();
+}
+bool ImageTransfer::Config::getServer() const {
+    return pimpl->getServer();
+}
+int ImageTransfer::Config::getBufferSize() const {
+    return pimpl->getBufferSize();
+}
+int ImageTransfer::Config::getMaxUdpPacketSize() const {
+    return pimpl->getMaxUdpPacketSize();
+}
+int ImageTransfer::Config::getAutoReconnectDelay() const {
+    return pimpl->getAutoReconnectDelay();
+}
+size_t ImageTransfer::Config::getNumExternalBufferSets() const {
+    return pimpl->getExternalBufferSets().size();
+}
+ExternalBufferSet ImageTransfer::Config::getExternalBufferSet(size_t idx) const {
+    return pimpl->getExternalBufferSets().at(idx);
+}
+
+
+/******************** Implementation in pimpl classes *******************/
+
+// ImageTransfer
+
 ImageTransfer::Pimpl::Pimpl(const char* address, const char* service,
         ImageProtocol::ProtocolType protType, bool server, int
-        bufferSize, int maxUdpPacketSize, int autoReconnectDelay)
+        bufferSize, int maxUdpPacketSize, int autoReconnectDelay,
+        const std::vector<ExternalBufferSet>& externalBufferSets)
         : protType(protType), isServer(server), bufferSize(bufferSize),
         maxUdpPacketSize(maxUdpPacketSize),
         clientSocket(INVALID_SOCKET), tcpServerSocket(INVALID_SOCKET),
         tcpReconnectSecondsBetweenRetries(autoReconnectDelay),
         knownConnectedState(false), gotAnyData(false),
         currentMsgLen(0), currentMsgOffset(0), currentMsg(nullptr) {
+
+    // Initialize the buffer store (and handle lookup table)
+    for (auto& bufset: externalBufferSets) {
+        std::cout << "DEBUG: Adding an ExternalBufferSet, handle " << bufset.getHandle() << ", consisting of:" << std::endl;
+        for (size_t i=0; i<bufset.getNumBuffers(); ++i) {
+            auto const& buf = bufset.getBuffer(i);
+            std::cout << "DEBUG:     ExternalBuffer of size " << buf.getBufferSize() << " at address " << ((off_t) buf.getBufferPtr()) << " with target layout mapping: " << std::endl;
+            for (size_t j=0; j<buf.getNumParts(); ++j) {
+                auto const& part = buf.getPart(j);
+                std::cout << "DEBUG:         ImageType " << part.imageType << " with conversion flags " << part.conversionFlags << " reserveBits " << part.reserveBits << std::endl;
+            }
+        }
+        externalBufferPool[bufset.getHandle()] = bufset;
+    }
 
     Networking::initNetworking();
 #ifndef _WIN32
@@ -515,7 +658,23 @@ bool ImageTransfer::Pimpl::receivePartialImageSet(ImageSet& imageSet,
     }
 
     // Get received image
-    return protocol->getPartiallyReceivedImageSet(imageSet, validRows, complete);
+    bool result = protocol->getPartiallyReceivedImageSet(imageSet, validRows, complete);
+
+    // If the image set was completed now (and the transfer has hence reset),
+    // make sure that the next external available buffer set is rotated in (if enabled)
+    // // RYT
+    /*
+    if (externalReceiveBuffersActive) {
+        if (complete) {
+            ExternalBufferSet bufset = getAvailableExternalBufferSet();
+            protocol->setExternalBufferSet(bufset);
+            // May have returned empty bufset if all buffer sets have not returned from external control!
+            // The protocol will then discard any incoming data until a new buffer set is provided.
+        }
+    }
+    */
+
+    return result;
 }
 
 bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
@@ -833,6 +992,24 @@ void ImageTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(v
 
 void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
     tcpReconnectSecondsBetweenRetries = secondsBetweenRetries;
+}
+
+// ImageTransfer::Config
+
+ImageTransfer::Config::Pimpl::Pimpl(const char* address_)
+: address(address_), service("7681"), protocolType(ImageProtocol::PROTOCOL_UDP),
+  isServer(false), bufferSize(16*1048576), maxUdpPacketSize(1472),
+  autoReconnectDelay(1) {
+      address_c = address.c_str();
+      service_c = service.c_str();
+}
+
+ImageTransfer::Config::Pimpl::Pimpl(DeviceInfo& device)
+: address(device.getIpAddress().c_str()), service("7681"), protocolType(static_cast<ImageProtocol::ProtocolType>(device.getNetworkProtocol())),
+  isServer(false), bufferSize(16*1048576), maxUdpPacketSize(1472),
+  autoReconnectDelay(1) {
+      address_c = address.c_str();
+      service_c = service.c_str();
 }
 
 } // namespace

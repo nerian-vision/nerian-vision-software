@@ -45,6 +45,7 @@ public:
     Pimpl(const char* address, const char* service,
         ImageProtocol::ProtocolType protType, bool server,
         int bufferSize, int maxUdpPacketSize, int autoReconnectDelay);
+    Pimpl(const AsyncTransfer::Config& conf);
     ~Pimpl();
 
     // Redeclaration of public members
@@ -125,6 +126,10 @@ AsyncTransfer::AsyncTransfer(const DeviceInfo& device, int bufferSize, int maxUd
     false, bufferSize, maxUdpPacketSize, autoReconnectDelay)) {
 }
 
+AsyncTransfer::AsyncTransfer(const AsyncTransfer::Config& conf)
+    : pimpl(new Pimpl(conf)) {
+}
+
 AsyncTransfer::~AsyncTransfer() {
     delete pimpl;
 }
@@ -167,6 +172,10 @@ void AsyncTransfer::setAutoReconnect(int secondsBetweenRetries) {
     pimpl->setAutoReconnect(secondsBetweenRetries);
 }
 
+void AsyncTransfer::signalImageSetDone(ImageSet& imageSet) {
+    std::cout << "DEBUG: IMPLEMENT_ME signalImageSetDone for buffer handle " << imageSet.getExternalBufferHandle() << std::endl;
+}
+
 /******************** Implementation in pimpl class *******************/
 
 AsyncTransfer::Pimpl::Pimpl(const char* address, const char* service,
@@ -178,6 +187,17 @@ AsyncTransfer::Pimpl::Pimpl(const char* address, const char* service,
     receiveThreadCreated(false), uncollectedDroppedFrames(-1) {
 
     if(server) {
+        createSendThread();
+    }
+}
+
+AsyncTransfer::Pimpl::Pimpl(const AsyncTransfer::Config& conf)
+    : imgTrans(conf),
+    terminate(false), receiveBufferIndex(0), newDataReceived(false), sendSetValid(false),
+    deleteSendData(false), sendThreadCreated(false),
+    receiveThreadCreated(false), uncollectedDroppedFrames(-1) {
+
+    if(conf.getServer()) {
         createSendThread();
     }
 }

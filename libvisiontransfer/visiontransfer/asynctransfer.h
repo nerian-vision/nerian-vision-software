@@ -37,6 +37,8 @@ namespace visiontransfer {
  */
 class VT_EXPORT AsyncTransfer {
 public:
+    typedef ImageTransfer::Config Config;
+
     /**
      * \brief Creates a new transfer object.
      *
@@ -71,6 +73,12 @@ public:
      */
     AsyncTransfer(const DeviceInfo& device, int bufferSize = 16*1048576, int maxUdpPacketSize = 1472,
             int autoReconnectDelay=1);
+
+    /**
+     * \brief Creates and initializes an ImageTransfer object based on the
+     * specified configuration object
+     */
+    AsyncTransfer(const Config& config);
 
     ~AsyncTransfer();
 
@@ -168,7 +176,7 @@ public:
     void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
 #endif
 
-    /*
+    /**
      * \brief Configure automatic reconnection behavior (for TCP client mode).
      *
      * When enabled, this functionality is initiated whenever a disconnection
@@ -183,6 +191,17 @@ public:
      *   consecutive reconnection attempts, or 0 to disable auto-reconnection.
      */
     void setAutoReconnect(int secondsBetweenRetries=1);
+
+    /**
+     * \brief Flag the user processing of this ImageSet as done, allowing buffer reuse.
+     *
+     * Only meaningful in external buffering mode, where this will requeue
+     * the image buffers used in the ImageSet for a subsequent reception;
+     * pixel data access after this point is no longer consistent.
+     *
+     * For default operation (internal buffering), this is a no-op.
+     */
+    void signalImageSetDone(ImageSet& imageSet);
 
 private:
     // We follow the pimpl idiom

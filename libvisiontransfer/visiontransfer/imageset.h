@@ -43,6 +43,9 @@ private:
     Pimpl* pimpl;
 
 public:
+    /// ID / handle for an externally allocated data buffer backing an ImageSet
+    typedef size_t ExternalBufferHandle;
+
     static const int MAX_SUPPORTED_IMAGES = 4;
     static const int MAX_SUPPORTED_TRIGGER_CHANNELS = 5;
     /**
@@ -451,6 +454,20 @@ public:
      *  (0 if in constant trigger mode or if independently triggered).
      */
     int getTriggerPulseSequenceIndex(int triggerChannel) const;
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+    /**
+     * \brief Sets the external buffer handle (used internally).
+     * Only meaningful if external buffers are activated for an image transfer.
+     */
+    void setExternalBufferHandle(ExternalBufferHandle handle);
+#endif
+
+    /**
+     * \brief Gets the external buffer handle.
+     * Only meaningful if external buffers are activated for an image transfer.
+     */
+    ExternalBufferHandle getExternalBufferHandle() const;
 
 };
 

@@ -21,6 +21,7 @@
 #include "visiontransfer/imageprotocol.h"
 #include "visiontransfer/imageset.h"
 #include "visiontransfer/deviceinfo.h"
+#include "visiontransfer/externalbuffer.h"
 
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include <functional>
@@ -44,6 +45,65 @@ namespace visiontransfer {
  */
 class VT_EXPORT ImageTransfer {
 public:
+    /// A configuration object for creating an ImageTransfer or AsyncTransfer
+    class Config {
+        public:
+            /// Create and populate a config based on an IP address and global defaults
+            Config(const char* address);
+            /// Create and populate a config based on settings of a discovered device
+            Config(DeviceInfo& deviceInfo);
+            /// Destroy and deallocate Pimpl
+            ~Config();
+            /// Override the device address
+            Config& setAddress(const char* address);
+            /// Override the device image data port (default "7681")
+            Config& setService(const char* service);
+            /// Override the protocol type (default ImageProtocol::PROTOCOL_UDP)
+            Config& setProtocolType(ImageProtocol::ProtocolType protType);
+            /// Override the server mode (default false => client mode)
+            Config& setServer(bool server);
+            /// Override the image buffer size (default 16*1024*1024 => 16 MB)
+            Config& setBufferSize(int bufferSize);
+            /// Override the maximum packet size for UDP mode (default 1472)
+            Config& setMaxUdpPacketSize(int maxUdpPacketSize);
+            /// Override the auto-reconnect delay for lost connection
+            /// (default of 1 sec; set to 0 to disable)
+            Config& setAutoReconnectDelay(int autoReconnectDelay);
+            /// Add an external buffer ensemble to the buffer pool. This enables
+            /// external buffering mode and disables the default target image
+            /// buffer allocation in the library (excepting auxiliary buffers).
+            /// More than one buffer set should be added to enable reception
+            /// while another ImageSet is still being processed by the user.
+            Config& addExternalBufferSet(ExternalBufferSet bufset);
+
+            /// Return the configured target address
+            const char* getAddress() const;
+            /// Return the configured device image data port
+            const char* getService() const;
+            /// Return the configured protocol type
+            ImageProtocol::ProtocolType getProtocolType() const;
+            /// Return the configured server mode
+            bool getServer() const;
+            /// Return the configured image buffer size
+            int getBufferSize() const;
+            /// Return the configured maximum packet size for UDP mode
+            int getMaxUdpPacketSize() const;
+            /// Return the configured auto-reconnect delay (0 = disabled)
+            int getAutoReconnectDelay() const;
+            /// Add an external buffer ensemble to the buffer pool. This enables
+            /// external buffering mode and disables the default target image
+            /// buffer allocation in the library (excepting auxiliary buffers).
+            /// More than one buffer set should be added to enable reception
+            /// while another ImageSet is still being processed by the user.
+            /// Return the configured number of external buffer sets
+            size_t getNumExternalBufferSets() const;
+            /// Return the configured external buffer set at the specified index
+            ExternalBufferSet getExternalBufferSet(size_t idx) const;
+        private:
+            class Pimpl;
+            Pimpl* pimpl;
+    };
+
     /// The result of a partial image transfer
     enum TransferStatus {
         /// The image set has been transferred completely.
@@ -96,6 +156,12 @@ public:
      */
     ImageTransfer(const DeviceInfo& device, int bufferSize = 16 * 1048576,
         int maxUdpPacketSize = 1472, int autoReconnectDelay=1);
+
+    /**
+     * \brief Creates and initializes an ImageTransfer object based on the
+     * specified configuration object
+     */
+    ImageTransfer(const Config& config);
 
     ~ImageTransfer();
 

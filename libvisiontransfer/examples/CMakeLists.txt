@@ -28,6 +28,7 @@ endif()
 
 # All examples except PCL and OpenCV
 set(EXAMPLES
+	external_buffer_example
 	imagetransfer_example
 	asynctransfer_example
 	reconstruct3d_example
