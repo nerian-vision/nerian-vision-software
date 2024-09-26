@@ -23,6 +23,7 @@
 
 #include "visiontransfer/internal/alignedallocator.h"
 #include "visiontransfer/exceptions.h"
+#include "visiontransfer/externalbuffer.h"
 
 namespace visiontransfer {
 namespace internal {
@@ -262,11 +263,39 @@ public:
      */
     const unsigned char* getNextControlMessage(int& length);
 
+    unsigned char* getBlockReceiveBufferChecked(int block) {
+        // This version transparently decides between internal and external buffers, depending on config
+        if (block >= numReceptionBlocks) {
+            throw ProtocolException("Tried to get receive buffer beyond initialized block range");
+        }
+        if (externalBufferLocations[block]) {
+            return externalBufferLocations[block];
+        } else {
+            return &blockReceiveBuffers[block][0];
+        }
+    }
+    size_t getBlockReceiveBufferSizeChecked(int block) {
+        // This version transparently decides between internal and external buffers, depending on config
+        if (block >= numReceptionBlocks) {
+            throw ProtocolException("Tried to get receive buffer beyond initialized block range");
+        }
+        if (externalBufferLocations[block]) {
+            return externalBufferSizes[block];
+        } else {
+            return blockReceiveBuffers[block].size();
+        }
+    }
     unsigned char* getBlockReceiveBuffer(int block) {
         if (block >= numReceptionBlocks) {
             throw ProtocolException("Tried to get receive buffer beyond initialized block range");
         }
         return &blockReceiveBuffers[block][0];
+    }
+    size_t getBlockReceiveBufferSize(int block) {
+        if (block >= numReceptionBlocks) {
+            throw ProtocolException("Tried to get receive buffer beyond initialized block range");
+        }
+        return blockReceiveBuffers[block].size();
     }
     int getBlockValidSize(int block) {
         if (block >= numReceptionBlocks) {
@@ -308,6 +337,14 @@ public:
     bool supportsExtendedConnectionStateProtocol() const {
         return extendedConnectionStateProtocol;
     }
+
+    int getBlockReceiveSize(int block) const {
+        return blockReceiveSize[block];
+    }
+
+    // (See documentation in ImageProtocol)
+    void setExternalBufferingActive(bool active);
+    void setExternalBufferTargets(const std::vector<std::pair<unsigned char*, size_t> >& targets);
 
 private:
     // The pimpl idiom is not necessary here, as this class is usually not
@@ -396,6 +433,14 @@ private:
     bool legacyTransfer;
     int numReceptionBlocks;
     int receiveOffset;
+    bool externalBufferingActive;
+    ExternalBufferSet externalBufferSet;
+    // Maps block ID to pointers inside the external buffers (calculated for each header reception).
+    // Null pointer means 'direct copying not enabled, use the internal allocation as a
+    // temporary store' (i.e. the blockReceiveBuffers).
+    unsigned char* externalBufferLocations[MAX_DATA_BLOCKS];
+    size_t externalBufferSizes[MAX_DATA_BLOCKS]; // TODO check if this can be removed - capacity verified by ImageProtocol
+    // TODO externalBufferConversion // immediate conversion flags
 
     const unsigned char* extractPayload(const unsigned char* data, int& length, bool& error);
     bool processControlMessage(int length);

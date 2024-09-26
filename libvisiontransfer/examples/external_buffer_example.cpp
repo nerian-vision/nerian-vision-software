@@ -41,7 +41,7 @@ int main() {
         // Wrap the raw buffer allocated above
         ExternalBuffer ebuf(buffers[i], myBufSize);
         // Define the mapping of ImageSet types and desired conversion rules. They will be packed in the defined order.
-        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_LEFT, ExternalBuffer::CONVERSION_NONE));
+        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_COLOR, ExternalBuffer::CONVERSION_NONE));
         ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_DISPARITY, ExternalBuffer::CONVERSION_MONO_12_TO_16)); // convert 12bit packed to 16, as usual
         // In this example, we leave out any other ImageSet::ImageTypes - this means they are not packed into
         // the resulting buffer layout, and will not be available as part of the ImageSets (even if enabled on-device).
@@ -81,8 +81,8 @@ int main() {
         // Create and launch an AsyncTransfer based on the config
         AsyncTransfer asyncTransfer(cfg);
 
-        // Receive 100 images
-        for(int imgNum=0; imgNum<100; imgNum++) {
+        // Receive images in a loop
+        for(int imgNum=0; ; imgNum++) {
             std::cout << "Receiving image set " << imgNum << std::endl;
 
             // Receive image
@@ -95,21 +95,60 @@ int main() {
             // (assignment apparent using imageSet.getExternalBufferHandle()
             // and the unique values of ExternalBufferSet::getHandle()).
             // You may use getPixelData() as usual, or operate directly
-            // on your allocated buffer (expect data being packed according
+            // on your known data buffer (data was packed according
             // to the reported pixel formats and conversion settings).
 
-            // ImageSet processing proper (here, just saving it)
+            // ImageSet processing proper goes here
 
-            // Write all included images one after another
-            for(int i = 0; i < imageSet.getNumberOfImages(); i++) {
-                // Create PGM file
-                char fileName[100];
-                snprintf(fileName, sizeof(fileName), "image%03d_%d.pgm", imgNum, i);
-                imageSet.writePgmFile(i, fileName);
+            std::cout << "Processing image set." << std::endl;
+            int idxLeft = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_LEFT);
+            if (idxLeft == -1) {
+                std::cout << " Left channel -----" << std::endl;
+            } else {
+                unsigned char* ptr = imageSet.getPixelData(idxLeft);
+                long val = 0;
+                for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
+                    val += *(ptr+(i*imageSet.getWidth())+i);
+                }
+                std::cout << " Left test sum " << val << std::endl;
+            }
+            int idxRight = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_RIGHT);
+            if (idxRight == -1) {
+                std::cout << " Right channel -----" << std::endl;
+            } else {
+                unsigned char* ptr = imageSet.getPixelData(idxRight);
+                long val = 0;
+                for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
+                    val += *(ptr+(i*imageSet.getWidth())+i);
+                }
+                std::cout << " Right test sum " << val << std::endl;
+            }
+            int idxColor = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_COLOR);
+            if (idxColor == -1) {
+                std::cout << " Color channel -----" << std::endl;
+            } else {
+                unsigned char* ptr = imageSet.getPixelData(idxColor);
+                long val = 0;
+                for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
+                    val += *(ptr+3*((i*imageSet.getWidth()))+i);
+                }
+                std::cout << " Color test sum " << val << std::endl;
+            }
+            int idxDisparity = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_DISPARITY);
+            if (idxDisparity == -1) {
+                std::cout << " Disparity channel -----" << std::endl;
+            } else {
+                unsigned char* ptr = imageSet.getPixelData(idxDisparity);
+                long val = 0;
+                for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
+                    val += *(ptr+2*((i*imageSet.getWidth())+i));
+                }
+                std::cout << " Disparity test sum " << val << std::endl;
             }
 
+            std::cout << "Unlocking the processed image set." << std::endl;
             // *IMPORTANT* - Cleanup phase for each processed ImageSet
-            //
+            //               (in external buffer mode only.)
             // Signal the AsyncTransfer that we are done using the ImageSet
             // and the underlying buffer -> it can be reused in reception now.
             // If usable buffer sets are exhausted when reception is called,

@@ -41,8 +41,8 @@ public:
     Pimpl(unsigned char* data, size_t size);
     Pimpl(const Pimpl& orig);
     void appendPartDefinition(ExternalBuffer::Part part);
-    inline size_t getNumParts() const { return parts.size(); }
-    inline ExternalBuffer::Part getPart(size_t idx) const { return parts.at(idx); }
+    inline int getNumParts() const { return parts.size(); }
+    inline ExternalBuffer::Part getPart(int idx) const { return parts.at(idx); }
     inline unsigned char* getBufferPtr() const { return data; }
     inline size_t getBufferSize() const { return size; }
 };
@@ -51,13 +51,16 @@ class ExternalBufferSet::Pimpl {
 private:
     ImageSet::ExternalBufferHandle handle;
     std::vector<ExternalBuffer> buffers;
+    bool ready;
 public:
     Pimpl();
     Pimpl(const Pimpl& orig);
     void addBuffer(ExternalBuffer buf);
     inline ImageSet::ExternalBufferHandle getHandle() const { return handle; }
-    inline size_t getNumBuffers() const { return buffers.size(); }
-    inline ExternalBuffer getBuffer(size_t idx) const { return buffers.at(idx); }
+    inline int getNumBuffers() const { return buffers.size(); }
+    inline ExternalBuffer getBuffer(int idx) const { return buffers.at(idx); }
+    bool getReady() const { return ready; }
+    void setReady(bool ready_) { ready = ready_; }
 };
 
 // Pimpl functions
@@ -84,11 +87,13 @@ void ExternalBuffer::Pimpl::appendPartDefinition(ExternalBuffer::Part part) {
 ExternalBufferSet::Pimpl::Pimpl() {
     static ImageSet::ExternalBufferHandle nextBufferHandle = 1;
     handle = nextBufferHandle++;
+    ready = false;
 }
 
 ExternalBufferSet::Pimpl::Pimpl(const ExternalBufferSet::Pimpl& orig) {
     handle = orig.handle;
     buffers = orig.buffers;
+    ready = orig.ready;
 }
 
 void ExternalBufferSet::Pimpl::addBuffer(ExternalBuffer buf) {
@@ -118,11 +123,11 @@ void ExternalBuffer::appendPartDefinition(Part part) {
     pimpl->appendPartDefinition(part);
 }
 
-size_t ExternalBuffer::getNumParts() const {
+int ExternalBuffer::getNumParts() const {
     return pimpl->getNumParts();
 }
 
-ExternalBuffer::Part ExternalBuffer::getPart(size_t idx) const {
+ExternalBuffer::Part ExternalBuffer::getPart(int idx) const {
     return pimpl->getPart(idx);
 }
 
@@ -143,6 +148,12 @@ ExternalBufferSet::ExternalBufferSet()
 ExternalBufferSet::ExternalBufferSet(const ExternalBufferSet& orig)
 : pimpl(new Pimpl(*(orig.pimpl))) {
 }
+const ExternalBufferSet& ExternalBufferSet::operator=(const ExternalBufferSet& from) {
+    auto old = pimpl;
+    pimpl = new Pimpl(*(from.pimpl));
+    delete old;
+    return *this;
+}
 
 ExternalBufferSet::~ExternalBufferSet() {
     delete pimpl;
@@ -156,12 +167,21 @@ void ExternalBufferSet::addBuffer(ExternalBuffer buf) {
     pimpl->addBuffer(buf);
 }
 
-size_t ExternalBufferSet::getNumBuffers() const {
+int ExternalBufferSet::getNumBuffers() const {
     return pimpl->getNumBuffers();
 }
 
-ExternalBuffer ExternalBufferSet::getBuffer(size_t idx) const {
+ExternalBuffer ExternalBufferSet::getBuffer(int idx) const {
     return pimpl->getBuffer(idx);
+}
+
+bool ExternalBufferSet::getReady() const {
+    return pimpl->getReady();
+}
+
+void ExternalBufferSet::setReady(bool ready) {
+    std::cout << "ExternalBufferSet #" << pimpl->getHandle() << " -> ready:=" << ready << std::endl;
+    pimpl->setReady(ready);
 }
 
 } // namespace

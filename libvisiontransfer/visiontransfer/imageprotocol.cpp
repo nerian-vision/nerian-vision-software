@@ -80,6 +80,11 @@ public:
 
     bool supportsExtendedConnectionStateProtocol() const;
 
+    // External buffering setup (mostly passed to DBProto)
+    void setExternalBufferingActive(bool active);
+    void setExternalBufferSet(const ExternalBufferSet& bufset);
+    bool generateBufferLayout();
+
 private:
     unsigned short MAGIC_SEQUECE = 0x3D15;
 
@@ -163,6 +168,9 @@ private:
     HeaderData receiveHeader;
     int lastReceivedPayloadBytes[ImageSet::MAX_SUPPORTED_IMAGES];
     bool receptionDone;
+
+    bool externalBufferingActive;
+    ExternalBufferSet currentExternalBufferSet;
 
     // Copies the transmission header to the given buffer
     void copyHeaderToBuffer(const ImageSet& imageSet, int firstTileWidth,
@@ -275,6 +283,14 @@ bool ImageProtocol::newClientConnected() {
 
 bool ImageProtocol::supportsExtendedConnectionStateProtocol() const {
     return pimpl->supportsExtendedConnectionStateProtocol();
+}
+
+void ImageProtocol::setExternalBufferingActive(bool active) {
+    pimpl->setExternalBufferingActive(active);
+}
+
+void ImageProtocol::setExternalBufferSet(const ExternalBufferSet& bufset) {
+    pimpl->setExternalBufferSet(bufset);
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -491,28 +507,88 @@ unsigned char* ImageProtocol::Pimpl::getNextReceiveBuffer(int& maxLength) {
 }
 
 void ImageProtocol::Pimpl::processReceivedMessage(int length) {
+    bool secondPass;
     receptionDone = false;
 
-    // Add the received message
-    dataProt.processReceivedMessage(length, receptionDone);
-    if(!dataProt.wasHeaderReceived() && receiveHeaderParsed) {
-        // Something went wrong. We need to reset!
-        LOG_DEBUG_IMPROTO("Resetting image protocol!");
-        resetReception();
-        return;
+    do {
+        secondPass = false;
+        // Add the received message
+        dataProt.processReceivedMessage(length, receptionDone);
+        if(!dataProt.wasHeaderReceived() && receiveHeaderParsed) {
+            // Something went wrong. We need to reset!
+            LOG_DEBUG_IMPROTO("Resetting image protocol!");
+            resetReception();
+            return;
+        }
+
+        int receivedBytes = 0;
+        dataProt.getReceivedData(receivedBytes);
+
+        // Immediately try to decode the header
+        if(!receiveHeaderParsed) {
+            int headerLen = 0;
+            unsigned char* headerData = dataProt.getReceivedHeader(headerLen);
+            if(headerData != nullptr) {
+                tryDecodeHeader(headerData, headerLen);
+                if (receiveHeaderParsed) {
+                    // We received the header - we can now assign a
+                    // buffer layout (if external buffering is active).
+                    if (externalBufferingActive) {
+                        bool success = generateBufferLayout();
+                    }
+
+                    // Now we can incorporate the initially received data as well.
+                    secondPass = true;
+                    length = 0; // Already incorporated the data, just parse it
+                }
+            }
+        }
+    } while(secondPass);
+}
+
+bool ImageProtocol::Pimpl::generateBufferLayout() {
+    // For each image channel / data block, determine whether there
+    // is an immediate external buffer target, or intermediate buffering
+    // should be used.
+    std::cout << "generateBufferLayout" << std::endl;
+    if (currentExternalBufferSet.getNumBuffers() == 0) {
+        throw TransferException("External buffer was unavailable");
     }
-
-    int receivedBytes = 0;
-    dataProt.getReceivedData(receivedBytes);
-
-    // Immediately try to decode the header
-    if(!receiveHeaderParsed) {
-        int headerLen = 0;
-        unsigned char* headerData = dataProt.getReceivedHeader(headerLen);
-        if(headerData != nullptr) {
-            tryDecodeHeader(headerData, headerLen);
+    std::vector<std::pair<unsigned char*, size_t> > targets;
+    int numPixels = receiveHeader.width * receiveHeader.height;
+    for (int i=0; i<receiveHeader.numberOfImages; ++i) {
+        std::cout << "Image #" << i << std::endl;
+        int partSize = dataProt.getBlockReceiveSize(i);
+        unsigned char* buffer = nullptr;
+        for (int b=0; b<currentExternalBufferSet.getNumBuffers(); ++b) {
+            std::cout << " Checking buffer " << b << std::endl;
+            const auto& buf = currentExternalBufferSet.getBuffer(b);
+            int bufOfs = 0;
+            for (int p=0; p<buf.getNumParts(); ++p) {
+                std::cout << " Checking buffer " << b << " part " << p << std::endl;
+                const auto& part = buf.getPart(p);
+                // TODO effective part size including the requested transformations
+                if (static_cast<unsigned char>(part.imageType) == receiveHeader.imageTypes[i]) {
+                    // Channel found in buffer mapping
+                    std::cout << "  Part #" << i << " header image type " << ((int) receiveHeader.imageTypes[i]) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufOfs << " with flags " << part.conversionFlags << std::endl;
+                    buffer = buf.getBufferPtr() + bufOfs;
+                    targets.push_back({buffer, partSize});
+                }
+                if (buffer) break;
+                // Advance to region past this part
+                bufOfs += partSize;
+                std::cout << "   (advanced offset to " << bufOfs << ")" << std::endl;
+            }
+            if (buffer) break;
+        }
+        if (!buffer) {
+            std::cout << "  Part #" << i << " header image type " << ((int) receiveHeader.imageTypes[i]) << " - not found in part spec" << std::endl;
+            targets.push_back({nullptr, 0});
         }
     }
+    
+    dataProt.setExternalBufferTargets(targets);
+    return false;
 }
 
 void ImageProtocol::Pimpl::tryDecodeHeader(const
@@ -998,6 +1074,17 @@ std::string ImageProtocol::Pimpl::statusReport() {
 
 bool ImageProtocol::Pimpl::supportsExtendedConnectionStateProtocol() const {
     return dataProt.supportsExtendedConnectionStateProtocol();
+}
+
+void ImageProtocol::Pimpl::setExternalBufferingActive(bool active) {
+    //dataProt.setExternalBufferingActive(active);
+    externalBufferingActive = active;
+}
+
+void ImageProtocol::Pimpl::setExternalBufferSet(const ExternalBufferSet& bufset) {
+    //dataProt.setExternalBufferSet(bufset);
+    currentExternalBufferSet = bufset;
+    setExternalBufferingActive(true);
 }
 
 

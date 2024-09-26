@@ -17,6 +17,7 @@
 
 #include "visiontransfer/common.h"
 #include "visiontransfer/imageset.h"
+#include "visiontransfer/externalbuffer.h"
 
 #include <vector>
 
@@ -247,6 +248,28 @@ public:
      * UDP disconnection messages are supported.
      */
     bool supportsExtendedConnectionStateProtocol() const;
+
+    /**
+     * \brief Change external buffering mode. When on, only passed external
+     * buffers are filled with the final ImageSet data (i.e. allocations happen
+     * for auxiliary buffers only). If off (default), ImageSets image data
+     * pointers can and will refer to automatically allocated memory.
+     *
+     * Before each frame reception, an ExternalBufferSet must also be
+     * queued using setExternalBufferSet().
+     */
+    void setExternalBufferingActive(bool active);
+
+    /**
+     * \brief Sets the external buffer set to capture the next received
+     * ImageSet.
+     *
+     * The pool state is administered inside ImageTransfer. If the pool
+     * runs out, this function will be called with an empty buffer set,
+     * and the protocol will drop subsequent data until a valid buffer
+     * set is provided once more.
+     */
+    void setExternalBufferSet(const ExternalBufferSet& bufset);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
     /// Prints status information to the console

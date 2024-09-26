@@ -59,6 +59,9 @@ public:
 
     std::string statusReport();
 
+    void assignExternalBuffer();
+    void signalImageSetDone(ImageSet& imageSet);
+
 private:
     // Configuration parameters
     ImageProtocol::ProtocolType protType;
@@ -93,6 +96,7 @@ private:
 
     // The registered external sets of buffers
     std::map<ImageSet::ExternalBufferHandle, ExternalBufferSet> externalBufferPool;
+    ImageSet::ExternalBufferHandle assignedBufferHandle;
 
     // Socket configuration
     void setSocketOptions();
@@ -167,7 +171,7 @@ ImageTransfer::ImageTransfer(const DeviceInfo& device, int bufferSize, int maxUd
 
 ImageTransfer::ImageTransfer(const ImageTransfer::Config& conf) {
     std::vector<ExternalBufferSet> bufferSets;
-    for (size_t i=0; i<conf.getNumExternalBufferSets(); ++i) {
+    for (int i=0; i<conf.getNumExternalBufferSets(); ++i) {
         bufferSets.push_back(conf.getExternalBufferSet(i));
     }
     // All initialization in the pimpl class
@@ -302,13 +306,16 @@ int ImageTransfer::Config::getMaxUdpPacketSize() const {
 int ImageTransfer::Config::getAutoReconnectDelay() const {
     return pimpl->getAutoReconnectDelay();
 }
-size_t ImageTransfer::Config::getNumExternalBufferSets() const {
-    return pimpl->getExternalBufferSets().size();
+int ImageTransfer::Config::getNumExternalBufferSets() const {
+    return (int) pimpl->getExternalBufferSets().size();
 }
-ExternalBufferSet ImageTransfer::Config::getExternalBufferSet(size_t idx) const {
+ExternalBufferSet ImageTransfer::Config::getExternalBufferSet(int idx) const {
     return pimpl->getExternalBufferSets().at(idx);
 }
 
+void ImageTransfer::signalImageSetDone(ImageSet& imageSet) {
+    pimpl->signalImageSetDone(imageSet);
+}
 
 /******************** Implementation in pimpl classes *******************/
 
@@ -328,10 +335,10 @@ ImageTransfer::Pimpl::Pimpl(const char* address, const char* service,
     // Initialize the buffer store (and handle lookup table)
     for (auto& bufset: externalBufferSets) {
         std::cout << "DEBUG: Adding an ExternalBufferSet, handle " << bufset.getHandle() << ", consisting of:" << std::endl;
-        for (size_t i=0; i<bufset.getNumBuffers(); ++i) {
+        for (int i=0; i<bufset.getNumBuffers(); ++i) {
             auto const& buf = bufset.getBuffer(i);
             std::cout << "DEBUG:     ExternalBuffer of size " << buf.getBufferSize() << " at address " << ((off_t) buf.getBufferPtr()) << " with target layout mapping: " << std::endl;
-            for (size_t j=0; j<buf.getNumParts(); ++j) {
+            for (int j=0; j<buf.getNumParts(); ++j) {
                 auto const& part = buf.getPart(j);
                 std::cout << "DEBUG:         ImageType " << part.imageType << " with conversion flags " << part.conversionFlags << " reserveBits " << part.reserveBits << std::endl;
             }
@@ -354,6 +361,18 @@ ImageTransfer::Pimpl::Pimpl(const char* address, const char* service,
 
     addressInfo = Networking::resolveAddress(address, service);
     establishConnection();
+}
+
+void ImageTransfer::Pimpl::assignExternalBuffer() {
+    for (auto& [handle, bufset]: externalBufferPool) {
+        if (!bufset.getReady()) { // eligible for next buffer fill
+            std::cout << "ImageProtocol gets buffer set #" << handle << std::endl;
+            assignedBufferHandle = handle;
+            protocol->setExternalBufferSet(bufset);
+            return;
+        }
+    }
+    throw TransferException("External buffer pool exhausted!");
 }
 
 void ImageTransfer::Pimpl::establishConnection() {
@@ -395,6 +414,10 @@ ImageTransfer::Pimpl::~Pimpl() {
 
 void ImageTransfer::Pimpl::initTcpClient() {
     protocol.reset(new ImageProtocol(isServer, ImageProtocol::PROTOCOL_TCP));
+    if (externalBufferPool.size() > 0) {
+        assignExternalBuffer();
+    }
+
     clientSocket = Networking::connectTcpSocket(addressInfo);
     memcpy(&remoteAddress, addressInfo->ai_addr, sizeof(remoteAddress));
 
@@ -404,6 +427,9 @@ void ImageTransfer::Pimpl::initTcpClient() {
 
 void ImageTransfer::Pimpl::initTcpServer() {
     protocol.reset(new ImageProtocol(isServer, ImageProtocol::PROTOCOL_TCP));
+    if (externalBufferPool.size() > 0) {
+        assignExternalBuffer();
+    }
 
     // Create socket
     tcpServerSocket = ::socket(addressInfo->ai_family, addressInfo->ai_socktype,
@@ -429,6 +455,10 @@ void ImageTransfer::Pimpl::initTcpServer() {
 
 void ImageTransfer::Pimpl::initUdp() {
     protocol.reset(new ImageProtocol(isServer, ImageProtocol::PROTOCOL_UDP, maxUdpPacketSize));
+    if (externalBufferPool.size() > 0) {
+        assignExternalBuffer();
+    }
+
     // Create sockets
     clientSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if(clientSocket == INVALID_SOCKET) {
@@ -662,17 +692,15 @@ bool ImageTransfer::Pimpl::receivePartialImageSet(ImageSet& imageSet,
 
     // If the image set was completed now (and the transfer has hence reset),
     // make sure that the next external available buffer set is rotated in (if enabled)
-    // // RYT
-    /*
-    if (externalReceiveBuffersActive) {
-        if (complete) {
-            ExternalBufferSet bufset = getAvailableExternalBufferSet();
-            protocol->setExternalBufferSet(bufset);
+    if (complete) {
+        if (externalBufferPool.size() > 0) {
+            imageSet.setExternalBufferHandle(assignedBufferHandle);
+            externalBufferPool[assignedBufferHandle].setReady(true);
+            assignExternalBuffer();
             // May have returned empty bufset if all buffer sets have not returned from external control!
             // The protocol will then discard any incoming data until a new buffer set is provided.
         }
     }
-    */
 
     return result;
 }
@@ -993,6 +1021,18 @@ void ImageTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(v
 void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
     tcpReconnectSecondsBetweenRetries = secondsBetweenRetries;
 }
+
+void ImageTransfer::Pimpl::signalImageSetDone(ImageSet& imageSet) {
+    auto handle = imageSet.getExternalBufferHandle();
+    std::cout << "handleImageSetDone for handle #" << handle << std::endl;
+    if (handle == 0) return; // No-op, not an image set with external buffering
+    if (!externalBufferPool.count(handle)) {
+        throw ProtocolException("Invalid external buffer handle");
+    }
+    // Allow the buffers to be filled again
+    externalBufferPool[handle].setReady(false);
+}
+
 
 // ImageTransfer::Config
 

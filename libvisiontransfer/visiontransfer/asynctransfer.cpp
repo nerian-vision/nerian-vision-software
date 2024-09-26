@@ -58,6 +58,7 @@ public:
     bool tryAccept();
     void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
     void setAutoReconnect(int secondsBetweenRetries);
+    void signalImageSetDone(ImageSet& imageSet);
 
 private:
     static constexpr int NUM_BUFFERS = ImageSet::MAX_SUPPORTED_IMAGES * 3;
@@ -173,7 +174,7 @@ void AsyncTransfer::setAutoReconnect(int secondsBetweenRetries) {
 }
 
 void AsyncTransfer::signalImageSetDone(ImageSet& imageSet) {
-    std::cout << "DEBUG: IMPLEMENT_ME signalImageSetDone for buffer handle " << imageSet.getExternalBufferHandle() << std::endl;
+    pimpl->signalImageSetDone(imageSet);
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -480,6 +481,10 @@ void AsyncTransfer::Pimpl::setConnectionStateChangeCallback(std::function<void(v
 
 void AsyncTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
     imgTrans.setAutoReconnect(secondsBetweenRetries);
+}
+
+void AsyncTransfer::Pimpl::signalImageSetDone(ImageSet& imageSet) {
+    imgTrans.signalImageSetDone(imageSet);
 }
 
 constexpr int AsyncTransfer::Pimpl::NUM_BUFFERS;

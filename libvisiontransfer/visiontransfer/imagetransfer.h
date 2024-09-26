@@ -96,9 +96,9 @@ public:
             /// More than one buffer set should be added to enable reception
             /// while another ImageSet is still being processed by the user.
             /// Return the configured number of external buffer sets
-            size_t getNumExternalBufferSets() const;
+            int getNumExternalBufferSets() const;
             /// Return the configured external buffer set at the specified index
-            ExternalBufferSet getExternalBufferSet(size_t idx) const;
+            ExternalBufferSet getExternalBufferSet(int idx) const;
         private:
             class Pimpl;
             Pimpl* pimpl;
@@ -328,6 +328,9 @@ public:
      *   consecutive reconnection attempts, or 0 to disable auto-reconnection.
      */
     void setAutoReconnect(int secondsBetweenRetries=1);
+    
+    /// See AsyncTransfer::signalImageSetDone
+    void signalImageSetDone(ImageSet& imageSet);
 
 private:
     // We follow the pimpl idiom

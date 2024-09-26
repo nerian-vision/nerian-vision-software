@@ -52,9 +52,9 @@ public:
     /// Append a part definition, i.e., the next definition of ImageType and conversion type to be concatenated into this buffer.
     void appendPartDefinition(Part part);
     /// Return the number of registered buffer parts
-    size_t getNumParts() const;
+    int getNumParts() const;
     /// Return registered buffer part with specified index
-    Part getPart(size_t idx) const;
+    Part getPart(int idx) const;
 private:
     // We follow the pimpl idiom
     class Pimpl;
@@ -67,17 +67,20 @@ public:
 public:
     ExternalBufferSet();
     ExternalBufferSet(const ExternalBufferSet& orig);
+    const ExternalBufferSet& operator=(const ExternalBufferSet& from);
     ~ExternalBufferSet();
     /// Return the auto-generated unique buffer set handle
     ImageSet::ExternalBufferHandle getHandle() const;
     /// Add a single ExternalBuffer. At least one is required for an
     void addBuffer(ExternalBuffer buf);
-    size_t getNumBuffers() const;
-    ExternalBuffer getBuffer(size_t idx) const;
+    int getNumBuffers() const;
+    ExternalBuffer getBuffer(int idx) const;
     /// Return 'internally busy' state, i.e., whether buffer set is locked and being filled by reception routine
-    bool isBusy();
+    bool getBusy() const;
     /// Return 'ready for consumer' state, i.e., whether buffer set has been filled and taken out of the reception routine
-    bool isReady();
+    bool getReady() const;
+    /// Marks the buffer set 'ready' for the API consumer. (Used internally.)
+    void setReady(bool ready);
 private:
     // We follow the pimpl idiom
     class Pimpl;

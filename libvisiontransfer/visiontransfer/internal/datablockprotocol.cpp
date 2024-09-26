@@ -62,7 +62,8 @@ DataBlockProtocol::DataBlockProtocol(bool server, ProtocolType protType, int max
         extendedConnectionStateProtocol(false),
         finishedReception(false), droppedReceptions(0),
         completedReceptions(0), lostSegmentRate(0.0), lostSegmentBytes(0),
-        unprocessedMsgLength(0), headerReceived(false) {
+        unprocessedMsgLength(0), headerReceived(false),
+        externalBufferingActive(false) {
     // Determine the maximum allowed payload size
     if(protType == PROTOCOL_TCP) {
         maxPayloadSize = MAX_TCP_BYTES_TRANSFER - sizeof(SegmentHeaderTCP);
@@ -533,6 +534,10 @@ void DataBlockProtocol::processReceivedTcpMessage(int length, bool& transferComp
             int movelength = receiveOffset + length; // also move the old stuff
             ::memmove(&receiveBuffer[0], &receiveBuffer[totalHeaderSize], movelength);
             receiveOffset = movelength; // append in next recv
+
+            // Always return to allow the next protocol layer to perform
+            // buffer replanning before moving any data here.
+            return;
         }
     } else {
         receiveOffset += length; // modified below if complete chunks are present
@@ -1015,6 +1020,28 @@ void DataBlockProtocol::getHeartbeatMessage(const unsigned char* &buf, int &sz) 
     static const unsigned char HEARTBEAT_MESSAGE_BUFFER[] = { HEARTBEAT_MESSAGE, 0xff, 0xff, 0xff, 0xff };
     buf = HEARTBEAT_MESSAGE_BUFFER;
     sz = sizeof(HEARTBEAT_MESSAGE_BUFFER);
+}
+
+void DataBlockProtocol::setExternalBufferingActive(bool active) {
+    // TODO Should check whether we are currently mid-reception (but never called from outside)
+    externalBufferingActive = active;
+}
+
+void DataBlockProtocol::setExternalBufferTargets(const std::vector<std::pair<unsigned char*, size_t> >& targets) {
+    std::cout << "setExternalBufferTargets" << std::endl;
+    // TODO Should check whether we are currently mid-reception (but never called from outside)
+    for (int i=0; i<MAX_DATA_BLOCKS; ++i) {
+        if (i>=targets.size()) {
+            externalBufferLocations[i] = nullptr;
+            externalBufferSizes[i] = 0;
+        } else {
+            std::cout << "  Ext buf for part #" << i << " addr " << ((off_t) targets[i].first) << std::endl;
+            externalBufferLocations[i] = targets[i].first;
+            externalBufferSizes[i] = targets[i].second;
+        }
+    }
+
+    setExternalBufferingActive(true);
 }
 
 }} // namespace
