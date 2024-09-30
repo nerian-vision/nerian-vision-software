@@ -110,7 +110,7 @@ int main() {
                 for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
                     val += *(ptr+(i*imageSet.getWidth())+i);
                 }
-                std::cout << " Left test sum " << val << std::endl;
+                std::cout << " Left test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
             }
             int idxRight = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_RIGHT);
             if (idxRight == -1) {
@@ -121,7 +121,7 @@ int main() {
                 for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
                     val += *(ptr+(i*imageSet.getWidth())+i);
                 }
-                std::cout << " Right test sum " << val << std::endl;
+                std::cout << " Right test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
             }
             int idxColor = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_COLOR);
             if (idxColor == -1) {
@@ -132,7 +132,7 @@ int main() {
                 for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
                     val += *(ptr+3*((i*imageSet.getWidth()))+i);
                 }
-                std::cout << " Color test sum " << val << std::endl;
+                std::cout << " Color test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
             }
             int idxDisparity = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_DISPARITY);
             if (idxDisparity == -1) {
@@ -143,7 +143,34 @@ int main() {
                 for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
                     val += *(ptr+2*((i*imageSet.getWidth())+i));
                 }
-                std::cout << " Disparity test sum " << val << std::endl;
+                std::cout << " Disparity test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
+            }
+
+            // Validation of buffer layout
+            for(int i = 0; i < imageSet.getNumberOfImages(); i++) {
+                bool ok = false;
+                unsigned char* ptr = imageSet.getPixelData(i);
+                for (int j=0; j<3; ++j) {
+                    off_t where = ((off_t) ptr) - ((off_t) buffers[i]);
+                    if (where>=0 && where<16*1024*1024) {
+                        std::cout << "Validated image " << i << " in external buffer" << std::endl;
+                        ok = true;
+                        break;
+                    }
+                }
+                if (!ok) {
+                        std::cout << "\033[31mCaution: image " << i << " pointer " << ((off_t) ptr) << " - not in external buffer!\033[m" << std::endl;
+                }
+            }
+
+            if (imgNum<5) {
+                // Write all included images one after another
+                for(int i = 0; i < imageSet.getNumberOfImages(); i++) {
+                    // Create PGM file
+                    char fileName[100];
+                    snprintf(fileName, sizeof(fileName), "image%03d_%d.pgm", imgNum, i);
+                    imageSet.writePgmFile(i, fileName);
+                }
             }
 
             std::cout << "Unlocking the processed image set." << std::endl;

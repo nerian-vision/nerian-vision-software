@@ -263,6 +263,12 @@ public:
      */
     const unsigned char* getNextControlMessage(int& length);
 
+    unsigned char* getExternalBuffer(int block) {
+        if (block >= numReceptionBlocks) {
+            throw ProtocolException("Tried to get receive buffer beyond initialized block range");
+        }
+        return externalBufferLocations[block];
+    }
     unsigned char* getBlockReceiveBufferChecked(int block) {
         // This version transparently decides between internal and external buffers, depending on config
         if (block >= numReceptionBlocks) {

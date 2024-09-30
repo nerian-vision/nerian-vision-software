@@ -171,6 +171,7 @@ private:
 
     bool externalBufferingActive;
     ExternalBufferSet currentExternalBufferSet;
+    std::vector<std::pair<unsigned char*, size_t> > activeExternalBufferTargets;
 
     // Copies the transmission header to the given buffer
     void copyHeaderToBuffer(const ImageSet& imageSet, int firstTileWidth,
@@ -179,12 +180,8 @@ private:
     // Decodes header information from the received data
     void tryDecodeHeader(const unsigned char* receivedData, int receivedBytes);
 
-    // Decodes a received image from a non-interleaved buffer
-    unsigned char* decodeNoninterleaved(int imageNumber, int numImages, int receivedBytes,
-        unsigned char* data, int& validRows, int& rowStride);
-
-    // Decodes a received image from an interleaved buffer
-    unsigned char* decodeInterleaved(int imageNumber, int numImages, int receivedBytes,
+    // Decodes (or silently passes) a received image from a non-interleaved buffer
+    unsigned char* decodeImage(int imageNumber, bool isExternalBuffer, int receivedBytes,
         unsigned char* data, int& validRows, int& rowStride);
 
     int getNumTiles(int width, int firstTileWidth, int middleTilesWidth, int lastTileWidth);
@@ -194,7 +191,7 @@ private:
     int getFormatBits(ImageSet::ImageFormat format, bool afterDecode);
 
     void decodeTiledImage(int imageNumber, int lastReceivedPayloadBytes, int receivedPayloadBytes,
-        const unsigned char* data, int firstTileStride, int middleTilesStride, int lastTileStride,
+        const unsigned char* src, unsigned char* dst, int firstTileStride, int middleTilesStride, int lastTileStride,
         int& validRows, ImageSet::ImageFormat format, bool dataIsInterleaved);
 
     void decodeRowsFromTile(int startRow, int stopRow, unsigned const char* src,
@@ -554,25 +551,45 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
     if (currentExternalBufferSet.getNumBuffers() == 0) {
         throw TransferException("External buffer was unavailable");
     }
-    std::vector<std::pair<unsigned char*, size_t> > targets;
+
+    activeExternalBufferTargets.clear();
+    std::vector<std::pair<unsigned char*, size_t> > immediateTargets;
+
     int numPixels = receiveHeader.width * receiveHeader.height;
-    for (int i=0; i<receiveHeader.numberOfImages; ++i) {
-        std::cout << "Image #" << i << std::endl;
-        int partSize = dataProt.getBlockReceiveSize(i);
+    for (int imageNumber=0; imageNumber<receiveHeader.numberOfImages; ++imageNumber) {
+        std::cout << "Image #" << imageNumber << std::endl;
+        ImageSet::ImageFormat format;
+        int bits = 8;
+        switch (imageNumber) {
+            case 0: format = static_cast<ImageSet::ImageFormat>(receiveHeader.format0); break;
+            case 1: format = static_cast<ImageSet::ImageFormat>(receiveHeader.format1); break;
+            case 2: format = static_cast<ImageSet::ImageFormat>(receiveHeader.format2); break;
+            case 3: format = static_cast<ImageSet::ImageFormat>(receiveHeader.format3); break;
+            default: throw ProtocolException("Invalid image index for buffer layout");
+        }
+        int partSize = dataProt.getBlockReceiveSize(imageNumber);
         unsigned char* buffer = nullptr;
+        // See if we have an external buffer for this function
         for (int b=0; b<currentExternalBufferSet.getNumBuffers(); ++b) {
-            std::cout << " Checking buffer " << b << std::endl;
             const auto& buf = currentExternalBufferSet.getBuffer(b);
+            std::cout << " Checking buffer " << b << " with " << buf.getNumParts() << " parts " << std::endl;
             int bufOfs = 0;
             for (int p=0; p<buf.getNumParts(); ++p) {
                 std::cout << " Checking buffer " << b << " part " << p << std::endl;
                 const auto& part = buf.getPart(p);
                 // TODO effective part size including the requested transformations
-                if (static_cast<unsigned char>(part.imageType) == receiveHeader.imageTypes[i]) {
+                if (static_cast<unsigned char>(part.imageType) == receiveHeader.imageTypes[imageNumber]) {
                     // Channel found in buffer mapping
-                    std::cout << "  Part #" << i << " header image type " << ((int) receiveHeader.imageTypes[i]) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufOfs << " with flags " << part.conversionFlags << std::endl;
+                    std::cout << "  Image #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufOfs << " with flags " << part.conversionFlags << std::endl;
                     buffer = buf.getBufferPtr() + bufOfs;
-                    targets.push_back({buffer, partSize});
+                    //finalTargets.push_back({buffer, partSize});
+                    activeExternalBufferTargets.push_back({buffer, partSize});
+                    if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP?
+                            && (receiveHeader.lastTileWidth == 0)) { // tiled transfers need an intermediate buffer
+                        immediateTargets.push_back({buffer, partSize});
+                    } else {
+                        immediateTargets.push_back({nullptr, 0});
+                    }
                 }
                 if (buffer) break;
                 // Advance to region past this part
@@ -582,12 +599,13 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
             if (buffer) break;
         }
         if (!buffer) {
-            std::cout << "  Part #" << i << " header image type " << ((int) receiveHeader.imageTypes[i]) << " - not found in part spec" << std::endl;
-            targets.push_back({nullptr, 0});
+            std::cout << "  Part #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - not found in part spec!" << std::endl;
+            throw TransferException(std::string("External buffers were not set up to handle image type ")+std::to_string(receiveHeader.imageTypes[imageNumber]));
         }
     }
-    
-    dataProt.setExternalBufferTargets(targets);
+
+    // There are the targets that can be filled by the DataBlockProtocol without us converting
+    dataProt.setExternalBufferTargets(immediateTargets);
     return false;
 }
 
@@ -684,7 +702,7 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
         // We received at least some pixel data
         imageSet.setNumberOfImages(receiveHeader.numberOfImages);
         bool flaggedDisparityPair = (receiveHeader.isRawImagePair_OBSOLETE == 0); // only meaningful in headers <=V2
-        bool isInterleaved = (receiveHeader.flags & HeaderData::FlagBits::NEW_STYLE_TRANSFER) == 0;
+        bool isObsoleteInterleavedData = (receiveHeader.flags & HeaderData::FlagBits::NEW_STYLE_TRANSFER) == 0;
         bool arbitraryChannels = (receiveHeader.flags & HeaderData::FlagBits::HEADER_V3) > 0;
         bool hasExposureTime = (receiveHeader.flags & HeaderData::FlagBits::HEADER_V4) > 0;
         bool hasTriggerPulseSequenceIndex = (receiveHeader.flags & HeaderData::FlagBits::HEADER_V6) > 0;
@@ -715,75 +733,69 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
         int validRowsArr[ImageSet::MAX_SUPPORTED_IMAGES] = {0};
         unsigned char* pixelArr[ImageSet::MAX_SUPPORTED_IMAGES] = {nullptr};
 
-        if (isInterleaved) {
-            // OLD transfer (forced to interleaved 2 images mode)
-            static bool warnedOnceBackward = false;
-            if (!warnedOnceBackward) {
-                LOG_DEBUG_IMPROTO("Info: backward-compatible mode; the device is sending with a legacy protocol. Consider upgrading its firmware.");
-                warnedOnceBackward = true;
+        if (isObsoleteInterleavedData) {
+            // New configurable blocks and buffer layout was from 2020-07
+            // Legacy interleaved transfer was supported up to 2024-09 (<= visiontransfer 10.8)
+            throw ProtocolException("Legacy interleaved transfers no longer supported. Upgrade firmware (or downgrade library.)");
+        }
+
+        // Valid transfer
+        try {
+            for (int i=0; i<receiveHeader.numberOfImages; ++i) {
+                int validBytes = dataProt.getBlockValidSize(i);
+                bool isExternalBuffer = true;
+                unsigned char* data = dataProt.getExternalBuffer(i);
+                if (!data) {
+                    isExternalBuffer = false;
+                    data = dataProt.getBlockReceiveBuffer(i);
+                }
+                pixelArr[i] = decodeImage(i, isExternalBuffer, validBytes, data, validRowsArr[i], rowStrideArr[i]);
             }
-            unsigned char* data = dataProt.getBlockReceiveBuffer(0);
-            int validBytes = dataProt.getBlockValidSize(0);
-            for (int i=0; i < 2; ++i) {
-                pixelArr[i] = decodeInterleaved(i, imageSet.getNumberOfImages(), validBytes, data, validRowsArr[i], rowStrideArr[i]);
+        } catch(const ProtocolException& ex) {
+            LOG_DEBUG_IMPROTO("Protocol exception: " << ex.what());
+            (void) ex; // silence unused warning
+            resetReception();
+            return false;
+        }
+        if (arbitraryChannels) {
+            // Completely customizable channel selection
+            imageSet.setIndexOf(ImageSet::ImageType::IMAGE_LEFT, -1);
+            imageSet.setIndexOf(ImageSet::ImageType::IMAGE_RIGHT, -1);
+            imageSet.setIndexOf(ImageSet::ImageType::IMAGE_DISPARITY, -1);
+            imageSet.setIndexOf(ImageSet::ImageType::IMAGE_COLOR, -1);
+            for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
+                int typ = receiveHeader.imageTypes[i];
+                ImageSet::ImageType imgtype = static_cast<ImageSet::ImageType>(typ);
+                imageSet.setIndexOf(imgtype, i);
             }
-            // Legacy sender with mode-dependent channel selection
+        } else {
+            // Note 2024-09 - V2 support is now deprecated and may be removed at any time in the future
+            static bool warnedOnceV2 = false;
+            if (!warnedOnceV2) {
+                LOG_DEBUG_IMPROTO("Info: received a transfer with header v2");
+                warnedOnceV2 = true;
+            }
+            // Older v2 header; accessing imageTypes is not valid
+            //  Two-image sender with mode-dependent channel selection
             imageSet.setIndexOf(ImageSet::ImageType::IMAGE_LEFT, 0);
             imageSet.setIndexOf(ImageSet::ImageType::IMAGE_RIGHT, flaggedDisparityPair ? -1 : 1);
             imageSet.setIndexOf(ImageSet::ImageType::IMAGE_DISPARITY, flaggedDisparityPair ? 1 : -1);
             imageSet.setIndexOf(ImageSet::ImageType::IMAGE_COLOR, -1);
-        } else {
-            // NEW transfer
-            try {
-                for (int i=0; i<receiveHeader.numberOfImages; ++i) {
-                    unsigned char* data = dataProt.getBlockReceiveBuffer(i);
-                    int validBytes = dataProt.getBlockValidSize(i);
-                    pixelArr[i] = decodeNoninterleaved(i, imageSet.getNumberOfImages(), validBytes, data, validRowsArr[i], rowStrideArr[i]);
-                }
-            } catch(const ProtocolException& ex) {
-                LOG_DEBUG_IMPROTO("Protocol exception: " << ex.what());
-                (void) ex; // silence unused warning
-                resetReception();
-                return false;
-            }
-            if (arbitraryChannels) {
-                // Completely customizable channel selection
-                imageSet.setIndexOf(ImageSet::ImageType::IMAGE_LEFT, -1);
-                imageSet.setIndexOf(ImageSet::ImageType::IMAGE_RIGHT, -1);
-                imageSet.setIndexOf(ImageSet::ImageType::IMAGE_DISPARITY, -1);
-                imageSet.setIndexOf(ImageSet::ImageType::IMAGE_COLOR, -1);
-                for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
-                    int typ = receiveHeader.imageTypes[i];
-                    ImageSet::ImageType imgtype = static_cast<ImageSet::ImageType>(typ);
-                    imageSet.setIndexOf(imgtype, i);
-                }
-            } else {
-                static bool warnedOnceV2 = false;
-                if (!warnedOnceV2) {
-                    LOG_DEBUG_IMPROTO("Info: received a transfer with header v2");
-                    warnedOnceV2 = true;
-                }
-                // Older v2 header; accessing imageTypes is not valid
-                //  Two-image sender with mode-dependent channel selection
-                imageSet.setIndexOf(ImageSet::ImageType::IMAGE_LEFT, 0);
-                imageSet.setIndexOf(ImageSet::ImageType::IMAGE_RIGHT, flaggedDisparityPair ? -1 : 1);
-                imageSet.setIndexOf(ImageSet::ImageType::IMAGE_DISPARITY, flaggedDisparityPair ? 1 : -1);
-                imageSet.setIndexOf(ImageSet::ImageType::IMAGE_COLOR, -1);
-            }
-            if(hasExposureTime) {
-                imageSet.setExposureTime(receiveHeader.exposureTime);
-                imageSet.setLastSyncPulse(receiveHeader.lastSyncPulseSec, receiveHeader.lastSyncPulseMicrosec);
-            }
-            // Header v6 enhancement
-            if (hasTriggerPulseSequenceIndex) {
-                for (int i=0; i<ImageSet::MAX_SUPPORTED_TRIGGER_CHANNELS; ++i) {
-                    imageSet.setTriggerPulseSequenceIndex(i, (int) receiveHeader.triggerPulseSequenceIndex[i]);
-                }
+        }
+        if(hasExposureTime) {
+            imageSet.setExposureTime(receiveHeader.exposureTime);
+            imageSet.setLastSyncPulse(receiveHeader.lastSyncPulseSec, receiveHeader.lastSyncPulseMicrosec);
+        }
+        // Header v6 enhancement
+        if (hasTriggerPulseSequenceIndex) {
+            for (int i=0; i<ImageSet::MAX_SUPPORTED_TRIGGER_CHANNELS; ++i) {
+                imageSet.setTriggerPulseSequenceIndex(i, (int) receiveHeader.triggerPulseSequenceIndex[i]);
             }
         }
 
         for (int i=0; i<receiveHeader.numberOfImages; ++i) {
             imageSet.setRowStride(i, rowStrideArr[i]);
+            if (validRows == receiveHeader.height || receptionDone) std::cout << "Set data for image " << i << " to " << ((off_t) pixelArr[i]) << std::endl;
             imageSet.setPixelData(i, pixelArr[i]);
         }
         imageSet.setQMatrix(receiveHeader.q);
@@ -809,9 +821,8 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
     }
 }
 
-unsigned char* ImageProtocol::Pimpl::decodeNoninterleaved(int imageNumber, int numImages, int receivedBytes,
+unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExternalBuffer, int receivedBytes,
         unsigned char* data, int& validRows, int& rowStride) {
-    (void) numImages; // unused now
     ImageSet::ImageFormat format;
     int bits = 8;
     switch (imageNumber) {
@@ -828,7 +839,7 @@ unsigned char* ImageProtocol::Pimpl::decodeNoninterleaved(int imageNumber, int n
             format = static_cast<ImageSet::ImageFormat>(receiveHeader.format3);
             break;
         default:
-            throw ProtocolException("Not implemented: decodeNoninterleaved with image index > 2");
+            throw ProtocolException("Not implemented: decodeImage with image index > 3");
     }
     bits = getFormatBits(static_cast<ImageSet::ImageFormat>(format), false);
 
@@ -845,6 +856,7 @@ unsigned char* ImageProtocol::Pimpl::decodeNoninterleaved(int imageNumber, int n
             ret = &data[bufferOffset0];
             rowStride = bufferRowStride;
             validRows = std::min(receivedBytes / bufferRowStride, (int)receiveHeader.height);
+            if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> immediate at " << ((off_t) ret) << std::endl;
         } else {
             // Perform 12-bit => 16 bit decoding
             allocateDecodeBuffer(imageNumber);
@@ -852,87 +864,42 @@ unsigned char* ImageProtocol::Pimpl::decodeNoninterleaved(int imageNumber, int n
             rowStride = 2*receiveHeader.width;
             int lastRow = std::min(lastReceivedPayloadBytes[imageNumber] / bufferRowStride, validRows);
 
+            // In external buffer mode, we unpack directly to the desired target buffer,
+            // otherwise we will return a pointer to an internally allocated buffer
+            if (externalBufferingActive) {
+                ret = activeExternalBufferTargets[imageNumber].first;
+            } else {
+                ret = &decodeBuffer[imageNumber][0];
+            }
             BitConversions::decode12BitPacked(lastRow, validRows, &data[bufferOffset0],
-                &decodeBuffer[imageNumber][0], bufferRowStride, rowStride, receiveHeader.width);
-
-            ret = &decodeBuffer[imageNumber][0];
+                ret, bufferRowStride, rowStride, receiveHeader.width);
+            if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> unpacked to " << ((off_t) ret) << std::endl;
         }
     } else {
         // Decode the tiled transfer
+        // In external buffer mode, we unpack directly to the desired target buffer,
+        // otherwise we will return a pointer to an internally allocated buffer
+        if (externalBufferingActive) {
+            ret = activeExternalBufferTargets[imageNumber].first;
+        } else {
+            allocateDecodeBuffer(imageNumber);
+            ret = &decodeBuffer[imageNumber][0];
+        }
         decodeTiledImage(imageNumber,
-            lastReceivedPayloadBytes[imageNumber], receivedBytes, data,
+            lastReceivedPayloadBytes[imageNumber], receivedBytes, data, ret,
             receiveHeader.firstTileWidth * (totalBits) / 8,
             receiveHeader.middleTilesWidth * (totalBits) / 8,
             receiveHeader.lastTileWidth * (totalBits) / 8,
             validRows, format, false);
-        ret = &decodeBuffer[imageNumber][0];
         rowStride = receiveHeader.width*getFormatBits(
             static_cast<ImageSet::ImageFormat>(format), true)/8;
+        if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> untiled to " << ((off_t) ret) << std::endl;
     }
 
     lastReceivedPayloadBytes[imageNumber] = receivedBytes;
     return ret;
 }
 
-
-unsigned char* ImageProtocol::Pimpl::decodeInterleaved(int imageNumber, int numImages, int receivedBytes,
-        unsigned char* data, int& validRows, int& rowStride) {
-    ImageSet::ImageFormat format = static_cast<ImageSet::ImageFormat>(
-        imageNumber == 0 ? receiveHeader.format0 : receiveHeader.format1);
-    int bits0 = getFormatBits(static_cast<ImageSet::ImageFormat>(receiveHeader.format0), false);
-    int bits1 = getFormatBits(static_cast<ImageSet::ImageFormat>(receiveHeader.format1), false);
-    int bits2 = getFormatBits(static_cast<ImageSet::ImageFormat>(receiveHeader.format2), false);
-    int bits3 = getFormatBits(static_cast<ImageSet::ImageFormat>(receiveHeader.format3), false);
-
-    int totalBits = (numImages<3)?(bits0 + bits1):(bits0 + bits1 + bits2 + bits3);
-
-    unsigned char* ret = nullptr;
-
-    if(receiveHeader.lastTileWidth == 0) {
-        int bufferOffset;
-        switch (imageNumber) {
-            case 0: { bufferOffset = 0; break; }
-            case 1: { bufferOffset = receiveHeader.width * bits0/8; break; }
-            case 2: { bufferOffset = receiveHeader.width * (bits0 + bits1)/8; break; }
-            default:
-                throw ProtocolException("Not implemented: image index > 2");
-        }
-        int bufferRowStride = receiveHeader.width*(totalBits) / 8;
-
-        if(format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) {
-            // No decoding is necessary. We can just pass through the
-            // data pointer
-            ret = &data[bufferOffset];
-            rowStride = bufferRowStride;
-            validRows = receivedBytes / bufferRowStride;
-        } else {
-            // Perform 12-bit => 16 bit decoding
-            allocateDecodeBuffer(imageNumber);
-            validRows = std::min(receivedBytes / bufferRowStride, (int)receiveHeader.height);
-            rowStride = 2*receiveHeader.width;
-            int lastRow = lastReceivedPayloadBytes[imageNumber] / bufferRowStride;
-
-            BitConversions::decode12BitPacked(lastRow, validRows, &data[bufferOffset],
-                &decodeBuffer[imageNumber][0], bufferRowStride, rowStride, receiveHeader.width);
-
-            ret = &decodeBuffer[imageNumber][0];
-        }
-    } else {
-        // Decode the tiled transfer
-        decodeTiledImage(imageNumber,
-            lastReceivedPayloadBytes[imageNumber], receivedBytes, data,
-            receiveHeader.firstTileWidth * (totalBits) / 8,
-            receiveHeader.middleTilesWidth * (totalBits) / 8,
-            receiveHeader.lastTileWidth * (totalBits) / 8,
-            validRows, format, true);
-        ret = &decodeBuffer[imageNumber][0];
-        rowStride = receiveHeader.width*getFormatBits(
-            static_cast<ImageSet::ImageFormat>(format), true)/8;
-    }
-
-    lastReceivedPayloadBytes[imageNumber] = receivedBytes;
-    return ret;
-}
 
 void ImageProtocol::Pimpl::allocateDecodeBuffer(int imageNumber) {
     ImageSet::ImageFormat format;
@@ -961,10 +928,8 @@ void ImageProtocol::Pimpl::allocateDecodeBuffer(int imageNumber) {
 }
 
 void ImageProtocol::Pimpl::decodeTiledImage(int imageNumber, int lastReceivedPayloadBytesThisImage, int receivedPayloadBytes,
-        const unsigned char* data, int firstTileStride, int middleTilesStride, int lastTileStride, int& validRows,
+        const unsigned char* data, unsigned char* dst, int firstTileStride, int middleTilesStride, int lastTileStride, int& validRows,
         ImageSet::ImageFormat format, bool dataIsInterleaved) {
-    // Allocate a decoding buffer
-    allocateDecodeBuffer(imageNumber);
 
     // Get beginning and end of first tile
     int numTiles = getNumTiles(receiveHeader.width, receiveHeader.firstTileWidth,
@@ -1016,11 +981,11 @@ void ImageProtocol::Pimpl::decodeTiledImage(int imageNumber, int lastReceivedPay
         if(format == ImageSet::FORMAT_12_BIT_MONO) {
             bytesPixel = 2;
             BitConversions::decode12BitPacked(tileStart, tileStop, &data[tileOffset],
-                &decodeBuffer[imageNumber][decodeXOffset], tileStride, 2*receiveHeader.width, tileWidth);
+                dst + decodeXOffset, tileStride, 2*receiveHeader.width, tileWidth);
         } else {
             bytesPixel = (format == ImageSet::FORMAT_8_BIT_RGB ? 3 : 1);
             decodeRowsFromTile(tileStart, tileStop, &data[tileOffset],
-                &decodeBuffer[imageNumber][decodeXOffset], tileStride,
+                dst + decodeXOffset, tileStride,
                 receiveHeader.width*bytesPixel, tileWidth*bytesPixel);
         }
 

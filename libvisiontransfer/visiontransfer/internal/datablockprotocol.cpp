@@ -411,7 +411,7 @@ void DataBlockProtocol::processReceivedUdpMessage(int length, bool& transferComp
             // a packet was dropped
             if(!waitingForMissingSegments && //receiveOffset > 0 &&
                     segmentOffset > blockReceiveOffsets[dataBlockID]
-                    && segmentOffset + payloadLength <= (int)blockReceiveBuffers[dataBlockID].size()) {
+                    && segmentOffset + payloadLength <= getBlockReceiveBufferSizeChecked(dataBlockID)) {
                 // We can just ask for a retransmission of this packet
                 LOG_DEBUG_DBP("Missing segment: " << dataBlockID << " size " << payloadLength << " ofs " << segmentOffset
                     << " but blkRecvOfs " << blockReceiveOffsets[dataBlockID]
@@ -425,7 +425,8 @@ void DataBlockProtocol::processReceivedUdpMessage(int length, bool& transferComp
                 missingReceiveSegments[dataBlockID].push_back(missingSeg);
 
                 // Move the received data to the right place in the buffer
-                memcpy(&blockReceiveBuffers[dataBlockID][segmentOffset], &receiveBuffer[0 + realPayloadOffset], payloadLength);
+                // TODO RYT TODO: in-place conversion support
+                memcpy(getBlockReceiveBufferChecked(dataBlockID) + segmentOffset, &receiveBuffer[0 + realPayloadOffset], payloadLength);
                 // Advance block receive offset
                 blockReceiveOffsets[dataBlockID] = segmentOffset + payloadLength;
             } else {
@@ -448,7 +449,8 @@ void DataBlockProtocol::processReceivedUdpMessage(int length, bool& transferComp
             }
 
             // append to correct block buffer
-            memcpy(&blockReceiveBuffers[dataBlockID][segmentOffset], &receiveBuffer[0 + realPayloadOffset], payloadLength);
+            // TODO RYT TODO: in-place conversion support
+            memcpy(getBlockReceiveBufferChecked(dataBlockID) + segmentOffset, &receiveBuffer[0 + realPayloadOffset], payloadLength);
             // advance the expected next data offset for this block
             blockReceiveOffsets[dataBlockID] = segmentOffset + payloadLength;
             if (waitingForMissingSegments) {
@@ -548,7 +550,8 @@ void DataBlockProtocol::processReceivedTcpMessage(int length, bool& transferComp
         int remainingSize = blockReceiveSize[0] - blockValidSize[0];
         int availableSize = std::min(receiveOffset, remainingSize);
         // Update actual target buffer
-        std::memcpy(&blockReceiveBuffers[0][blockReceiveOffsets[0]], &receiveBuffer[0], availableSize);
+        // TODO RYT TODO: in-place conversion support
+        std::memcpy(getBlockReceiveBufferChecked(0) + blockReceiveOffsets[0], &receiveBuffer[0], availableSize);
         blockReceiveOffsets[0] += availableSize;
         blockValidSize[0] = blockReceiveOffsets[0];
         // Extra data, store at buffer start for next reception to append to
@@ -578,7 +581,8 @@ void DataBlockProtocol::processReceivedTcpMessage(int length, bool& transferComp
                 if (offset != blockReceiveOffsets[block]) {
                     throw ProtocolException("Received invalid header!");
                 }
-                std::memcpy(&blockReceiveBuffers[block][blockReceiveOffsets[block]], &receiveBuffer[ofs+sizeof(SegmentHeaderTCP)], fragsize);
+                // TODO RYT TODO: in-place conversion support
+                std::memcpy(getBlockReceiveBufferChecked(block) + blockReceiveOffsets[block], &receiveBuffer[ofs+sizeof(SegmentHeaderTCP)], fragsize);
                 blockReceiveOffsets[block] += fragsize;
                 blockValidSize[block] = blockReceiveOffsets[block];
                 // Advance to next potential chunk
