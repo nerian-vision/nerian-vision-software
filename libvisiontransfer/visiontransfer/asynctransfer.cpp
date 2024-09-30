@@ -414,30 +414,39 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                 if (newDataReceived) {
                     // collectReceivedImageSet() frequency was too low; previous frame lost
                     if (uncollectedDroppedFrames > -1) uncollectedDroppedFrames++;
+                    // Immediately queue the previous (unhandled) buffers again in external buffering mode
+                    std::cout << "Dropping an unclaimed ImageSet, ext buf handle " << receivedSet.getExternalBufferHandle() << std::endl;
+                    signalImageSetDone(receivedSet);
                 }
-                // Copy the pixel data
-                for(int i=0;i<currentSet.getNumberOfImages();i++) {
-                    int bytesPerPixel = currentSet.getBytesPerPixel(i);
-                    int newStride = currentSet.getWidth() * bytesPerPixel;
-                    int totalSize = currentSet.getHeight() * newStride;
-                    int bufIdxHere = (i + receiveBufferIndex) % NUM_BUFFERS;
-                    if(static_cast<int>(receivedData[bufIdxHere].size()) < totalSize) {
-                        receivedData[bufIdxHere].resize(totalSize);
-                    }
-                    if(newStride == currentSet.getRowStride(i)) {
-                        memcpy(&receivedData[bufIdxHere][0], currentSet.getPixelData(i),
-                            newStride*currentSet.getHeight());
-                    } else {
-                        for(int y = 0; y<currentSet.getHeight(); y++) {
-                            memcpy(&receivedData[bufIdxHere][y*newStride],
-                                &currentSet.getPixelData(i)[y*currentSet.getRowStride(i)],
-                                newStride);
+                if (currentSet.getExternalBufferHandle() == 0) {
+                    // No external buffers specified and used ->
+                    // Copy the pixel data
+                    for(int i=0;i<currentSet.getNumberOfImages();i++) {
+                        int bytesPerPixel = currentSet.getBytesPerPixel(i);
+                        int newStride = currentSet.getWidth() * bytesPerPixel;
+                        int totalSize = currentSet.getHeight() * newStride;
+                        int bufIdxHere = (i + receiveBufferIndex) % NUM_BUFFERS;
+                        if(static_cast<int>(receivedData[bufIdxHere].size()) < totalSize) {
+                            receivedData[bufIdxHere].resize(totalSize);
                         }
-                        currentSet.setRowStride(i, newStride);
+                        if(newStride == currentSet.getRowStride(i)) {
+                            memcpy(&receivedData[bufIdxHere][0], currentSet.getPixelData(i),
+                                newStride*currentSet.getHeight());
+                        } else {
+                            for(int y = 0; y<currentSet.getHeight(); y++) {
+                                memcpy(&receivedData[bufIdxHere][y*newStride],
+                                    &currentSet.getPixelData(i)[y*currentSet.getRowStride(i)],
+                                    newStride);
+                            }
+                            currentSet.setRowStride(i, newStride);
+                        }
+                        currentSet.setPixelData(i, &receivedData[bufIdxHere][0]);
                     }
-                    currentSet.setPixelData(i, &receivedData[bufIdxHere][0]);
+                    // N.B. receiveBufferIndex is only increased at collection time
+                } else {
+                    // External buffering mode - buffer rotation is handled by ImageProtocol
+                    // We have the handle of the underlying buffer in currentSet.getExternalBufferHandle()
                 }
-                // N.B. receiveBufferIndex is only increased at collection time
 
                 // Notify that a new image set has been received
                 newDataReceived = true;

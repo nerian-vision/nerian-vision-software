@@ -1039,7 +1039,7 @@ void DataBlockProtocol::setExternalBufferTargets(const std::vector<std::pair<uns
             externalBufferLocations[i] = nullptr;
             externalBufferSizes[i] = 0;
         } else {
-            std::cout << "  Ext buf for part #" << i << " addr " << ((off_t) targets[i].first) << std::endl;
+            std::cout << "  Ext buf for part #" << i << " addr " << ((off_t) targets[i].first) << (targets[i].first ? "" : " (intermediate buffer is used)") << std::endl;
             externalBufferLocations[i] = targets[i].first;
             externalBufferSizes[i] = targets[i].second;
         }

@@ -554,7 +554,9 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
 
     activeExternalBufferTargets.clear();
     std::vector<std::pair<unsigned char*, size_t> > immediateTargets;
-
+    
+    std::vector<int> bufferOffsets(currentExternalBufferSet.getNumBuffers(), 0);
+    
     int numPixels = receiveHeader.width * receiveHeader.height;
     for (int imageNumber=0; imageNumber<receiveHeader.numberOfImages; ++imageNumber) {
         std::cout << "Image #" << imageNumber << std::endl;
@@ -573,15 +575,14 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
         for (int b=0; b<currentExternalBufferSet.getNumBuffers(); ++b) {
             const auto& buf = currentExternalBufferSet.getBuffer(b);
             std::cout << " Checking buffer " << b << " with " << buf.getNumParts() << " parts " << std::endl;
-            int bufOfs = 0;
             for (int p=0; p<buf.getNumParts(); ++p) {
-                std::cout << " Checking buffer " << b << " part " << p << std::endl;
+                std::cout << " Checking buffer " << b << " part " << p << " with reported part size " << partSize << std::endl;
                 const auto& part = buf.getPart(p);
                 // TODO effective part size including the requested transformations
                 if (static_cast<unsigned char>(part.imageType) == receiveHeader.imageTypes[imageNumber]) {
                     // Channel found in buffer mapping
-                    std::cout << "  Image #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufOfs << " with flags " << part.conversionFlags << std::endl;
-                    buffer = buf.getBufferPtr() + bufOfs;
+                    std::cout << "  Image #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufferOffsets[b] << " with flags " << part.conversionFlags << std::endl;
+                    buffer = buf.getBufferPtr() + bufferOffsets[b];
                     //finalTargets.push_back({buffer, partSize});
                     activeExternalBufferTargets.push_back({buffer, partSize});
                     if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP?
@@ -591,10 +592,12 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
                         immediateTargets.push_back({nullptr, 0});
                     }
                 }
-                if (buffer) break;
-                // Advance to region past this part
-                bufOfs += partSize;
-                std::cout << "   (advanced offset to " << bufOfs << ")" << std::endl;
+                // Advance to region past this part   TODO also leave hole if requested
+                if (buffer) {
+                    bufferOffsets[b] += partSize;
+                    std::cout << "   (advanced buffer " << b << " offset to " << bufferOffsets[b] << ")" << std::endl;
+                    break;
+                }
             }
             if (buffer) break;
         }
@@ -873,7 +876,7 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExterna
             }
             BitConversions::decode12BitPacked(lastRow, validRows, &data[bufferOffset0],
                 ret, bufferRowStride, rowStride, receiveHeader.width);
-            if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> unpacked to " << ((off_t) ret) << std::endl;
+            if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " ->  unpacked to " << ((off_t) ret) << std::endl;
         }
     } else {
         // Decode the tiled transfer

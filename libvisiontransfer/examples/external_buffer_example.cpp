@@ -151,7 +151,7 @@ int main() {
                 bool ok = false;
                 unsigned char* ptr = imageSet.getPixelData(i);
                 for (int j=0; j<3; ++j) {
-                    off_t where = ((off_t) ptr) - ((off_t) buffers[i]);
+                    off_t where = ((off_t) ptr) - ((off_t) buffers[j]);
                     if (where>=0 && where<16*1024*1024) {
                         std::cout << "Validated image " << i << " in external buffer" << std::endl;
                         ok = true;
