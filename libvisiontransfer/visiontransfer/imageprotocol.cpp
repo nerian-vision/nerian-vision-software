@@ -559,7 +559,8 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
     
     int numPixels = receiveHeader.width * receiveHeader.height;
     for (int imageNumber=0; imageNumber<receiveHeader.numberOfImages; ++imageNumber) {
-        std::cout << "Image #" << imageNumber << std::endl;
+        int partSize = dataProt.getBlockReceiveSize(imageNumber);
+        std::cout << "Image #" << imageNumber << " with received size " << partSize << std::endl;
         ImageSet::ImageFormat format;
         int bits = 8;
         switch (imageNumber) {
@@ -569,19 +570,18 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
             case 3: format = static_cast<ImageSet::ImageFormat>(receiveHeader.format3); break;
             default: throw ProtocolException("Invalid image index for buffer layout");
         }
-        int partSize = dataProt.getBlockReceiveSize(imageNumber);
         unsigned char* buffer = nullptr;
         // See if we have an external buffer for this function
         for (int b=0; b<currentExternalBufferSet.getNumBuffers(); ++b) {
             const auto& buf = currentExternalBufferSet.getBuffer(b);
             std::cout << " Checking buffer " << b << " with " << buf.getNumParts() << " parts " << std::endl;
             for (int p=0; p<buf.getNumParts(); ++p) {
-                std::cout << " Checking buffer " << b << " part " << p << " with reported part size " << partSize << std::endl;
+                std::cout << "  Checking buffer " << b << " part " << p << std::endl;
                 const auto& part = buf.getPart(p);
                 // TODO effective part size including the requested transformations
                 if (static_cast<unsigned char>(part.imageType) == receiveHeader.imageTypes[imageNumber]) {
                     // Channel found in buffer mapping
-                    std::cout << "  Image #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufferOffsets[b] << " with flags " << part.conversionFlags << std::endl;
+                    std::cout << "   Image #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufferOffsets[b] << " with flags " << part.conversionFlags << std::endl;
                     buffer = buf.getBufferPtr() + bufferOffsets[b];
                     //finalTargets.push_back({buffer, partSize});
                     activeExternalBufferTargets.push_back({buffer, partSize});

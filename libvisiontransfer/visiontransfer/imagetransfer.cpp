@@ -96,6 +96,7 @@ private:
 
     // The registered external sets of buffers
     std::map<ImageSet::ExternalBufferHandle, ExternalBufferSet> externalBufferPool;
+    std::map<ImageSet::ExternalBufferHandle, long> externalBufferLastWrite;
     ImageSet::ExternalBufferHandle assignedBufferHandle;
 
     // Socket configuration
@@ -317,6 +318,10 @@ void ImageTransfer::signalImageSetDone(ImageSet& imageSet) {
     pimpl->signalImageSetDone(imageSet);
 }
 
+void ImageTransfer::assignExternalBuffer() {
+    pimpl->assignExternalBuffer();
+}
+
 /******************** Implementation in pimpl classes *******************/
 
 // ImageTransfer
@@ -344,6 +349,7 @@ ImageTransfer::Pimpl::Pimpl(const char* address, const char* service,
             }
         }
         externalBufferPool[bufset.getHandle()] = bufset;
+        externalBufferLastWrite[bufset.getHandle()] = 0;
     }
 
     Networking::initNetworking();
@@ -696,7 +702,7 @@ bool ImageTransfer::Pimpl::receivePartialImageSet(ImageSet& imageSet,
         if (externalBufferPool.size() > 0) {
             imageSet.setExternalBufferHandle(assignedBufferHandle);
             externalBufferPool[assignedBufferHandle].setReady(true);
-            assignExternalBuffer();
+            //assignExternalBuffer(); // new assignment must be done externally (already OK if using AsyncTransfer)
             // May have returned empty bufset if all buffer sets have not returned from external control!
             // The protocol will then discard any incoming data until a new buffer set is provided.
         }
@@ -1024,7 +1030,7 @@ void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
 
 void ImageTransfer::Pimpl::signalImageSetDone(ImageSet& imageSet) {
     auto handle = imageSet.getExternalBufferHandle();
-    std::cout << "handleImageSetDone for handle #" << handle << std::endl;
+    std::cout << "\033[32mhandleImageSetDone\033[m for handle #" << handle << std::endl;
     if (handle == 0) return; // No-op, not an image set with external buffering
     if (!externalBufferPool.count(handle)) {
         throw ProtocolException("Invalid external buffer handle");

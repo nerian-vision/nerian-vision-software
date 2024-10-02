@@ -332,6 +332,9 @@ public:
     /// See AsyncTransfer::signalImageSetDone
     void signalImageSetDone(ImageSet& imageSet);
 
+    /// Rotate to the next free configured ExternalBufferSet (if external buffering is active)
+    void assignExternalBuffer();
+
 private:
     // We follow the pimpl idiom
     class Pimpl;
