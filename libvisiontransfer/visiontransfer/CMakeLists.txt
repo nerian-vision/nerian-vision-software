@@ -35,6 +35,7 @@ set(HEADERS
     internal/protocol-sh2-imu-bno080.h
     internal/sensorringbuffer.h
     internal/tokenizer.h
+    internal/logging.h
 )
 
 set(SOURCES
@@ -59,6 +60,7 @@ set(SOURCES
     internal/networking.cpp
     internal/parameterserialization.cpp
     internal/parametertransfer.cpp
+    internal/logging.cpp
 )
 
 # Build static and shared version

@@ -24,10 +24,13 @@
 #include "visiontransfer/exceptions.h"
 #include "visiontransfer/internal/datablockprotocol.h"
 #include "visiontransfer/internal/networking.h"
+#include "visiontransfer/internal/logging.h"
 
 using namespace std;
 using namespace visiontransfer;
 using namespace visiontransfer::internal;
+
+#define VT_IMAGETRANSFER_LOG_INFO(what) VISIONTRANSFER_LOG("ImageTransfer", Logging::LL_INFO, what)
 
 namespace visiontransfer {
 
@@ -227,9 +230,11 @@ void ImageTransfer::Pimpl::establishConnection() {
         throw;
     }
 
-    knownConnectedState = true;
-    if (connectionStateChangeCallback) {
-        std::thread([&](){connectionStateChangeCallback(visiontransfer::ConnectionState::CONNECTED);}).detach();
+    if (!isServer) {
+        knownConnectedState = true;
+        if (connectionStateChangeCallback) {
+            std::thread([&](){connectionStateChangeCallback(visiontransfer::ConnectionState::CONNECTED);}).detach();
+        }
     }
 }
 
@@ -323,6 +328,15 @@ bool ImageTransfer::Pimpl::tryAccept() {
         return false;
     }
 
+    {
+        // 2024-10-31 -- Logging block for LEM issue [TEMP DEBUG]
+        VT_IMAGETRANSFER_LOG_INFO("New connection in tryAccept");
+        if(newRemoteAddress.sin_family != AF_INET) {
+            VT_IMAGETRANSFER_LOG_INFO(" Not AF_INET! -- family: " << newRemoteAddress.sin_family);
+        }
+        VT_IMAGETRANSFER_LOG_INFO(" Remote address: " << std::string(inet_ntoa(newRemoteAddress.sin_addr)) << ":" << std::to_string(newRemoteAddress.sin_port));
+    }
+
     // For a new connection we require locks
     unique_lock<recursive_mutex> recvLock(receiveMutex);
     unique_lock<recursive_mutex> sendLock(sendMutex);
@@ -331,7 +345,10 @@ bool ImageTransfer::Pimpl::tryAccept() {
         // More robust TCP behavior: reject new connection.
         // (We had to accept first so we can close now.)
         // Remote client will detect that we closed immediately without sending data.
-        //std::cerr << "DEBUG- Rejecting new TCP connection, we are busy already" << std::endl;
+        {
+            // 2024-10-31 -- Logging block for issue [TEMP DEBUG]
+            VT_IMAGETRANSFER_LOG_INFO("Refusing connection to new TCP client; already serving");
+        }
         Networking::closeSocket(newSocket);
         return false;
     }
@@ -405,6 +422,10 @@ ImageTransfer::TransferStatus ImageTransfer::Pimpl::transferData() {
             // Test if TCP pipe closed remotely (even when we have nothing to send)
             bool disconnected = isTcpClientClosed(clientSocket);
             if (disconnected) {
+                {
+                    // 2024-10-31 -- Logging block for issue [TEMP DEBUG]
+                    VT_IMAGETRANSFER_LOG_INFO("TCP client closed remotely");
+                }
                 // The connection has been closed
                 disconnect();
             }
@@ -567,6 +588,10 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
 
     auto err = Networking::getErrno();
     if(bytesReceived == 0 || (protType == ImageProtocol::PROTOCOL_TCP && bytesReceived < 0 && err == WSAECONNRESET)) {
+        {
+            // 2024-10-31 -- Logging block for issue [TEMP DEBUG]
+            VT_IMAGETRANSFER_LOG_INFO("Connection closed during recv");
+        }
         // Connection closed
         disconnect();
         if ((!isServer) && (!gotAnyData)) {
@@ -637,6 +662,11 @@ void ImageTransfer::Pimpl::disconnect() {
     // disconnect
     unique_lock<recursive_mutex> recvLock(receiveMutex);
     unique_lock<recursive_mutex> sendLock(sendMutex);
+    
+    {
+        // 2024-10-31 -- Logging block for LEM issue [TEMP DEBUG]
+        VT_IMAGETRANSFER_LOG_INFO("disconnect()");
+    }
 
     if(clientSocket != INVALID_SOCKET) {
         if ((!isServer) && isConnected() && protType == ImageProtocol::PROTOCOL_UDP) {
@@ -731,6 +761,10 @@ bool ImageTransfer::Pimpl::sendNetworkMessage(const unsigned char* msg, int leng
             // The socket is not yet ready for a new transfer
             return false;
         } else if(sendError == EPIPE) {
+            {
+                // 2024-10-31 -- Logging block for issue [TEMP DEBUG]
+                VT_IMAGETRANSFER_LOG_INFO("Connection closed during send");
+            }
             // The connection has been closed
             disconnect();
             return false;
