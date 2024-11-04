@@ -68,8 +68,8 @@ public:
      *  Note: This will return false if the library was compiled without logging support.
      */
     bool removeAllLoggingSinksFor(std::ostream* os);
-    /*
-     * \brief Emits a log message
+    /**
+     * \brief Emits a log message. Note: this is primarily used in the library itself.
      *
      *  Note: This will return false if the library was compiled without logging support.
      */
@@ -77,8 +77,15 @@ public:
 private:
     std::vector<LoggingSink> sinks;
     std::mutex mutex;
+
+    // Only accessible via the singleton returned by getInstance()
+    Logging();
+    Logging(const Logging&) = delete;
+    void operator=(const Logging&) = delete;
 };
 
+// When building the library, the setting of VISIONTRANSFER_LOGGING_ENABLED
+// determines whether or not debug calls are emitted in the library at all.
 #ifdef VISIONTRANSFER_LOGGING_ENABLED
 #define VISIONTRANSFER_LOG(channel, level, what) { auto& loginst = Logging::getInstance(); if (loginst.hasLoggingSinks()) { std::ostringstream oss; oss << "[visiontransfer] " << channel << ": " << what << '\n'; loginst.emit(channel, level, oss.str()); } }
 #else

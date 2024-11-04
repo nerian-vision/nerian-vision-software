@@ -627,7 +627,7 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
             gotAnyData = true;
             protocol->processReceivedMessage(bytesReceived);
             if(protocol->newClientConnected()) {
-                // We have just established a new connection
+                // We have just established a new connection (from pending UDP connection message)
                 memcpy(&remoteAddress, &fromAddress, sizeof(remoteAddress));
 
                 if (isServer && (protType == ImageProtocol::PROTOCOL_UDP)) {

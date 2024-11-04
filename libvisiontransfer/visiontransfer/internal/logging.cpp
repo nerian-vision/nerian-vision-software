@@ -25,6 +25,9 @@ Logging& Logging::getInstance() {
     return loggingSingleton;
 }
 
+Logging::Logging() {
+}
+
 bool Logging::isLoggingEnabled() {
 #ifdef VISIONTRANSFER_LOGGING_ENABLED
     return true;
