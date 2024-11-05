@@ -49,6 +49,7 @@ bool Logging::addLoggingSink(std::ostream* os, LogLevel minLevel, LogLevel maxLe
     sinks.push_back({os, minLevel, maxLevel, channelFilter});
     return true;
 #else
+    (void) os; (void) minLevel; (void) maxLevel; (void) channelFilter;
     return false;
 #endif
 }
@@ -64,6 +65,7 @@ bool Logging::removeAllLoggingSinksFor(std::ostream* os) {
     sinks = newSinks;
     return true;
 #else
+    (void) os;
     return false;
 #endif
 }
@@ -80,6 +82,7 @@ bool Logging::emit(const std::string& channel, LogLevel logLevel, const std::str
     }
     return true;
 #else
+    (void) channel; (void) logLevel; (void) message;
     return false;
 #endif
 }
