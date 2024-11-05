@@ -62,11 +62,8 @@ int main(int, char**) {
         std::cout << "==================" << std::endl << std::endl;
         std::cout << std::setw(colW) << "Operation mode: " << parameters.getOperationMode() << std::endl;
         std::cout << std::setw(colW) << "Disparity offset: " << parameters.getDisparityOffset() << std::endl;
-        std::cout << std::setw(colW) << "Stereo P1 edge: " << parameters.getStereoMatchingP1Edge() << std::endl;
-        std::cout << std::setw(colW) << "Stereo P2 edge: " << parameters.getStereoMatchingP2Edge() << std::endl;
-        std::cout << std::setw(colW) << "Stereo P1 no edge: " << parameters.getStereoMatchingP1NoEdge() << std::endl;
-        std::cout << std::setw(colW) << "Stereo P2 no edge: " << parameters.getStereoMatchingP2NoEdge() << std::endl;
-        std::cout << std::setw(colW) << "Stereo edge sensitivity: " << parameters.getStereoMatchingEdgeSensitivity() << std::endl;
+        std::cout << std::setw(colW) << "Stereo P1: " << parameters.getStereoMatchingP1() << std::endl;
+        std::cout << std::setw(colW) << "Stereo P2: " << parameters.getStereoMatchingP2() << std::endl;
         std::cout << std::setw(colW) << "Mask border pixels: " << parameters.getMaskBorderPixelsEnabled() << std::endl;
         std::cout << std::setw(colW) << "Consistency check enabled: " << parameters.getConsistencyCheckEnabled() << std::endl;
         std::cout << std::setw(colW) << "Consistency check sensitivity: " << parameters.getConsistencyCheckSensitivity() << std::endl;

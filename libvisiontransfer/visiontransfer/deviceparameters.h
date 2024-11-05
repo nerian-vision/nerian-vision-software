@@ -144,83 +144,35 @@ public:
     // Algorithmic settings
 
     /**
-     * \brief Gets the SGM penalty P1 for small disparity changes at image edges.
+     * \brief Gets the SGM penalty P1 for small disparity changes.
      */
-    int getStereoMatchingP1Edge() {
-        return readIntParameter("sgm_p1_edge");
+    int getStereoMatchingP1() {
+        return readIntParameter("sgm_p1");
     }
 
     /**
-     * \brief Sets the SGM penalty P1 for small disparity changes at image edges.
+     * \brief Sets the SGM penalty P1 for small disparity changes.
      *
      * This parameter must be in the range of 0 to 255.
      */
-    void setStereoMatchingP1Edge(int p1) {
-        writeIntParameter("sgm_p1_edge", p1);
+    void setStereoMatchingP1(int p1) {
+        writeIntParameter("sgm_p1", p1);
     }
 
     /**
-     * \brief Gets the SGM penalty P1 for small disparity changes outside image edges.
+     * \brief Gets the SGM penalty P2 for large disparity changes.
      */
-    int getStereoMatchingP1NoEdge() {
-        return readIntParameter("sgm_p1_no_edge");
+    int getStereoMatchingP2() {
+        return readIntParameter("sgm_p2");
     }
 
     /**
-     * \brief Sets the SGM penalty P1 for small disparity changes outside image edges.
+     * \brief Sets the SGM penalty P2 for large disparity changes.
      *
      * This parameter must be in the range of 0 to 255.
      */
-    void setStereoMatchingP1NoEdge(int p1) {
-        writeIntParameter("sgm_p1_no_edge", p1);
-    }
-
-    /**
-     * \brief Gets the SGM penalty P2 for large disparity changes at image edges.
-     */
-    int getStereoMatchingP2Edge() {
-        return readIntParameter("sgm_p2_edge");
-    }
-
-    /**
-     * \brief Sets the SGM penalty P2 for large disparity changes at image edges.
-     *
-     * This parameter must be in the range of 0 to 255.
-     */
-    void setStereoMatchingP2Edge(int p2) {
-        writeIntParameter("sgm_p2_edge", p2);
-    }
-
-    /**
-     * \brief Gets the SGM penalty P2 for large disparity changes at image edges.
-     */
-    int getStereoMatchingP2NoEdge() {
-        return readIntParameter("sgm_p2_no_edge");
-    }
-
-    /**
-     * \brief Sets the SGM penalty P2 for large disparity changes at image edges.
-     *
-     * This parameter must be in the range of 0 to 255.
-     */
-    void setStereoMatchingP2NoEdge(int p2) {
-        writeIntParameter("sgm_p2_no_edge", p2);
-    }
-
-    /**
-     * \brief Gets the edge sensitivity of the SGM algorithm
-     */
-    int getStereoMatchingEdgeSensitivity() {
-        return readIntParameter("sgm_edge_sensitivity");
-    }
-
-    /**
-     * \brief Sets the edge sensitivity of the SGM algorithm
-     *
-     * This parameter must be in the range of 0 to 255.
-     */
-    void setStereoMatchingEdgeSensitivity(int sensitivity) {
-        writeIntParameter("sgm_edge_sensitivity", sensitivity);
+    void setStereoMatchingP2(int p2) {
+        writeIntParameter("sgm_p2", p2);
     }
 
     /**
