@@ -11,15 +11,15 @@ else()
     set(LIBVISIONTRANSFER_EXTRA_LIBS "")
 endif()
 
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/visiontransfer_src/__init__.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/visiontransfer_src/visiontransfer_cpp.pxd.in DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/visiontransfer_src/visiontransfer.pyx.in DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src)
-
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tools/autogen_docstrings.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tools)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tools/autogen_parameters.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tools)
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_sources.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tools)
-
-file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/setup.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+add_custom_target(init_cython
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/visiontransfer_src/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/visiontransfer_src/visiontransfer_cpp.pxd.in ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/visiontransfer_src/visiontransfer.pyx.in ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/tools/autogen_docstrings.py ${CMAKE_CURRENT_BINARY_DIR}/tools
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/tools/autogen_parameters.py ${CMAKE_CURRENT_BINARY_DIR}/tools
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_sources.py ${CMAKE_CURRENT_BINARY_DIR}/tools
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/setup.py ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 if(WIN32 AND NOT MINGW)
     # CMAKE_BUILD_TYPE did not work here, but we only build for Release anyway
@@ -31,8 +31,10 @@ endif()
 
 # Target to call all required preprocessing and build steps for cython
 #  (The || cd . is a Unix-compatible way to clear Windows errorlevel if directory already exists)
-add_custom_target(cython ALL
-    DEPENDS visiontransfer-static${LIB_SUFFIX}
+
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Makefile
+    DEPENDS init_cython
     COMMENT "Will run the Cython build target"
     COMMAND mkdir visiontransfer || cd .
     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH="${CMAKE_CURRENT_BINARY_DIR}" LIBVISIONTRANSFER_SRCDIR="${LIBVISIONTRANSFER_SRCDIR}"
@@ -46,6 +48,9 @@ add_custom_target(cython ALL
         LIBVISIONTRANSFER_EXTRA_LIBS=${LIBVISIONTRANSFER_EXTRA_LIBS}
         ${Python3_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/setup.py build_ext
 )
+add_custom_target(cython ALL
+    DEPENDS visiontransfer-static${LIB_SUFFIX}
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/Makefile)
 
 # Wheel is built separately as it might not be available on all systems
 if(BUILD_WHEEL)
@@ -62,4 +67,3 @@ endif()
 install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E env LIBVISIONTRANSFER_LIBDIR=${LIBVISIONTRANSFER_LIBDIR} \
     LIBVISIONTRANSFER_EXTRA_LIBS=${LIBVISIONTRANSFER_EXTRA_LIBS} \
     ${Python3_EXECUTABLE} setup.py install WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})" )
-
