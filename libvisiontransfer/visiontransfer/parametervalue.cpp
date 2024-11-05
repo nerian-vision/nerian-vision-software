@@ -113,7 +113,7 @@ ParameterValue::Pimpl::~Pimpl()
 ParameterValue::Pimpl& ParameterValue::Pimpl::setType(ParameterValue::ParameterType t) {
     type = t;
     return *this;
-};
+}
 
 ParameterValue::Pimpl& ParameterValue::Pimpl::setTensorShape(const std::vector<unsigned int>& shape) {
     unsigned int dims = (unsigned int) shape.size();
