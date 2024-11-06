@@ -12,6 +12,8 @@ else()
 endif()
 
 add_custom_target(init_cython
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src || cd .
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/tools || cd .
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/visiontransfer_src/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/visiontransfer_src/visiontransfer_cpp.pxd.in ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/visiontransfer_src/visiontransfer.pyx.in ${CMAKE_CURRENT_BINARY_DIR}/visiontransfer_src
@@ -36,7 +38,7 @@ add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Makefile
     DEPENDS init_cython
     COMMENT "Will run the Cython build target"
-    COMMAND mkdir visiontransfer || cd .
+    COMMAND ${CMAKE_COMMAND} -E make_directory  visiontransfer || cd .
     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH="${CMAKE_CURRENT_BINARY_DIR}" LIBVISIONTRANSFER_SRCDIR="${LIBVISIONTRANSFER_SRCDIR}"
         LIBVISIONTRANSFER_LIBDIR=${LIBVISIONTRANSFER_LIBDIR} ${Python3_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/tools/autogen_docstrings.py
     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH="${CMAKE_CURRENT_BINARY_DIR}" LIBVISIONTRANSFER_SRCDIR="${LIBVISIONTRANSFER_SRCDIR}"
