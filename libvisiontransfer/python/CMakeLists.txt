@@ -37,6 +37,7 @@ endif()
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Makefile
     DEPENDS init_cython
+    DEPENDS visiontransfer-static${LIB_SUFFIX}
     COMMENT "Will run the Cython build target"
     COMMAND ${CMAKE_COMMAND} -E make_directory  visiontransfer || cd .
     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH="${CMAKE_CURRENT_BINARY_DIR}" LIBVISIONTRANSFER_SRCDIR="${LIBVISIONTRANSFER_SRCDIR}"
@@ -50,8 +51,8 @@ add_custom_command(
         LIBVISIONTRANSFER_EXTRA_LIBS=${LIBVISIONTRANSFER_EXTRA_LIBS}
         ${Python3_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/setup.py build_ext
 )
+
 add_custom_target(cython ALL
-    DEPENDS visiontransfer-static${LIB_SUFFIX}
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/Makefile)
 
 # Wheel is built separately as it might not be available on all systems
