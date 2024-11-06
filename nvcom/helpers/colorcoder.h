@@ -44,7 +44,7 @@ public:
             else val = maxVal;
         }
 
-        double relVal = (val - minVal)/(maxVal-minVal);
+        float relVal = (val - minVal)/(maxVal-minVal);
         return codeRelativeValue(relVal);
     }
 
