@@ -202,7 +202,7 @@ Mat_<Vec3b> ColorCoder::createLegendBorder(unsigned int srcWidth, unsigned int s
     Mat_<Vec3b> dst(srcHeight, srcWidth + gap + fontSize.width, Vec3b(0, 0, 0));
     for(int y = 0; y< dst.rows; y++)
         for(int x = srcWidth + gap; x < dst.cols; x++) {
-            dst(y, x) = codeRelativeValue(y/double(srcHeight));
+            dst(y, x) = codeRelativeValue(y/float(srcHeight));
     }
 
     // Print labels
