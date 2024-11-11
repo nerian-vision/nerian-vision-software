@@ -274,7 +274,7 @@ public:
         if (block >= numReceptionBlocks) {
             throw ProtocolException("Tried to get receive buffer beyond initialized block range");
         }
-        if (externalBufferLocations[block]) {
+        if (externalBufferingActive && externalBufferLocations[block]) {
             return externalBufferLocations[block];
         } else {
             return &blockReceiveBuffers[block][0];
@@ -285,7 +285,7 @@ public:
         if (block >= numReceptionBlocks) {
             throw ProtocolException("Tried to get receive buffer beyond initialized block range");
         }
-        if (externalBufferLocations[block]) {
+        if (externalBufferingActive && externalBufferLocations[block]) {
             return externalBufferSizes[block];
         } else {
             return blockReceiveBuffers[block].size();

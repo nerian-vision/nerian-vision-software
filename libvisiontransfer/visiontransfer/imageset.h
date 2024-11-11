@@ -44,7 +44,7 @@ private:
 
 public:
     /// ID / handle for an externally allocated data buffer backing an ImageSet
-    typedef size_t ExternalBufferHandle;
+    typedef ptrdiff_t ExternalBufferHandle; // (ssize is C++20)
 
     static const int MAX_SUPPORTED_IMAGES = 4;
     static const int MAX_SUPPORTED_TRIGGER_CHANNELS = 5;
@@ -457,17 +457,26 @@ public:
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
     /**
-     * \brief Sets the external buffer handle (used internally).
+     * \brief Sets the external buffer handle (used internally!).
      * Only meaningful if external buffers are activated for an image transfer.
      */
-    void setExternalBufferHandle(ExternalBufferHandle handle);
+    void setExternalBufferHandle(int imageNumber, ExternalBufferHandle handle);
 #endif
 
     /**
-     * \brief Gets the external buffer handle.
-     * Only meaningful if external buffers are activated for an image transfer.
+     * \brief Gets the associated external buffer handle for a specific index.
+     * 
+     * See getExternalBufferHandle(ImageType)
      */
-    ExternalBufferHandle getExternalBufferHandle() const;
+    ExternalBufferHandle getExternalBufferHandle(int imageNumber) const;
+
+    /**
+     * \brief Gets the associated external buffer handle for a specific image type.
+     * Only meaningful if external buffers are activated for an image transfer.
+     * A value of 0 indicates that the image is not inside an external buffer
+     * (if external buffering mode was activated, this indicates an exhausted buffer pool).
+     */
+    ExternalBufferHandle getExternalBufferHandle(ImageType what) const;
 
 };
 

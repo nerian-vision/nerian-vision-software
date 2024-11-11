@@ -227,12 +227,12 @@ public:
         return triggerPulseSequenceIndex[channel];
     }
 
-    inline void setExternalBufferHandle(ExternalBufferHandle handle) {
-        externalBufferHandle = handle;
+    inline void setExternalBufferHandle(int imageIndex, ExternalBufferHandle handle) {
+        externalBufferHandle[imageIndex] = handle;
     }
 
-    inline ExternalBufferHandle getExternalBufferHandle() const {
-        return externalBufferHandle;
+    inline ExternalBufferHandle getExternalBufferHandle(int imageIndex) const {
+        return externalBufferHandle[imageIndex];
     }
 
 private:
@@ -261,7 +261,7 @@ private:
     int lastSyncPulseMicrosec;
     int triggerPulseSequenceIndex[MAX_SUPPORTED_TRIGGER_CHANNELS];
 
-    ExternalBufferHandle externalBufferHandle;
+    ExternalBufferHandle externalBufferHandle[ImageSet::MAX_SUPPORTED_IMAGES];
 
     void copyData(ImageSet::Pimpl& dest, const ImageSet::Pimpl& src, bool countRef);
     void decrementReference();
@@ -273,7 +273,7 @@ ImageSet::Pimpl::Pimpl()
         seqNum(0), minDisparity(0), maxDisparity(0), subpixelFactor(16),
         referenceCounter(NULL), numberOfImages(2), indexLeftImage(0), indexRightImage(1), indexDisparityImage(-1),
         indexColorImage(-1), exposureTime(0), lastSyncPulseSec(0), lastSyncPulseMicrosec(0), triggerPulseSequenceIndex{0},
-        externalBufferHandle(0) {
+        externalBufferHandle{0} {
     for (int i=0; i<ImageSet::MAX_SUPPORTED_IMAGES; ++i) {
         formats[i] = ImageSet::FORMAT_8_BIT_MONO;
         data[i] = NULL;
@@ -306,6 +306,7 @@ void ImageSet::Pimpl::copyData(ImageSet::Pimpl& dest, const ImageSet::Pimpl& src
         dest.rowStride[i] = src.rowStride[i];
         dest.formats[i] = src.formats[i];
         dest.data[i] = src.data[i];
+        dest.externalBufferHandle[i] = src.externalBufferHandle[i];
     }
 
     dest.qMatrix = src.qMatrix;
@@ -324,7 +325,6 @@ void ImageSet::Pimpl::copyData(ImageSet::Pimpl& dest, const ImageSet::Pimpl& src
     dest.exposureTime = src.exposureTime;
     dest.lastSyncPulseSec = src.lastSyncPulseSec;
     dest.lastSyncPulseMicrosec = src.lastSyncPulseMicrosec;
-    dest.externalBufferHandle = src.externalBufferHandle;
 
     for (int i=0; i<ImageSet::MAX_SUPPORTED_TRIGGER_CHANNELS; ++i) {
         dest.triggerPulseSequenceIndex[i] = src.triggerPulseSequenceIndex[i];
@@ -422,7 +422,9 @@ void ImageSet::Pimpl::copyTo(ImageSet::Pimpl& dest) {
     (*dest.referenceCounter) = 1;
 
     // No longer backed by external buffer
-    dest.externalBufferHandle = 0;
+    for(int i=0; i<ImageSet::MAX_SUPPORTED_IMAGES; i++) {
+        dest.externalBufferHandle[i] = 0;
+    }
 }
 
 ImageSet::ImageType ImageSet::Pimpl::getImageType(int imageNumber) const {
@@ -706,12 +708,20 @@ int ImageSet::getBytesPerPixel(ImageFormat format) {
     }
 }
 
-void ImageSet::setExternalBufferHandle(ImageSet::ExternalBufferHandle handle) {
-    pimpl->setExternalBufferHandle(handle);
+void ImageSet::setExternalBufferHandle(int idx, ImageSet::ExternalBufferHandle handle) {
+    pimpl->setExternalBufferHandle(idx, handle);
 }
 
-ImageSet::ExternalBufferHandle ImageSet::getExternalBufferHandle() const {
-    return pimpl->getExternalBufferHandle();
+ImageSet::ExternalBufferHandle ImageSet::getExternalBufferHandle(int idx) const {
+    if (idx < 0 || idx >= ImageSet::MAX_SUPPORTED_IMAGES) {
+        throw std::runtime_error("Invalid image index for getExternalBufferHandle");
+    }
+    return pimpl->getExternalBufferHandle(idx);
+}
+
+ImageSet::ExternalBufferHandle ImageSet::getExternalBufferHandle(ImageSet::ImageType imageType) const {
+    auto idx = getIndexOf(imageType, true);
+    return pimpl->getExternalBufferHandle(idx);
 }
 
 } // namespace

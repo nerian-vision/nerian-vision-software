@@ -36,7 +36,7 @@ int main() {
 
     // One or more buffers are added to a buffer set; for each buffer in the set you select which image channels it accepts.
     // In this example, we generate sets with a single buffer each, which will accept several image channels (they will be packed consecutively).
-    ExternalBufferSet bufferSets[3];
+    ExternalBufferSet bufferSets[3] = {100, 101, 102}; // handles can be either provided to the constructors or auto-generated internally (do not mix)
     for (int i=0; i<3; ++i) {
         // Wrap the raw buffer allocated above
         ExternalBuffer ebuf(buffers[i], myBufSize);
@@ -78,6 +78,7 @@ int main() {
         for (int i=0; i<3; ++i) {
             cfg.addExternalBufferSet(bufferSets[i]);
         }
+        cfg.setExternalBufferingActive(true);
         // Create and launch an AsyncTransfer based on the config
         AsyncTransfer asyncTransfer(cfg);
 

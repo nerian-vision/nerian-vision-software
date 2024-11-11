@@ -94,6 +94,8 @@ void DataBlockProtocol::zeroStructures() {
         rawValidBytes[i] = 0;
         transferOffset[i] = 0;
         transferSize[i] = 0;
+        externalBufferLocations[i] = nullptr;
+        externalBufferSizes[i] = 0;
     }
     std::memset(overwrittenTransferData, 0, sizeof(overwrittenTransferData));
     overwrittenTransferIndex = -1;

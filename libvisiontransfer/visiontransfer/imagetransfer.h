@@ -75,6 +75,8 @@ public:
             /// More than one buffer set should be added to enable reception
             /// while another ImageSet is still being processed by the user.
             Config& addExternalBufferSet(ExternalBufferSet bufset);
+            /// Set active state for external buffering; buffer sets must also be added.
+            Config& setExternalBufferingActive(bool active);
 
             /// Return the configured target address
             const char* getAddress() const;
@@ -99,6 +101,8 @@ public:
             int getNumExternalBufferSets() const;
             /// Return the configured external buffer set at the specified index
             ExternalBufferSet getExternalBufferSet(int idx) const;
+            /// Return the external buffering active state
+            bool getExternalBufferingActive() const;
         private:
             class Pimpl;
             Pimpl* pimpl;
@@ -330,10 +334,21 @@ public:
     void setAutoReconnect(int secondsBetweenRetries=1);
     
     /// See AsyncTransfer::signalImageSetDone
-    void signalImageSetDone(ImageSet& imageSet);
+    void signalExternalBufferDone(ImageSet::ExternalBufferHandle handle);
 
-    /// Rotate to the next free configured ExternalBufferSet (if external buffering is active)
-    void assignExternalBuffer();
+    /** \brief Rotate to the next free configured ExternalBufferSet for all
+     * available image types (if external buffering is active)
+     */
+    void assignExternalBuffers();
+
+    /**
+     * \brief Set active state for external buffering; buffer sets must also be added.
+     */
+    void setExternalBufferingActive(bool active);
+    /**
+     * \brief Returns whether external buffering mode is active
+     */
+    bool getExternalBufferingActive() const;
 
 private:
     // We follow the pimpl idiom

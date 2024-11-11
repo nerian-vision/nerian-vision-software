@@ -59,6 +59,14 @@ public:
     TimeoutException(std::string msg): std::runtime_error(msg) {}
 };
 
+/**
+ * \brief Exception class that is used for all buffer definition and access exceptions.
+ */
+class BufferException: public std::runtime_error {
+public:
+    BufferException(std::string msg): std::runtime_error(msg) {}
+};
+
 } // namespace
 
 #endif

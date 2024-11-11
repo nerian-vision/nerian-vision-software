@@ -262,14 +262,26 @@ public:
 
     /**
      * \brief Sets the external buffer set to capture the next received
-     * ImageSet.
+     * ImageSet, for the given imageType (or all of them if IMAGE_UNDEFINED).
      *
      * The pool state is administered inside ImageTransfer. If the pool
-     * runs out, this function will be called with an empty buffer set,
-     * and the protocol will drop subsequent data until a valid buffer
+     * runs out, setExternalBufferSetUnavailable() will be called instead
+     * for this imageType.
+     */
+    void setExternalBufferSet(ImageSet::ImageType imageType, const ExternalBufferSet& bufset);
+
+    /**
+     * \brief This is called by ImageTransfer in external buffering mode only
+     * whenever the external buffer pool for the given imageType is exhausted.
+     * The protocol will drop subsequent data for this type until a valid buffer
      * set is provided once more.
      */
-    void setExternalBufferSet(const ExternalBufferSet& bufset);
+    void setExternalBufferSetUnavailable(ImageSet::ImageType imageType);
+
+    /**
+     * Return the external buffer handle for the specified channel; 0 if inactive and -1 if exhausted.
+     */
+    ImageSet::ExternalBufferHandle getExternalBufferHandleFor(ImageSet::ImageType imageType);
 
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
     /// Prints status information to the console

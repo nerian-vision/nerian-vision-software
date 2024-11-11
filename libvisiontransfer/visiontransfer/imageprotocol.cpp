@@ -25,6 +25,8 @@
 #include "visiontransfer/internal/bitconversions.h"
 #include "visiontransfer/internal/internalinformation.h"
 
+#include <iomanip> // Debug
+
 // Network headers
 #ifdef _WIN32
     #ifndef NOMINMAX
@@ -82,8 +84,9 @@ public:
 
     // External buffering setup (mostly passed to DBProto)
     void setExternalBufferingActive(bool active);
-    void setExternalBufferSet(const ExternalBufferSet& bufset);
+    void setExternalBufferSet(ImageSet::ImageType imageType, const ExternalBufferSet& bufset);
     bool generateBufferLayout();
+    ImageSet::ExternalBufferHandle getExternalBufferHandleFor(ImageSet::ImageType imageType);
 
 private:
     unsigned short MAGIC_SEQUECE = 0x3D15;
@@ -170,7 +173,7 @@ private:
     bool receptionDone;
 
     bool externalBufferingActive;
-    ExternalBufferSet currentExternalBufferSet;
+    ExternalBufferSet currentExternalBufferSet[5]; // number of enum values of ImageSet::ImageType - currently 1+IMAGE_COLOR
     std::vector<std::pair<unsigned char*, size_t> > activeExternalBufferTargets;
 
     // Copies the transmission header to the given buffer
@@ -286,8 +289,16 @@ void ImageProtocol::setExternalBufferingActive(bool active) {
     pimpl->setExternalBufferingActive(active);
 }
 
-void ImageProtocol::setExternalBufferSet(const ExternalBufferSet& bufset) {
-    pimpl->setExternalBufferSet(bufset);
+void ImageProtocol::setExternalBufferSet(ImageSet::ImageType imageType, const ExternalBufferSet& bufset) {
+    pimpl->setExternalBufferSet(imageType, bufset);
+}
+
+void ImageProtocol::setExternalBufferSetUnavailable(ImageSet::ImageType imageType) {
+    pimpl->setExternalBufferSet(imageType, ExternalBufferSet(-1)); // using -1 handle to mark invalid
+}
+
+ImageSet::ExternalBufferHandle ImageProtocol::getExternalBufferHandleFor(ImageSet::ImageType imageType) {
+    return pimpl->getExternalBufferHandleFor(imageType);
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -296,10 +307,11 @@ ImageProtocol::Pimpl::Pimpl(bool server, ProtocolType protType, int maxUdpPacket
         :dataProt(server, (DataBlockProtocol::ProtocolType)protType,
         maxUdpPacketSize), protType(protType),
         receiveHeaderParsed(false), lastReceivedPayloadBytes{0},
-        receptionDone(false) {
+        receptionDone(false), externalBufferingActive(false) {
     headerBuffer.resize(sizeof(HeaderData) + 128);
     memset(&headerBuffer[0], 0, sizeof(headerBuffer.size()));
     memset(&receiveHeader, 0, sizeof(receiveHeader));
+    std::cout << "ImageProtocol::Pimpl()" << std::endl;
 }
 
 void ImageProtocol::Pimpl::setTransferImageSet(const ImageSet& imageSet) {
@@ -531,6 +543,7 @@ void ImageProtocol::Pimpl::processReceivedMessage(int length) {
                     // We received the header - we can now assign a
                     // buffer layout (if external buffering is active).
                     if (externalBufferingActive) {
+                        std::cout << "ext buf is active" << std::endl;
                         bool success = generateBufferLayout();
                     }
 
@@ -548,14 +561,19 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
     // is an immediate external buffer target, or intermediate buffering
     // should be used.
     std::cout << "generateBufferLayout" << std::endl;
-    if (currentExternalBufferSet.getNumBuffers() == 0) {
-        throw TransferException("External buffer was unavailable");
-    }
+    //if (currentExternalBufferSet.getNumBuffers() == 0) {
+    //    throw TransferException("External buffer was unavailable");
+    //}
+
+    // Check whether a valid multi-part buffer is present, otherwise use the single-channel lookup
+    // Technically, when the multi-part pool is underrun, unnecessary extra checks are then made below,
+    // but this is just one per frame and only in the exhausted pool state.
+    bool isMultipartBuffer = currentExternalBufferSet[ImageSet::IMAGE_UNDEFINED].getHandle() != -1;
 
     activeExternalBufferTargets.clear();
     std::vector<std::pair<unsigned char*, size_t> > immediateTargets;
     
-    std::vector<int> bufferOffsets(currentExternalBufferSet.getNumBuffers(), 0);
+    std::vector<int> bufferOffsets(currentExternalBufferSet[ImageSet::IMAGE_UNDEFINED].getNumBuffers()+1, 0);
     
     int numPixels = receiveHeader.width * receiveHeader.height;
     for (int imageNumber=0; imageNumber<receiveHeader.numberOfImages; ++imageNumber) {
@@ -570,40 +588,73 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
             case 3: format = static_cast<ImageSet::ImageFormat>(receiveHeader.format3); break;
             default: throw ProtocolException("Invalid image index for buffer layout");
         }
+
+        ImageSet::ImageType imageType = static_cast<ImageSet::ImageType>(receiveHeader.imageTypes[imageNumber]);
+
         unsigned char* buffer = nullptr;
-        // See if we have an external buffer for this function
-        for (int b=0; b<currentExternalBufferSet.getNumBuffers(); ++b) {
-            const auto& buf = currentExternalBufferSet.getBuffer(b);
-            std::cout << " Checking buffer " << b << " with " << buf.getNumParts() << " parts " << std::endl;
-            for (int p=0; p<buf.getNumParts(); ++p) {
-                std::cout << "  Checking buffer " << b << " part " << p << std::endl;
-                const auto& part = buf.getPart(p);
-                // TODO effective part size including the requested transformations
-                if (static_cast<unsigned char>(part.imageType) == receiveHeader.imageTypes[imageNumber]) {
-                    // Channel found in buffer mapping
-                    std::cout << "   Image #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufferOffsets[b] << " with flags " << part.conversionFlags << std::endl;
-                    buffer = buf.getBufferPtr() + bufferOffsets[b];
-                    //finalTargets.push_back({buffer, partSize});
-                    activeExternalBufferTargets.push_back({buffer, partSize});
-                    if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP?
-                            && (receiveHeader.lastTileWidth == 0)) { // tiled transfers need an intermediate buffer
-                        immediateTargets.push_back({buffer, partSize});
-                    } else {
-                        immediateTargets.push_back({nullptr, 0});
+        if (isMultipartBuffer) {
+            // See if we have an external buffer for this function (multi-part buffer set)
+            const auto& bufset = currentExternalBufferSet[ImageSet::IMAGE_UNDEFINED];
+            for (int b=0; b<bufset.getNumBuffers(); ++b) {
+                const auto& buf = bufset.getBuffer(b);
+                std::cout << " Checking buffer " << b << " with " << buf.getNumParts() << " parts " << std::endl;
+                for (int p=0; p<buf.getNumParts(); ++p) {
+                    std::cout << "  Checking buffer " << b << " part " << p << std::endl;
+                    const auto& part = buf.getPart(p);
+                    // TODO effective part size including the requested transformations
+                    if (static_cast<unsigned char>(part.imageType) == imageType) {
+                        // Channel found in buffer mapping
+                        std::cout << "   Image #" << imageNumber << " header image type " << ((int) imageType) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufferOffsets[b] << " with flags " << part.conversionFlags << std::endl;
+                        buffer = buf.getBufferPtr() + bufferOffsets[b];
+                        //finalTargets.push_back({buffer, partSize});
+                        activeExternalBufferTargets.push_back({buffer, partSize});
+                        if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP?
+                                && (receiveHeader.lastTileWidth == 0)) { // tiled transfers need an intermediate buffer
+                            immediateTargets.push_back({buffer, partSize});
+                        } else {
+                            immediateTargets.push_back({nullptr, 0});
+                        }
+                    }
+                    // Advance to region past this part   TODO also leave hole if requested
+                    if (buffer) {
+                        bufferOffsets[b] += partSize;
+                        if (bufferOffsets[b] > buf.getBufferSize()) {
+                            // Would cause a buffer overflow if passed into the data block protocol
+                            throw std::runtime_error(std::string("External buffer set ") + std::to_string(bufset.getHandle())
+                                    + " constituent buffer #" + std::to_string(b)
+                                    + " is too small to hold part #" +std::to_string(p)
+                                    + " with image type " + std::to_string(imageType));
+                        }
+                        std::cout << "   (advanced buffer " << b << " offset to " << bufferOffsets[b] << ")" << std::endl;
+                        break;
                     }
                 }
-                // Advance to region past this part   TODO also leave hole if requested
-                if (buffer) {
-                    bufferOffsets[b] += partSize;
-                    std::cout << "   (advanced buffer " << b << " offset to " << bufferOffsets[b] << ")" << std::endl;
-                    break;
+                if (buffer) break;
+            }
+        } else {
+            // Single-part buffers - just check the specific assignment
+            const auto& bufset = currentExternalBufferSet[imageType];
+            if (bufset.getHandle()!=-1 && bufset.getNumBuffers()==1) {
+                const auto& buf = bufset.getBuffer(0);
+                if (buf.getNumParts() == 1) {
+                    const auto& part = buf.getPart(0);
+                    if (part.imageType == imageType) {
+                        if (partSize > buf.getBufferSize()) {
+                            // Would cause a buffer overflow if passed into the data block protocol
+                            throw std::runtime_error(std::string("External buffer set ") + std::to_string(bufset.getHandle())
+                                    + " is too small to hold image type " + std::to_string(imageType));
+                        }
+                        // Everything validated - data block protocol may use the pointer as-is
+                        buffer = buf.getBufferPtr();
+                    }
                 }
             }
-            if (buffer) break;
         }
+        // TODO in the case of pool exhaustion, it would be possible to signal this for the individual channel
+        // in the resulting ImageSet instead. In the case of unexpected channels, we could also just ignore them.
         if (!buffer) {
-            std::cout << "  Part #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - not found in part spec!" << std::endl;
-            throw TransferException(std::string("External buffers were not set up to handle image type ")+std::to_string(receiveHeader.imageTypes[imageNumber]));
+            std::cout << "  Transfer part #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - not consistent with part spec!" << std::endl;
+            throw TransferException(std::string("External buffers were not set up correctly for image type ")+std::to_string(receiveHeader.imageTypes[imageNumber]));
         }
     }
 
@@ -747,7 +798,9 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
             for (int i=0; i<receiveHeader.numberOfImages; ++i) {
                 int validBytes = dataProt.getBlockValidSize(i);
                 bool isExternalBuffer = true;
-                unsigned char* data = dataProt.getExternalBuffer(i);
+                //std::cout << "img " << i << std::endl;
+                //std::cout << "ext " << externalBufferingActive << " extbuf " << std::hex << ((off_t) dataProt.getExternalBuffer(i)) << " blockrecvbuf " << ((off_t) dataProt.getBlockReceiveBuffer(i)) << std::dec << std::endl;
+                unsigned char* data = externalBufferingActive ? dataProt.getExternalBuffer(i) : nullptr;
                 if (!data) {
                     isExternalBuffer = false;
                     data = dataProt.getBlockReceiveBuffer(i);
@@ -798,7 +851,7 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
 
         for (int i=0; i<receiveHeader.numberOfImages; ++i) {
             imageSet.setRowStride(i, rowStrideArr[i]);
-            if (validRows == receiveHeader.height || receptionDone) std::cout << "Set data for image " << i << " to " << ((off_t) pixelArr[i]) << std::endl;
+            //if (validRows == receiveHeader.height || receptionDone) std::cout << "Set data for image " << i << " to " << ((off_t) pixelArr[i]) << std::endl;
             imageSet.setPixelData(i, pixelArr[i]);
         }
         imageSet.setQMatrix(receiveHeader.q);
@@ -874,6 +927,7 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExterna
             } else {
                 ret = &decodeBuffer[imageNumber][0];
             }
+            //std::cout << "Decode 12->16 from " << std::hex << ((off_t) (&data[bufferOffset0])) << " to " << ((off_t) ret) << std::dec << std::endl;
             BitConversions::decode12BitPacked(lastRow, validRows, &data[bufferOffset0],
                 ret, bufferRowStride, rowStride, receiveHeader.width);
             if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " ->  unpacked to " << ((off_t) ret) << std::endl;
@@ -1049,12 +1103,15 @@ void ImageProtocol::Pimpl::setExternalBufferingActive(bool active) {
     externalBufferingActive = active;
 }
 
-void ImageProtocol::Pimpl::setExternalBufferSet(const ExternalBufferSet& bufset) {
-    //dataProt.setExternalBufferSet(bufset);
-    currentExternalBufferSet = bufset;
+void ImageProtocol::Pimpl::setExternalBufferSet(ImageSet::ImageType imageType, const ExternalBufferSet& bufset) {
+    currentExternalBufferSet[imageType] = bufset;
     setExternalBufferingActive(true);
 }
 
+ImageSet::ExternalBufferHandle ImageProtocol::Pimpl::getExternalBufferHandleFor(ImageSet::ImageType imageType) {
+    auto handle = currentExternalBufferSet[imageType].getHandle();
+    return handle;
+}
 
 } // namespace
 

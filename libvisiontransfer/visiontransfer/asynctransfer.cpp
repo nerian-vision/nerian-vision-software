@@ -58,7 +58,7 @@ public:
     bool tryAccept();
     void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
     void setAutoReconnect(int secondsBetweenRetries);
-    void signalImageSetDone(ImageSet& imageSet);
+    void signalExternalBufferDone(ImageSet::ExternalBufferHandle handle);
 
 private:
     static constexpr int NUM_BUFFERS = ImageSet::MAX_SUPPORTED_IMAGES * 3;
@@ -175,7 +175,14 @@ void AsyncTransfer::setAutoReconnect(int secondsBetweenRetries) {
 }
 
 void AsyncTransfer::signalImageSetDone(ImageSet& imageSet) {
-    pimpl->signalImageSetDone(imageSet);
+    for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
+        auto handle = imageSet.getExternalBufferHandle(i);
+        pimpl->signalExternalBufferDone(handle);
+    }
+}
+
+void AsyncTransfer::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
+    pimpl->signalExternalBufferDone(handle);
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -318,7 +325,7 @@ bool AsyncTransfer::Pimpl::collectReceivedImageSet(ImageSet& imageSet, double ti
         // Get the received image
         imageSet = receivedSet;
 
-        std::cout << "Collected prepared ImageSet, buffer handle " << receivedSet.getExternalBufferHandle() << std::endl;
+        std::cout << "Collected prepared ImageSet, buffer handle[0] " << receivedSet.getExternalBufferHandle(0) << std::endl;
 
         std::cout << "newDataReceived := false" << std::endl;
         newDataReceived = false;
@@ -421,12 +428,17 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                     // collectReceivedImageSet() frequency was too low; previous frame lost
                     if (uncollectedDroppedFrames > -1) uncollectedDroppedFrames++;
                     // Immediately queue the previous (unhandled) buffers again in external buffering mode
-                    std::cout << "\033[31;1mDropping an unclaimed ImageSet\033[m, ext buf handle " << receivedSet.getExternalBufferHandle() << std::endl;
-                    signalImageSetDone(receivedSet);
+                    auto handle = receivedSet.getExternalBufferHandle(0);
+                    if (handle) {
+                        std::cout << "\033[31;1mDropping an unclaimed ImageSet\033[m, ext buf handle(0) " << receivedSet.getExternalBufferHandle(0) << std::endl;
+                    }
+                    for (int i=0; i<receivedSet.getNumberOfImages(); ++i) {
+                        signalExternalBufferDone(receivedSet.getExternalBufferHandle(i));
+                    }
                 } else {
                     std::cout << " (newDataReceived was false)" << std::endl;
                 }
-                if (currentSet.getExternalBufferHandle() == 0) {
+                if (currentSet.getExternalBufferHandle(0) == 0) { // TODO test
                     // No external buffers specified and used ->
                     // Copy the pixel data
                     for(int i=0;i<currentSet.getNumberOfImages();i++) {
@@ -454,9 +466,9 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                 } else {
                     // External buffering mode - buffer rotation is handled by ImageProtocol
                     // We have the handle of the underlying buffer in currentSet.getExternalBufferHandle()
-                    std::cout << "Prepared received ImageSet, buffer handle " << currentSet.getExternalBufferHandle() << std::endl;
+                    std::cout << "Prepared received ImageSet, buffer handle[0] " << currentSet.getExternalBufferHandle(0) << std::endl;
                     // Assign next external buffer set (inside this lock)
-                    imgTrans.assignExternalBuffer();
+                    imgTrans.assignExternalBuffers();
                 }
 
                 // Notify that a new image set has been received
@@ -504,8 +516,8 @@ void AsyncTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
     imgTrans.setAutoReconnect(secondsBetweenRetries);
 }
 
-void AsyncTransfer::Pimpl::signalImageSetDone(ImageSet& imageSet) {
-    imgTrans.signalImageSetDone(imageSet);
+void AsyncTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
+    imgTrans.signalExternalBufferDone(handle);
 }
 
 constexpr int AsyncTransfer::Pimpl::NUM_BUFFERS;

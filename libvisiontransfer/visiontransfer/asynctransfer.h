@@ -203,6 +203,21 @@ public:
      */
     void signalImageSetDone(ImageSet& imageSet);
 
+    /**
+     * \brief Flag the user processing of a single buffer handle as done, allowing buffer reuse.
+     *
+     * In general, prefer signalImageSetDone(ImageSet&); the current function is only necessary for
+     * setups where the buffer pools of different image types should be administered independently.
+     * This function operates on a single buffer handle instead of an ImageSet with all its 
+     * associated buffers.
+     * Still accessing the pixel data with the released buffer handle is undefined behavior.
+     *
+     * For default operation (internal buffering), this is a no-op.
+     *
+     * See signalImageSetDone(ImageSet&)
+     */
+    void signalExternalBufferDone(ImageSet::ExternalBufferHandle externalBufferHandle);
+
 private:
     // We follow the pimpl idiom
     class Pimpl;

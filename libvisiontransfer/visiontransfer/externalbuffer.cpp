@@ -49,11 +49,14 @@ public:
 
 class ExternalBufferSet::Pimpl {
 private:
+    // A unique buffer set handle, either allocated sequentially or administered by the user
     ImageSet::ExternalBufferHandle handle;
+    // Limit the role of the buffer set to a single channel; or multipart for IMAGE_UNDEFINED (default)
+    ImageSet::ImageType imageType;
     std::vector<ExternalBuffer> buffers;
     bool ready;
 public:
-    Pimpl();
+    Pimpl(ImageSet::ExternalBufferHandle userProvidedHandle=0, ImageSet::ImageType imageType=ImageSet::IMAGE_UNDEFINED);
     Pimpl(const Pimpl& orig);
     void addBuffer(ExternalBuffer buf);
     inline ImageSet::ExternalBufferHandle getHandle() const { return handle; }
@@ -61,6 +64,7 @@ public:
     inline ExternalBuffer getBuffer(int idx) const { return buffers.at(idx); }
     bool getReady() const { return ready; }
     void setReady(bool ready_) { ready = ready_; }
+    ImageSet::ImageType getImageType() const { return imageType; }
 };
 
 // Pimpl functions
@@ -84,15 +88,23 @@ void ExternalBuffer::Pimpl::appendPartDefinition(ExternalBuffer::Part part) {
 
 // ExternalBufferSet
 
-ExternalBufferSet::Pimpl::Pimpl() {
+ExternalBufferSet::Pimpl::Pimpl(ImageSet::ExternalBufferHandle userProvidedHandle, ImageSet::ImageType imageType_) {
     static ImageSet::ExternalBufferHandle nextBufferHandle = 1;
-    handle = nextBufferHandle++;
+    if (userProvidedHandle != 0) {
+        // Use the user handle that the ExternalBufferSet was constructed with
+        handle = userProvidedHandle;
+    } else {
+        // Generate a unique handle (note: the two modes should not be mixed)
+        handle = nextBufferHandle++;
+    }
+    imageType = imageType_;
     ready = false;
 }
 
 ExternalBufferSet::Pimpl::Pimpl(const ExternalBufferSet::Pimpl& orig) {
     handle = orig.handle;
     buffers = orig.buffers;
+    imageType = orig.imageType;
     ready = orig.ready;
 }
 
@@ -100,6 +112,9 @@ void ExternalBufferSet::Pimpl::addBuffer(ExternalBuffer buf) {
     buffers.push_back(buf);
 }
 
+ImageSet::ImageType ExternalBufferSet::getImageType() const {
+    return pimpl->getImageType();
+}
 
 //
 // Public API implementation
@@ -141,8 +156,8 @@ size_t ExternalBuffer::getBufferSize() const {
 
 // ExternalBufferSet
 
-ExternalBufferSet::ExternalBufferSet()
-: pimpl(new ExternalBufferSet::Pimpl()) {
+ExternalBufferSet::ExternalBufferSet(ImageSet::ExternalBufferHandle handle, ImageSet::ImageType imageType)
+: pimpl(new ExternalBufferSet::Pimpl(handle, imageType)) {
 }
 
 ExternalBufferSet::ExternalBufferSet(const ExternalBufferSet& orig)
