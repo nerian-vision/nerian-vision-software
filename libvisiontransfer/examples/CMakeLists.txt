@@ -62,6 +62,7 @@ if(NOT MSVC)
     set_target_properties(parameter_poll_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
     set_target_properties(temperature_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
     set_target_properties(all_events_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
+    set_target_properties(external_buffer_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX11}")
 
     string(REPLACE "-std=c++98" "-std=c++14" COMPILE_FLAGS_CXX14 "${CMAKE_CXX_FLAGS}")
     set_target_properties(input_transfer_example PROPERTIES COMPILE_FLAGS "${COMPILE_FLAGS_CXX14}")

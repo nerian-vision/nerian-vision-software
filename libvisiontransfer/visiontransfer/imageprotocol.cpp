@@ -311,7 +311,7 @@ ImageProtocol::Pimpl::Pimpl(bool server, ProtocolType protType, int maxUdpPacket
     headerBuffer.resize(sizeof(HeaderData) + 128);
     memset(&headerBuffer[0], 0, sizeof(headerBuffer.size()));
     memset(&receiveHeader, 0, sizeof(receiveHeader));
-    std::cout << "ImageProtocol::Pimpl()" << std::endl;
+    //std::cout << "ImageProtocol::Pimpl()" << std::endl;
 }
 
 void ImageProtocol::Pimpl::setTransferImageSet(const ImageSet& imageSet) {
@@ -543,7 +543,7 @@ void ImageProtocol::Pimpl::processReceivedMessage(int length) {
                     // We received the header - we can now assign a
                     // buffer layout (if external buffering is active).
                     if (externalBufferingActive) {
-                        std::cout << "ext buf is active" << std::endl;
+                        //std::cout << "ext buf is active" << std::endl;
                         bool success = generateBufferLayout();
                     }
 
@@ -560,7 +560,7 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
     // For each image channel / data block, determine whether there
     // is an immediate external buffer target, or intermediate buffering
     // should be used.
-    std::cout << "generateBufferLayout" << std::endl;
+    //std::cout << "generateBufferLayout" << std::endl;
     //if (currentExternalBufferSet.getNumBuffers() == 0) {
     //    throw TransferException("External buffer was unavailable");
     //}
@@ -578,7 +578,7 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
     int numPixels = receiveHeader.width * receiveHeader.height;
     for (int imageNumber=0; imageNumber<receiveHeader.numberOfImages; ++imageNumber) {
         int partSize = dataProt.getBlockReceiveSize(imageNumber);
-        std::cout << "Image #" << imageNumber << " with received size " << partSize << std::endl;
+        //std::cout << "Image #" << imageNumber << " with received size " << partSize << std::endl;
         ImageSet::ImageFormat format;
         int bits = 8;
         switch (imageNumber) {
@@ -597,14 +597,14 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
             const auto& bufset = currentExternalBufferSet[ImageSet::IMAGE_UNDEFINED];
             for (int b=0; b<bufset.getNumBuffers(); ++b) {
                 const auto& buf = bufset.getBuffer(b);
-                std::cout << " Checking buffer " << b << " with " << buf.getNumParts() << " parts " << std::endl;
+                //std::cout << " Checking buffer " << b << " with " << buf.getNumParts() << " parts " << std::endl;
                 for (int p=0; p<buf.getNumParts(); ++p) {
-                    std::cout << "  Checking buffer " << b << " part " << p << std::endl;
+                    //std::cout << "  Checking buffer " << b << " part " << p << std::endl;
                     const auto& part = buf.getPart(p);
                     // TODO effective part size including the requested transformations
                     if (static_cast<unsigned char>(part.imageType) == imageType) {
                         // Channel found in buffer mapping
-                        std::cout << "   Image #" << imageNumber << " header image type " << ((int) imageType) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufferOffsets[b] << " with flags " << part.conversionFlags << std::endl;
+                        //std::cout << "   Image #" << imageNumber << " header image type " << ((int) imageType) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufferOffsets[b] << " with flags " << part.conversionFlags << std::endl;
                         buffer = buf.getBufferPtr() + bufferOffsets[b];
                         //finalTargets.push_back({buffer, partSize});
                         activeExternalBufferTargets.push_back({buffer, partSize});
@@ -625,7 +625,7 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
                                     + " is too small to hold part #" +std::to_string(p)
                                     + " with image type " + std::to_string(imageType));
                         }
-                        std::cout << "   (advanced buffer " << b << " offset to " << bufferOffsets[b] << ")" << std::endl;
+                        //std::cout << "   (advanced buffer " << b << " offset to " << bufferOffsets[b] << ")" << std::endl;
                         break;
                     }
                 }
@@ -646,6 +646,14 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
                         }
                         // Everything validated - data block protocol may use the pointer as-is
                         buffer = buf.getBufferPtr();
+                        activeExternalBufferTargets.push_back({buffer, partSize});
+                        // Unless we need an intermediate buffer in the protocol, we can use it directly there
+                        if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP?
+                                && (receiveHeader.lastTileWidth == 0)) { // tiled transfers need an intermediate buffer
+                            immediateTargets.push_back({buffer, partSize});
+                        } else {
+                            immediateTargets.push_back({nullptr, 0});
+                        }
                     }
                 }
             }
@@ -653,7 +661,7 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
         // TODO in the case of pool exhaustion, it would be possible to signal this for the individual channel
         // in the resulting ImageSet instead. In the case of unexpected channels, we could also just ignore them.
         if (!buffer) {
-            std::cout << "  Transfer part #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - not consistent with part spec!" << std::endl;
+            //std::cout << "  Transfer part #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - not consistent with part spec!" << std::endl;
             throw TransferException(std::string("External buffers were not set up correctly for image type ")+std::to_string(receiveHeader.imageTypes[imageNumber]));
         }
     }

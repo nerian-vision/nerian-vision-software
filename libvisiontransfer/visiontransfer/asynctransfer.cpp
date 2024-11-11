@@ -321,13 +321,13 @@ bool AsyncTransfer::Pimpl::collectReceivedImageSet(ImageSet& imageSet, double ti
     }
 
     if(newDataReceived) {
-        std::cout << "\033[32maccepted\033[m" << std::endl;
+        //std::cout << "\033[32maccepted\033[m" << std::endl;
         // Get the received image
         imageSet = receivedSet;
 
-        std::cout << "Collected prepared ImageSet, buffer handle[0] " << receivedSet.getExternalBufferHandle(0) << std::endl;
+        //std::cout << "Collected prepared ImageSet, buffer handle[0] " << receivedSet.getExternalBufferHandle(0) << std::endl;
 
-        std::cout << "newDataReceived := false" << std::endl;
+        //std::cout << "newDataReceived := false" << std::endl;
         newDataReceived = false;
 
         // Increment index for data buffers
@@ -423,20 +423,20 @@ void AsyncTransfer::Pimpl::receiveLoop() {
             
             if (newImageSetArrived) {
                 unique_lock<timed_mutex> lock(receiveMutex);
-                std::cout << "\033[33mrecv imgset ok, prev buf " << (newDataReceived?"DISCARD":"ok") << "\033[m" << std::endl;
+                //std::cout << "\033[33mrecv imgset ok, prev buf " << (newDataReceived?"DISCARD":"ok") << "\033[m" << std::endl;
                 if (newDataReceived) {
                     // collectReceivedImageSet() frequency was too low; previous frame lost
                     if (uncollectedDroppedFrames > -1) uncollectedDroppedFrames++;
                     // Immediately queue the previous (unhandled) buffers again in external buffering mode
                     auto handle = receivedSet.getExternalBufferHandle(0);
-                    if (handle) {
-                        std::cout << "\033[31;1mDropping an unclaimed ImageSet\033[m, ext buf handle(0) " << receivedSet.getExternalBufferHandle(0) << std::endl;
-                    }
+                    //if (handle) {
+                    //    std::cout << "\033[31;1mDropping an unclaimed ImageSet\033[m, ext buf handle(0) " << receivedSet.getExternalBufferHandle(0) << std::endl;
+                    //}
                     for (int i=0; i<receivedSet.getNumberOfImages(); ++i) {
                         signalExternalBufferDone(receivedSet.getExternalBufferHandle(i));
                     }
-                } else {
-                    std::cout << " (newDataReceived was false)" << std::endl;
+                //} else {
+                    //std::cout << " (newDataReceived was false)" << std::endl;
                 }
                 if (currentSet.getExternalBufferHandle(0) == 0) { // TODO test
                     // No external buffers specified and used ->
@@ -466,13 +466,13 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                 } else {
                     // External buffering mode - buffer rotation is handled by ImageProtocol
                     // We have the handle of the underlying buffer in currentSet.getExternalBufferHandle()
-                    std::cout << "Prepared received ImageSet, buffer handle[0] " << currentSet.getExternalBufferHandle(0) << std::endl;
+                    //std::cout << "Prepared received ImageSet, buffer handle[0] " << currentSet.getExternalBufferHandle(0) << std::endl;
                     // Assign next external buffer set (inside this lock)
                     imgTrans.assignExternalBuffers();
                 }
 
                 // Notify that a new image set has been received
-                std::cout << "newDataReceived := true" << std::endl;
+                //std::cout << "newDataReceived := true" << std::endl;
                 newDataReceived = true;
                 receivedSet = currentSet;
                 receiveCond.notify_one();

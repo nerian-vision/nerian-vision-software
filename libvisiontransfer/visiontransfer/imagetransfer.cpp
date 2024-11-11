@@ -388,11 +388,15 @@ bool ImageTransfer::Pimpl::getExternalBufferingActive() const {
 
 void ImageTransfer::Pimpl::assignExternalBuffers() {
     if (externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED].size() > 0) {
+        protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_LEFT);
+        protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_RIGHT);
+        protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_DISPARITY);
+        protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_COLOR);
         // Only considering the registered multi-part buffers
         for (auto handle : externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED]) {
             auto bufset = externalBufferPool[handle];
             if (!bufset.getReady()) { // eligible for next buffer fill
-                std::cout << "ImageProtocol gets wildcard buffer set #" << handle << std::endl;
+                //std::cout << "ImageProtocol gets wildcard buffer set #" << handle << std::endl;
                 //assignedBufferHandle = handle;
                 // Assign as wildcard
                 protocol->setExternalBufferSet(ImageSet::IMAGE_UNDEFINED, bufset);
@@ -403,6 +407,7 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
         // This will be apparent in the ImageSet as a zero getExternalBufferHandle() for all channels
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_UNDEFINED);
     } else {
+        protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_UNDEFINED);
         // Considering all the single-part buffers
         static std::vector<ImageSet::ImageType> imageTypes = {ImageSet::IMAGE_LEFT, ImageSet::IMAGE_DISPARITY, ImageSet::IMAGE_RIGHT, ImageSet::IMAGE_COLOR};
         for (auto imageType: imageTypes) {
@@ -410,7 +415,7 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
             for (auto handle : externalBuffersByImageType[imageType]) {
                 auto bufset = externalBufferPool[handle];
                 if (!bufset.getReady()) { // eligible for next buffer fill
-                    std::cout << "ImageProtocol image type " << imageType << " gets buffer set #" << handle << std::endl;
+                    //std::cout << "ImageProtocol image type " << imageType << " gets buffer set #" << handle << std::endl;
                     // Assign for this channel
                     protocol->setExternalBufferSet(imageType, bufset);
                     channelOK = true;
@@ -1123,7 +1128,7 @@ void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
 }
 
 void ImageTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
-    std::cout << "\033[32msignalExternalBufferDone\033[m for handle #" << handle << std::endl;
+    //std::cout << "\033[32msignalExternalBufferDone\033[m for handle #" << handle << std::endl;
     if (handle == 0) return; // No-op, not an image set with external buffering
     if (!externalBufferPool.count(handle)) {
         throw ProtocolException("Invalid external buffer handle");
@@ -1134,6 +1139,7 @@ void ImageTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHand
 
 
 void ImageTransfer::Pimpl::addExternalBufferSet(const ExternalBufferSet& bufset) {
+    /*
     std::cout << "DEBUG: Adding an ExternalBufferSet, handle " << bufset.getHandle() << ", consisting of:" << std::endl;
     for (int i=0; i<bufset.getNumBuffers(); ++i) {
         auto const& buf = bufset.getBuffer(i);
@@ -1143,6 +1149,7 @@ void ImageTransfer::Pimpl::addExternalBufferSet(const ExternalBufferSet& bufset)
             std::cout << "DEBUG:         ImageType " << part.imageType << " with conversion flags " << part.conversionFlags << " reserveBits " << part.reserveBits << std::endl;
         }
     }
+    */
     auto handle = bufset.getHandle();
     if (externalBufferPool.count(handle)) {
         throw BufferException(std::string("Refused to add external buffer set with non-unique handle ") + std::to_string(handle));

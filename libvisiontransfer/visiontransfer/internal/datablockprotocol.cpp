@@ -1034,14 +1034,15 @@ void DataBlockProtocol::setExternalBufferingActive(bool active) {
 }
 
 void DataBlockProtocol::setExternalBufferTargets(const std::vector<std::pair<unsigned char*, size_t> >& targets) {
-    std::cout << "setExternalBufferTargets" << std::endl;
+    //std::cout << "setExternalBufferTargets with #targets: " << targets.size() << std::endl;
     // TODO Should check whether we are currently mid-reception (but never called from outside)
     for (int i=0; i<MAX_DATA_BLOCKS; ++i) {
         if (i>=targets.size()) {
+            //std::cout << "  nullptr #" << i << std::endl;
             externalBufferLocations[i] = nullptr;
             externalBufferSizes[i] = 0;
         } else {
-            std::cout << "  Ext buf for part #" << i << " addr " << ((off_t) targets[i].first) << (targets[i].first ? "" : " (intermediate buffer is used)") << std::endl;
+            //std::cout << "  Ext buf for part #" << i << " addr " << ((off_t) targets[i].first) << (targets[i].first ? "" : " (intermediate buffer is used)") << std::endl;
             externalBufferLocations[i] = targets[i].first;
             externalBufferSizes[i] = targets[i].second;
         }

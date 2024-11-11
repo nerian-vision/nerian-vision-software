@@ -18,7 +18,12 @@
 #include <visiontransfer/externalbuffer.h>
 #include <iostream>
 #include <exception>
+#include <thread>
+#include <chrono>
 #include <stdio.h>
+
+#define DEBUG_FORCE_WAIT_AFTER_RECV 0
+#define NUM_MEM_BUFS 6
 
 using namespace visiontransfer;
 
@@ -29,13 +34,16 @@ int main() {
     // The target receive buffers (in this example, `buffers` holds three 16 MB buffers).
     // They must be large enough to receive the entire configured image set, your hand is not held here.
     const size_t myBufSize = 16*1024*1024;
-    unsigned char* buffers[3];
-    for (int i=0; i<3; ++i) {
+    unsigned char* buffers[NUM_MEM_BUFS];
+    for (int i=0; i<NUM_MEM_BUFS; ++i) {
         buffers[i] = new unsigned char[myBufSize];
     }
 
+    /*
+
     // One or more buffers are added to a buffer set; for each buffer in the set you select which image channels it accepts.
     // In this example, we generate sets with a single buffer each, which will accept several image channels (they will be packed consecutively).
+    const int numBufferSets = 3;
     ExternalBufferSet bufferSets[3] = {100, 101, 102}; // handles can be either provided to the constructors or auto-generated internally (do not mix)
     for (int i=0; i<3; ++i) {
         // Wrap the raw buffer allocated above
@@ -53,6 +61,24 @@ int main() {
     }
     // We now have three buffer sets with one buffer each (which are configured to accept the left and disparity channels).
     // -> We have the prerequisites for an external receive queue of three ImageSets.
+
+    */
+
+    const int numBufferSets = 6;
+    ExternalBufferSet bufferSets[numBufferSets] = {
+        {100, ImageSet::IMAGE_COLOR}, {101, ImageSet::IMAGE_COLOR}, {102, ImageSet::IMAGE_COLOR},
+        {200, ImageSet::IMAGE_DISPARITY}, {201, ImageSet::IMAGE_DISPARITY}, {202, ImageSet::IMAGE_DISPARITY},
+    };
+    for (int i=0; i<3; ++i) {
+        ExternalBuffer ebuf(buffers[i], myBufSize);
+        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_COLOR, ExternalBuffer::CONVERSION_NONE));
+        bufferSets[i].addBuffer(ebuf);
+    }
+    for (int i=3; i<6; ++i) {
+        ExternalBuffer ebuf(buffers[i], myBufSize);
+        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_DISPARITY, ExternalBuffer::CONVERSION_MONO_12_TO_16));
+        bufferSets[i].addBuffer(ebuf);
+    }
 
     try {
         // Search for Nerian stereo devices
@@ -75,7 +101,7 @@ int main() {
         // receive data from the first detected device
         AsyncTransfer::Config cfg = AsyncTransfer::Config(devices[0]);
         // Add the above buffer sets (also activates external buffering mode)
-        for (int i=0; i<3; ++i) {
+        for (int i=0; i<numBufferSets; ++i) {
             cfg.addExternalBufferSet(bufferSets[i]);
         }
         cfg.setExternalBufferingActive(true);
@@ -84,7 +110,7 @@ int main() {
 
         // Receive images in a loop
         for(int imgNum=0; ; imgNum++) {
-            std::cout << "Receiving image set " << imgNum << std::endl;
+            std::cout << "---------- Receiving image set " << imgNum << std::endl;
 
             // Receive image
             ImageSet imageSet;
@@ -151,10 +177,10 @@ int main() {
             for(int i = 0; i < imageSet.getNumberOfImages(); i++) {
                 bool ok = false;
                 unsigned char* ptr = imageSet.getPixelData(i);
-                for (int j=0; j<3; ++j) {
+                for (int j=0; j<NUM_MEM_BUFS; ++j) {
                     off_t where = ((off_t) ptr) - ((off_t) buffers[j]);
                     if (where>=0 && where<16*1024*1024) {
-                        std::cout << "Validated image " << i << " in external buffer" << std::endl;
+                        std::cout << "Validated: image " << i << " in external buffer " << j << std::endl;
                         ok = true;
                         break;
                     }
@@ -183,12 +209,14 @@ int main() {
             // frames would be discarded otherwise.
             asyncTransfer.signalImageSetDone(imageSet);
 
+            if (DEBUG_FORCE_WAIT_AFTER_RECV) std::this_thread::sleep_for(std::chrono::milliseconds(DEBUG_FORCE_WAIT_AFTER_RECV));
+
         }
     } catch(const std::exception& ex) {
         std::cerr << "Exception occurred: " << ex.what() << std::endl;
     }
 
-    for (int i=0; i<3; ++i) {
+    for (int i=0; i<NUM_MEM_BUFS; ++i) {
         delete[] buffers[i];
     }
 
