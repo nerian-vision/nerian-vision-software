@@ -82,8 +82,10 @@ public:
      *  This is only relevant if the buffer pools for the different roles should
      *  operate independently, with all potential pitfalls.
      *  The recommended default setting results in a synchronized multi-part buffer set.
-     *  It is essential that the buffer part mapping (see ExternalBuffer) is comprehensive
-     *  with respect to the intended use case.
+     *  It is essential that the buffer part mapping (see ExternalBuffer) is completely
+     *  defined with respect to the intended use case.
+     *  Multi-part and single-part buffer sets cannot be mixed at the same time in
+     *  an AsyncTransfer / ImageTransfer.
      */
     ExternalBufferSet(ImageSet::ExternalBufferHandle handle = 0, ImageSet::ImageType imageType = ImageSet::IMAGE_UNDEFINED);
     ExternalBufferSet(const ExternalBufferSet& orig);

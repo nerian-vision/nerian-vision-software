@@ -25,6 +25,8 @@
 #define DEBUG_FORCE_WAIT_AFTER_RECV 0
 #define NUM_MEM_BUFS 6
 
+#define USE_MULTIPART_BUFFERS 1
+
 using namespace visiontransfer;
 
 int main() {
@@ -39,9 +41,9 @@ int main() {
         buffers[i] = new unsigned char[myBufSize];
     }
 
-    /*
-
     // One or more buffers are added to a buffer set; for each buffer in the set you select which image channels it accepts.
+#if USE_MULTIPART_BUFFERS
+    // Alternative 1: multi-part buffers
     // In this example, we generate sets with a single buffer each, which will accept several image channels (they will be packed consecutively).
     const int numBufferSets = 3;
     ExternalBufferSet bufferSets[3] = {100, 101, 102}; // handles can be either provided to the constructors or auto-generated internally (do not mix)
@@ -60,10 +62,8 @@ int main() {
         bufferSets[i].addBuffer(ebuf);
     }
     // We now have three buffer sets with one buffer each (which are configured to accept the left and disparity channels).
-    // -> We have the prerequisites for an external receive queue of three ImageSets.
-
-    */
-
+#else
+    // Alternative 2: Separate buffers for each channel (mainly for our GenTL legacy compatibility layer)
     const int numBufferSets = 6;
     ExternalBufferSet bufferSets[numBufferSets] = {
         {100, ImageSet::IMAGE_COLOR}, {101, ImageSet::IMAGE_COLOR}, {102, ImageSet::IMAGE_COLOR},
@@ -79,6 +79,10 @@ int main() {
         ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_DISPARITY, ExternalBuffer::CONVERSION_MONO_12_TO_16));
         bufferSets[i].addBuffer(ebuf);
     }
+    // We now have six buffers sets, three each for color and disparity
+#endif
+
+    // -> We have the prerequisites for an external receive queue of three ImageSets.
 
     try {
         // Search for Nerian stereo devices
@@ -100,10 +104,11 @@ int main() {
         // Create an image transfer configuration object to
         // receive data from the first detected device
         AsyncTransfer::Config cfg = AsyncTransfer::Config(devices[0]);
-        // Add the above buffer sets (also activates external buffering mode)
+        // Add the above buffer sets
         for (int i=0; i<numBufferSets; ++i) {
             cfg.addExternalBufferSet(bufferSets[i]);
         }
+        // Activate external buffering mode
         cfg.setExternalBufferingActive(true);
         // Create and launch an AsyncTransfer based on the config
         AsyncTransfer asyncTransfer(cfg);
@@ -180,7 +185,7 @@ int main() {
                 for (int j=0; j<NUM_MEM_BUFS; ++j) {
                     off_t where = ((off_t) ptr) - ((off_t) buffers[j]);
                     if (where>=0 && where<16*1024*1024) {
-                        std::cout << "Validated: image " << i << " in external buffer " << j << std::endl;
+                        std::cout << "Validated: image " << i << " in external buffer " << j << " at offset " << where << std::endl;
                         ok = true;
                         break;
                     }
