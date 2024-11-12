@@ -30,6 +30,7 @@
 #include <fstream>
 #include <chrono>
 #include <thread>
+#include <atomic>
 
 // SIMD Headers
 #ifdef __SSE2__
@@ -46,7 +47,7 @@ using namespace std::placeholders;
 #define ENABLE_DEBUGGING_PHYSICALDEVICE
 #endif
 // Extra toggle for just this module
-//#define ENABLE_DEBUGGING_PHYSICALDEVICE
+#define ENABLE_DEBUGGING_PHYSICALDEVICE
 
 #ifdef ENABLE_DEBUGGING_PHYSICALDEVICE
 #ifdef _WIN32
@@ -55,13 +56,13 @@ using namespace std::placeholders;
     std::ostream& debugStreamPhys = std::cout;
 #endif
 std::chrono::system_clock::time_point debugStreamPhysInitTime = std::chrono::system_clock::now();
-#define DEBUG_PHYS_THREAD_ID " (thread " << std::this_thread::get_id() << ") "
-#define DEBUG_PHYS(x) debugStreamPhys << std::dec << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamPhysInitTime).count() << ": " << DEBUG_PHYS_THREAD_ID << x << std::endl;
+#define DEBUG_PHYS_THREAD_ID "(thread " << std::this_thread::get_id() << ") "
+#define DEBUG_PHYS(x) debugStreamPhys << std::dec << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamPhysInitTime).count() << ": " << DEBUG_PHYS_THREAD_ID << "PhysicalDevice: " << x << std::endl;
 #else
 #define DEBUG_PHYS(x) ;
 #endif
 
-PhysicalDevice::PhysicalDevice(Interface* interface): interface(interface), udp(true), threadRunning(false),
+PhysicalDevice::PhysicalDevice(Interface* interface): interface(interface), transferJustDown(false), udp(true), threadRunning(false),
     errorEvent(nullptr), disparityOffset(0.0), maxDisparity(0xFFF), componentEnabledRange(true),
     intensitySource(INTENSITY_SOURCE_AUTO) {
 
@@ -103,10 +104,7 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         this->host = host;
 
 #ifndef DELIVER_TEST_DATA
-        // Initialize network receiver
-        asyncTf.reset(new AsyncTransfer(host, "7681",
-            udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
-        // Initialize parameter server connection
+        // Initialize parameter server connection (this stays connected the whole time)
         DEBUG_PHYS("Creating DeviceParameters");
         deviceParameters.reset(new DeviceParameters(host));
         // Force waiting for network handshake completion
@@ -280,10 +278,26 @@ void PhysicalDevice::deviceReceiveThread() {
             // Noting to receive in test mode
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 #else
-            // Receive new image
-            if(!asyncTf->collectReceivedImageSet(receivedSet, 1.0)) { // Wait up to 1.0 sec for full image set, then gracefully return to running check
-                // No image available
-                continue;
+            {
+                //std::unique_lock<std::mutex> lock(receiveMutex);
+                if (transfer) {
+                    if (transferJustDown) {
+                        // Lock-free resolution
+                        transferJustDown = false;
+                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                        continue;
+                    }
+                    // Receive new image
+                    if(!transfer->collectReceivedImageSet(receivedSet, 1.0)) { // Wait up to 1.0 sec for full image set, then gracefully return to running check
+                        // No image available
+                        continue;
+                    }
+                } else {
+                    // Currently disconnected (no acquisition has been started at the moment)
+                    //lock.unlock();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    continue;
+                }
             }
 #endif
 
@@ -789,9 +803,50 @@ void PhysicalDevice::invalidateFeatureFromAsyncEvent(const std::string& featureN
 }
 
 void PhysicalDevice::setIntensitySource(PhysicalDevice::IntensitySource src) {
+    // NOTE: Changing IntensitySource only takes effect when the acquisition
+    // is [re]started - not mid-transfer.
     DEBUG_PHYS("Phys: set intensity source to " << (int) src);
     intensitySource = src;
 }
 
+void PhysicalDevice::updateConnectionState() {
+    bool grabbing = false;
+    for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
+        if (logicalDevices[i]->getStream()->getFramesToAcquire() > 0) {
+            grabbing = true;
+            break;
+        }
+    }
+    if (grabbing && (!transfer)) {
+        DEBUG_PHYS("Starting image acquisition from network");
+        // Now grabbing: connect and start network transfer
+        // Initialize network receiver
+        transfer.reset(new AsyncTransfer(this->host.c_str(), "7681",
+            this->udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
+    } else if ((!grabbing) && transfer) {
+        DEBUG_PHYS("Stopping image acquisition from network");
+        // Now idle: stop and disconnect network transfer
+        transferJustDown = true;
+        std::atomic_thread_fence(std::memory_order_release);
+        // Fenced against use-after-free, see receiver thread
+        transfer.reset();
+    }
+}
+
+int PhysicalDevice::getCurrentLogicalDeviceState() {
+    for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
+        bool isOpen = logicalDevices[i]->isOpen();
+        if (isOpen) {
+            if (logicalDevices[i]->getStream()->getStreamType() == DataStream::MULTIPART_STREAM) {
+                return 2; // Multipart device is open
+            } else {
+                return 1; // Al least one single-part device is open
+            }
+        }
+    }
+    return 0;
+}
+
 
 }
+

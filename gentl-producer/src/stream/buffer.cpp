@@ -18,22 +18,23 @@ using namespace visiontransfer;
 
 namespace GenTL {
 
-Buffer::Buffer(DataStream* stream, void* privateData, unsigned char* data, size_t size)
+Buffer::Buffer(DataStream* stream, void* privateData, unsigned char* data, size_t size, const BufferMapping& bufferMapping)
     :Handle(TYPE_BUFFER), stream(stream), consumerBuffer(true), privateData(privateData),
-        data(data), size(size), incomplete(false) {
+        data(data), size(size), incomplete(false), extBufSet(reinterpret_cast<visiontransfer::ImageSet::ExternalBufferHandle>(this)) {
 
     // Set default buffer components
     metaData.setIndexOf(ImageSet::IMAGE_LEFT, 0);
     metaData.setIndexOf(ImageSet::IMAGE_DISPARITY, 1);
     metaData.setIndexOf(ImageSet::IMAGE_RIGHT, -1);
     metaData.setIndexOf(ImageSet::IMAGE_COLOR, -1);
+    
+    // Generate an initial
 }
 
-
-Buffer::Buffer(DataStream* stream, void* privateData, size_t size)
+Buffer::Buffer(DataStream* stream, void* privateData, size_t size, const BufferMapping& bufferMapping)
     :Handle(TYPE_BUFFER), stream(stream), consumerBuffer(false),
         privateData(privateData), data(new unsigned char[size]), size(size),
-        incomplete(false) {
+        incomplete(false), extBufSet(reinterpret_cast<visiontransfer::ImageSet::ExternalBufferHandle>(this)) {
 }
 
 Buffer::~Buffer() {
@@ -42,4 +43,9 @@ Buffer::~Buffer() {
     }
 }
 
+void Buffer::applyBufferMapping(const BufferMapping& bufferMapping) {
+    
 }
+
+} // namespace
+

@@ -35,7 +35,7 @@ namespace GenTL {
 #define ENABLE_DEBUGGING_DATASTREAM
 #endif
 // Extra toggle for just this module
-//#define ENABLE_DEBUGGING_DATASTREAM
+#define ENABLE_DEBUGGING_DATASTREAM
 
 #ifdef ENABLE_DEBUGGING_DATASTREAM
 #ifdef _WIN32
@@ -44,14 +44,14 @@ namespace GenTL {
     std::ostream& debugStreamDataStream = std::cout;
 #endif
 std::chrono::system_clock::time_point debugStreamDataStreamInitTime = std::chrono::system_clock::now();
-#define DEBUG_DSTREAM_THREAD_ID " (thread " << std::this_thread::get_id() << ") "
-#define DEBUG_DSTREAM(x) debugStreamDataStream << std::dec << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamDataStreamInitTime).count() << ": " << DEBUG_DSTREAM_THREAD_ID << x << std::endl;
+#define DEBUG_DSTREAM_THREAD_ID "(thread " << std::this_thread::get_id() << ") "
+#define DEBUG_DSTREAM(x) debugStreamDataStream << std::dec << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - debugStreamDataStreamInitTime).count() << ": " << DEBUG_DSTREAM_THREAD_ID << "DataStream: " << x << std::endl;
 #else
 #define DEBUG_DSTREAM(x) ;
 #endif
 
 DataStream::DataStream(LogicalDevice * logicalDevice, StreamType streamType)
-    :Handle(TYPE_STREAM), logicalDevice(logicalDevice), streamType(streamType), framesToAquire(0),
+    :Handle(TYPE_STREAM), logicalDevice(logicalDevice), streamType(streamType), framesToAcquire(0),
     numDelivered(0), numUnderrun(0), numCaptured(0), newBufferEvent(nullptr),
     errorEvent(nullptr), opened(false), portImpl(this),
     port("default", "datastream.xml", "StreamPort", "TLDataStream", &portImpl) {
@@ -102,7 +102,7 @@ void DataStream::emitErrorEvent(GC_ERROR error) {
 }
 
 Buffer* DataStream::requestBuffer() {
-    if(framesToAquire > 0) {
+    if(framesToAcquire > 0) {
         if(inputPool.size() > 0) {
             return inputPool.front().get();
         } else {
@@ -118,8 +118,8 @@ void DataStream::queueOutputBuffer() {
     outputQueue.push_back(inputPool.front());
     inputPool.pop_front();
 
-    if(framesToAquire != GENTL_INFINITE) {
-        framesToAquire--;
+    if(framesToAcquire != GENTL_INFINITE) {
+        framesToAcquire--;
     }
     numCaptured++;
 
@@ -145,7 +145,7 @@ bool DataStream::findBuffer(T queue, Buffer* buffer) {
 }
 
 GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate, BUFFER_HANDLE* phBuffer) {
-    DEBUG_DSTREAM("announceBuffer() with size " << iSize);
+    DEBUG_DSTREAM("announceBuffer(), ptr = " << ((off_t) (pBuffer)) << " with size " << iSize);
     //std::cout << "announce" << std::endl;
     if(pBuffer == nullptr || phBuffer == nullptr) {
         return GC_ERR_INVALID_PARAMETER;
@@ -157,24 +157,29 @@ GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate,
     updateBufferMapping();
 
     std::shared_ptr<Buffer> buffer(new Buffer(this, pPrivate,
-        reinterpret_cast<unsigned char*>(pBuffer), iSize));
+        reinterpret_cast<unsigned char*>(pBuffer), iSize, bufferMapping));
     buffers.push_back(buffer);
     *phBuffer = buffer.get();
+    DEBUG_DSTREAM("  resulting handle " << ((off_t) (*phBuffer)));
 
     return GC_ERR_SUCCESS;
 }
 
 GC_ERROR DataStream::allocAndAnnounceBuffer(size_t iBufferSize, void* pPrivate, BUFFER_HANDLE* phBuffer) {
-    DEBUG_DSTREAM("allocAndAnnounceBuffer() with size " << iBufferSize);
+    DEBUG_DSTREAM("allocAndAnnounceBuffer(), requested size " << iBufferSize);
     if(phBuffer == nullptr) {
         return GC_ERR_INVALID_PARAMETER;
     }
 
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
 
-    std::shared_ptr<Buffer> buffer(new Buffer(this, pPrivate, iBufferSize));
+    // Make sure consumers who opened the DataStream early get the effects of updated features
+    updateBufferMapping();
+
+    std::shared_ptr<Buffer> buffer(new Buffer(this, pPrivate, iBufferSize, bufferMapping));
     buffers.push_back(buffer);
     *phBuffer = buffer.get();
+    DEBUG_DSTREAM("  resulting handle " << ((off_t) (*phBuffer)));
 
     return GC_ERR_SUCCESS;
 }
@@ -198,13 +203,14 @@ GC_ERROR DataStream::open() {
         updateBufferMapping();
 
         opened = true;
-        framesToAquire = 0;
+        framesToAcquire = 0;
         numUnderrun = 0;
         return GC_ERR_SUCCESS;
     }
 }
 
 GC_ERROR DataStream::close() {
+    DEBUG_DSTREAM("close()");
     if(!opened) {
         return GC_ERR_INVALID_HANDLE;
     } else {
@@ -217,7 +223,7 @@ GC_ERROR DataStream::close() {
 }
 
 GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void ** ppPrivate) {
-    DEBUG_DSTREAM("revokeBuffer()");
+    DEBUG_DSTREAM("revokeBuffer(), handle = " << ((off_t) hBuffer));
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
 
@@ -251,6 +257,7 @@ GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void 
 }
 
 GC_ERROR DataStream::queueBuffer(BUFFER_HANDLE hBuffer) {
+    DEBUG_DSTREAM("\033[33;1mqueueBuffer(),\033[m handle = " << ((off_t) hBuffer));
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
 
@@ -275,17 +282,35 @@ GC_ERROR DataStream::getParentDev(DEV_HANDLE* phDevice) {
 }
 
 GC_ERROR DataStream::startAcquisition(ACQ_START_FLAGS iStartFlags, uint64_t iNumToAcquire) {
-    framesToAquire = iNumToAcquire;
+    DEBUG_DSTREAM("startAcquisition()");
+    framesToAcquire = iNumToAcquire;
     numDelivered = 0;
+    // Let the PhysicalDevice connect via network (unless already connected through other DataStream)
+    std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
+    logicalDevice->getPhysicalDevice()->updateConnectionState();
     return GC_ERR_SUCCESS;
 }
 
 GC_ERROR DataStream::stopAcquisition(ACQ_STOP_FLAGS iStopFlags) {
-    framesToAquire = 0;
+    DEBUG_DSTREAM("stopAcquisition()");
+    framesToAcquire = 0;
+    // Let the PhysicalDevice disconnect from network (only if we were the last grabbing DataStream)
+    std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
+    logicalDevice->getPhysicalDevice()->updateConnectionState();
     return GC_ERR_SUCCESS;
 }
 
 GC_ERROR DataStream::flushQueue(ACQ_QUEUE_TYPE iOperation) {
+    DEBUG_DSTREAM("flushQueue()");
+    switch(iOperation) {
+        case ACQ_QUEUE_INPUT_TO_OUTPUT: DEBUG_DSTREAM("  input_to_output"); break;
+        case ACQ_QUEUE_OUTPUT_DISCARD: DEBUG_DSTREAM("  output_discard"); break;
+        case ACQ_QUEUE_ALL_TO_INPUT: DEBUG_DSTREAM("  all_to_input"); break;
+        case ACQ_QUEUE_UNQUEUED_TO_INPUT: DEBUG_DSTREAM("  unqueued_to_input"); break;
+        case ACQ_QUEUE_ALL_DISCARD: DEBUG_DSTREAM("  all_discard"); break;
+        default: DEBUG_DSTREAM("  NOT_IMPLEMENTED!");
+    }
+
     std::unique_lock<std::mutex> deviceLock(logicalDevice->getPhysicalDevice()->lock());
     bool clearEvents = false;
 
@@ -602,7 +627,7 @@ GC_ERROR DataStream::getInfo(STREAM_INFO_CMD iInfoCmd, INFO_DATATYPE* piType,
             info.setSizeT(getPayloadSize());
             break;
         case STREAM_INFO_IS_GRABBING:
-            info.setBool(framesToAquire > 0);
+            info.setBool(framesToAcquire > 0);
             break;
         case STREAM_INFO_DEFINES_PAYLOADSIZE:
             info.setBool(true);
@@ -664,7 +689,7 @@ GC_ERROR DataStream::getBufferPartInfo(BUFFER_HANDLE hBuffer, uint32_t iPartInde
         {BUFFER_PART_INFO_CUSTOM_ID,             "BUFFER_PART_INFO_CUSTOM_ID"},
     };
 
-    DEBUG_DSTREAM("getBufferPartInfo idx=" << iPartIndex << " cmd=" << iInfoCmd);
+    //DEBUG_DSTREAM("getBufferPartInfo idx=" << iPartIndex << " cmd=" << iInfoCmd);
 
     int partIndex = static_cast<int>(iPartIndex);
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
@@ -731,6 +756,7 @@ GC_ERROR DataStream::getBufferPartInfo(BUFFER_HANDLE hBuffer, uint32_t iPartInde
 
 GC_ERROR DataStream::announceCompositeBuffer( size_t iNumSegments, void **ppSegments,
         size_t *piSizes, void *pPrivate, BUFFER_HANDLE *phBuffer) {
+    DEBUG_DSTREAM("announceCompositeBuffer()");
     if(ppSegments == nullptr || phBuffer == nullptr || piSizes == nullptr) {
         return GC_ERR_INVALID_PARAMETER;
     }

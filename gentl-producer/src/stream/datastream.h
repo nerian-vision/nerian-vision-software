@@ -115,15 +115,20 @@ public:
     // PhysicalDevice can invoke this directly, once any visiontransfer::ImageSet metadata changes at run time.
     void updateBufferMapping();
 
+    // Return the number of remaining frames to acquire (0 if stopped).
+    // This is observed by the PhysicalDevice to connect/disconnect the network transfer on demand
+    uint64_t getFramesToAcquire() { return framesToAcquire; }
+
 private:
     LogicalDevice* logicalDevice; // The physical device this stream is associated with
     StreamType streamType;
 
-    uint64_t framesToAquire; // The number of frames that remain to be capture
+    uint64_t framesToAcquire; // The number of frames that remain to be capture
     uint64_t numDelivered; // Total number of frames that have been delivered
     uint64_t numUnderrun; // Total number of buffer underruns
     uint64_t numCaptured; // Total number of buffer underruns
 
+    //std::map<BUFFER_HANDLE,std::shared_ptr<Buffer> > buffers;
     std::vector<std::shared_ptr<Buffer> > buffers; // All allocated buffers
     std::deque<std::shared_ptr<Buffer> > inputPool; // Buffers in the input pool
     std::deque<std::shared_ptr<Buffer> > outputQueue; // Buffers in the output queue

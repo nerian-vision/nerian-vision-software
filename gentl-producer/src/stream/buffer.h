@@ -17,8 +17,10 @@
 
 #include <genicam/gentl.h>
 #include <visiontransfer/imageset.h>
+#include <visiontransfer/externalbuffer.h>
 #include "misc/common.h"
 #include "misc/handle.h"
+#include "stream/buffermapping.h"
 
 namespace GenTL {
 
@@ -29,8 +31,8 @@ class DataStream;
  */
 class Buffer: public Handle {
 public:
-    Buffer(DataStream* stream, void* privateData, size_t size);
-    Buffer(DataStream* stream, void* privateData, unsigned char* data, size_t size);
+    Buffer(DataStream* stream, void* privateData, size_t size, const BufferMapping& bufferMapping);
+    Buffer(DataStream* stream, void* privateData, unsigned char* data, size_t size, const BufferMapping& bufferMapping);
     ~Buffer();
 
     DataStream* getStream() {return stream;}
@@ -43,7 +45,8 @@ public:
 
     void setMetaData(const visiontransfer::ImageSet& data) {metaData = data;}
     void setIncomplete(bool incomp) {incomplete = incomp;}
-
+    /// Apply a new BufferMapping, corresponding to a new preference for the buffer part layout. Pointers and handle are untouched
+    void applyBufferMapping(const BufferMapping& mapping);
 private:
     DataStream* stream; // Associated stream
     bool consumerBuffer; // True if this buffer was allocated by the consumer
@@ -52,6 +55,10 @@ private:
     size_t size; // Size of the allocated buffer memory
     visiontransfer::ImageSet metaData; // Image set object containing all the meta data
     bool incomplete;
+    // The ExternalBufferSet encapsulates a structured representation of the announced
+    // or allocated buffer and its constituent parts. We use our own address as the 
+    // ExternalBufferHandle, for immediate lookup of the data coming out of the ImageTransfer.
+    visiontransfer::ExternalBufferSet extBufSet;
 };
 
 }

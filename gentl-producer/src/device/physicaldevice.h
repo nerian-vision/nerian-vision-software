@@ -129,10 +129,18 @@ public:
     IntensitySource getIntensitySource() const { return intensitySource; }
     void setIntensitySource(IntensitySource src);
 
+    // Called by DataStreams when the acquisition status changes, to connect/disconnect the image transfer
+    void updateConnectionState();
+
+    // Return the current state of the logical device activation (1 = single part device[s] open, 2 = multipart device open, 0 = neither)
+    // This is to prevent simultaneously opening single part devices and the multipart one
+    int getCurrentLogicalDeviceState();
+    
 private:
     Interface* interface; // Associated system object
-    std::unique_ptr<visiontransfer::AsyncTransfer> asyncTf; // Object for receiving image data - with background receiver thread
+    std::unique_ptr<visiontransfer::AsyncTransfer> transfer; // Object for receiving image data - with background receiver thread
     std::unique_ptr<visiontransfer::DeviceParameters> deviceParameters; // Parameter access for sending software trigger
+    bool transferJustDown; // Signal flag that transfer just went offline again
 
     bool udp; // Indicates if UDP or TCP protocol is used
     std::string host; // Remote host name or local interface address

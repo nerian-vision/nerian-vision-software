@@ -53,11 +53,23 @@ LogicalDevice::~LogicalDevice() {
 }
 
 GC_ERROR LogicalDevice::open() {
-    deviceOpen = true;
-    return GC_ERR_SUCCESS;
+    if (deviceOpen) return GC_ERR_RESOURCE_IN_USE;
+    bool isMulti = stream.getStreamType() == DataStream::MULTIPART_STREAM;
+    int currentDevices = physicalDevice->getCurrentLogicalDeviceState();
+    if ((currentDevices == 0) // nothing open yet
+            || ((currentDevices==1) && (!isMulti)) // another single-part device is open
+        ) {
+        deviceOpen = true;
+        return GC_ERR_SUCCESS;
+    } else {
+        // We can not open single and multi-part devices at the same time
+        // due to the buffer setup in libvisiontransfer
+        return GC_ERR_RESOURCE_IN_USE;
+    }
 }
 
 GC_ERROR LogicalDevice::close() {
+    if (!deviceOpen) return GC_ERR_ERROR;
     deviceOpen = false;
     return GC_ERR_SUCCESS;
 }
