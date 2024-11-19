@@ -16,6 +16,7 @@
 #define NERIAN_PYSICALDEVICE_H
 
 #include "misc/common.h"
+#include "stream/buffer.h"
 
 #include <genicam/gentl.h>
 #include <memory>
@@ -136,6 +137,7 @@ public:
     // This is to prevent simultaneously opening single part devices and the multipart one
     int getCurrentLogicalDeviceState();
     
+    GC_ERROR tryRequeueBuffer(Buffer* buffer);
 private:
     Interface* interface; // Associated system object
     std::unique_ptr<visiontransfer::AsyncTransfer> transfer; // Object for receiving image data - with background receiver thread

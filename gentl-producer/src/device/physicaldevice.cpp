@@ -280,13 +280,11 @@ void PhysicalDevice::deviceReceiveThread() {
 #else
             {
                 //std::unique_lock<std::mutex> lock(receiveMutex);
+                if (transferJustDown) {
+                    transfer.reset();
+                    transferJustDown = false;
+                }
                 if (transfer) {
-                    if (transferJustDown) {
-                        // Lock-free resolution
-                        transferJustDown = false;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                        continue;
-                    }
                     // Receive new image
                     if(!transfer->collectReceivedImageSet(receivedSet, 1.0)) { // Wait up to 1.0 sec for full image set, then gracefully return to running check
                         // No image available
@@ -371,6 +369,10 @@ void PhysicalDevice::deviceReceiveThread() {
                 }
             }
         }
+        // TODO: if receivedSet contained any unexpected null-handle channel, this
+        // indicates an exhausted input pool => it is valid to signal via emitting GC_ERR_RESOURCE_EXHAUSTED,
+        // see GenTL p. 185 (-- and we should NOT queue anything for any stream, presumably, despite whether
+        // other logical devices may have announced more buffers).
     } catch(std::runtime_error& ex) {
         DEBUG_PHYS("Runtime error in receiver thread: " << ex.what());
         // Error has occurred
@@ -810,14 +812,18 @@ void PhysicalDevice::setIntensitySource(PhysicalDevice::IntensitySource src) {
 }
 
 void PhysicalDevice::updateConnectionState() {
+    bool isMultipartOpen = false;
     bool grabbing = false;
     for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
         if (logicalDevices[i]->getStream()->getFramesToAcquire() > 0) {
+            if (logicalDevices[i]->getStream()->getStreamType() == DataStream::MULTIPART_STREAM) {
+                isMultipartOpen = true;
+            }
             grabbing = true;
             break;
         }
     }
-    if (grabbing && (!transfer)) {
+    if (grabbing && (!transfer) && (!transferJustDown)) {
         DEBUG_PHYS("Starting image acquisition from network");
         // Now grabbing: connect and start network transfer
         // Initialize network receiver
@@ -825,11 +831,8 @@ void PhysicalDevice::updateConnectionState() {
             this->udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
     } else if ((!grabbing) && transfer) {
         DEBUG_PHYS("Stopping image acquisition from network");
-        // Now idle: stop and disconnect network transfer
+        // Now idle: flag for the acquisition thread to orderly disconnect
         transferJustDown = true;
-        std::atomic_thread_fence(std::memory_order_release);
-        // Fenced against use-after-free, see receiver thread
-        transfer.reset();
     }
 }
 
@@ -840,13 +843,24 @@ int PhysicalDevice::getCurrentLogicalDeviceState() {
             if (logicalDevices[i]->getStream()->getStreamType() == DataStream::MULTIPART_STREAM) {
                 return 2; // Multipart device is open
             } else {
-                return 1; // Al least one single-part device is open
+                return 1; // At least one single-part device is open
             }
         }
     }
     return 0;
 }
 
-
+GC_ERROR PhysicalDevice::tryRequeueBuffer(Buffer* buffer) {
+    if (transfer) {
+        auto handle = reinterpret_cast<visiontransfer::ImageSet::ExternalBufferHandle>(buffer);
+        std::cout << "IMPLEMENT_ME: signal done for handle " << handle << std::endl;
+        //transfer->signalExternalBufferDone(handle);
+        return GC_ERR_SUCCESS;
+    } else {
+        // If acquisition is not active, we defer the actual operation until the transfer is constructed
+        return GC_ERR_SUCCESS;
+    }
 }
+
+} // namespace
 

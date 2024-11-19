@@ -59,6 +59,8 @@ public:
     void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
     void setAutoReconnect(int secondsBetweenRetries);
     void signalExternalBufferDone(ImageSet::ExternalBufferHandle handle);
+    bool hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const;
+    ExternalBufferSet getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const;
 
 private:
     static constexpr int NUM_BUFFERS = ImageSet::MAX_SUPPORTED_IMAGES * 3;
@@ -183,6 +185,14 @@ void AsyncTransfer::signalImageSetDone(ImageSet& imageSet) {
 
 void AsyncTransfer::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
     pimpl->signalExternalBufferDone(handle);
+}
+
+bool AsyncTransfer::hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    return pimpl->hasExternalBufferHandle(externalBufferHandle);
+}
+
+ExternalBufferSet AsyncTransfer::getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    return pimpl->getExternalBufferSet(externalBufferHandle);
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -518,6 +528,14 @@ void AsyncTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
 
 void AsyncTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
     imgTrans.signalExternalBufferDone(handle);
+}
+
+bool AsyncTransfer::Pimpl::hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    return imgTrans.hasExternalBufferHandle(externalBufferHandle);
+}
+
+ExternalBufferSet AsyncTransfer::Pimpl::getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    return imgTrans.getExternalBufferSet(externalBufferHandle);
 }
 
 constexpr int AsyncTransfer::Pimpl::NUM_BUFFERS;

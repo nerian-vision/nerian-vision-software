@@ -69,6 +69,8 @@ public:
     void setExternalBufferingActive(bool active);
     bool getExternalBufferingActive() const;
     void addExternalBufferSet(const ExternalBufferSet& bufset);
+    bool hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const;
+    ExternalBufferSet getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const;
 
 private:
     // Configuration parameters
@@ -337,6 +339,31 @@ ExternalBufferSet ImageTransfer::Config::getExternalBufferSet(int idx) const {
 }
 bool ImageTransfer::Config::getExternalBufferingActive() const {
     return pimpl->getExternalBufferingActive();
+}
+
+void ImageTransfer::setExternalBufferingActive(bool active) {
+    pimpl->setExternalBufferingActive(active);
+}
+
+bool ImageTransfer::getExternalBufferingActive() const {
+    return pimpl->getExternalBufferingActive();
+}
+
+void ImageTransfer::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
+    pimpl->signalExternalBufferDone(handle);
+}
+
+void ImageTransfer::assignExternalBuffers() {
+    pimpl->assignExternalBuffers();
+}
+
+
+bool ImageTransfer::hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    return pimpl->hasExternalBufferHandle(externalBufferHandle);
+}
+
+ExternalBufferSet ImageTransfer::getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    return pimpl->getExternalBufferSet(externalBufferHandle);
 }
 
 /******************** Implementation in pimpl classes *******************/
@@ -1197,22 +1224,15 @@ void ImageTransfer::Pimpl::removeExternalBufferSet(const ExternalBufferSet& bufs
 }
 */
 
-void ImageTransfer::setExternalBufferingActive(bool active) {
-    pimpl->setExternalBufferingActive(active);
+bool ImageTransfer::Pimpl::hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    return externalBufferPool.count(externalBufferHandle) > 0;
 }
 
-bool ImageTransfer::getExternalBufferingActive() const {
-    return pimpl->getExternalBufferingActive();
+ExternalBufferSet ImageTransfer::Pimpl::getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    auto it = externalBufferPool.find(externalBufferHandle);
+    if (it == externalBufferPool.end()) throw BufferException(std::string("Cannot return buffer set for unknown handle ") + std::to_string(externalBufferHandle));
+    return it->second;
 }
-
-void ImageTransfer::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
-    pimpl->signalExternalBufferDone(handle);
-}
-
-void ImageTransfer::assignExternalBuffers() {
-    pimpl->assignExternalBuffers();
-}
-
 
 // ImageTransfer::Config
 

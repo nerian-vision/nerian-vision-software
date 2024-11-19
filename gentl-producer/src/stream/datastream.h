@@ -119,6 +119,11 @@ public:
     // This is observed by the PhysicalDevice to connect/disconnect the network transfer on demand
     uint64_t getFramesToAcquire() { return framesToAcquire; }
 
+    // Returns the current state of the input pool. This is available specifically
+    // for the physical device lazy-loading all buffers into a newly constructed
+    // transfer object when an acquisition is actually started.
+    std::vector<Buffer*> getInputPool();
+
 private:
     LogicalDevice* logicalDevice; // The physical device this stream is associated with
     StreamType streamType;

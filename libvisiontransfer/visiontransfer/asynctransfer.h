@@ -218,6 +218,16 @@ public:
      */
     void signalExternalBufferDone(ImageSet::ExternalBufferHandle externalBufferHandle);
 
+    /**
+     * \brief Return true iff one of the registered buffers uses the specified handle
+     */
+    bool hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const;
+
+    /**
+     * \brief Return the external buffer set with the given handle, throws if unknown.
+     */
+    ExternalBufferSet getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const;
+
 private:
     // We follow the pimpl idiom
     class Pimpl;

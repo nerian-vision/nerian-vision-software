@@ -258,14 +258,21 @@ GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void 
 
 GC_ERROR DataStream::queueBuffer(BUFFER_HANDLE hBuffer) {
     DEBUG_DSTREAM("\033[33;1mqueueBuffer(),\033[m handle = " << ((off_t) hBuffer));
+    DEBUG_DSTREAM("  outputQueue size is currently " << (outputQueue.size()));
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
 
     // Locate buffer and queue
     for(const std::shared_ptr<Buffer>& buf: buffers) {
         if(buf.get() == buffer) {
-            inputPool.push_back(buf);
-            return GC_ERR_SUCCESS;
+            // Try to requeue into running transfer protocol.
+            // (Also reports success for non-network buffers (Range) and also
+            // before starting acquisition - the entire pool will be added on start.)
+            GC_ERROR physErr = logicalDevice->getPhysicalDevice()->tryRequeueBuffer(buf.get());
+            if (physErr == GC_ERR_SUCCESS) {
+                inputPool.push_back(buf);
+            }
+            return physErr;
         }
     }
 
@@ -301,6 +308,8 @@ GC_ERROR DataStream::stopAcquisition(ACQ_STOP_FLAGS iStopFlags) {
 }
 
 GC_ERROR DataStream::flushQueue(ACQ_QUEUE_TYPE iOperation) {
+    // TODO - this needs work: we need dedicated handling of 'currently being filled' buffers
+    // (per GenTL p. 137) - this was not really relevant before.
     DEBUG_DSTREAM("flushQueue()");
     switch(iOperation) {
         case ACQ_QUEUE_INPUT_TO_OUTPUT: DEBUG_DSTREAM("  input_to_output"); break;
@@ -638,7 +647,8 @@ GC_ERROR DataStream::getInfo(STREAM_INFO_CMD iInfoCmd, INFO_DATATYPE* piType,
         case STREAM_INFO_NUM_CHUNKS_MAX:
             info.setSizeT(0);
         case STREAM_INFO_BUF_ANNOUNCE_MIN:
-            info.setSizeT(1);
+            // Increased to two, the minimum for AsyncTransfer external buffering
+            info.setSizeT(2);
             break;
         case STREAM_INFO_BUF_ALIGNMENT:
             info.setSizeT(1);
@@ -857,5 +867,32 @@ GC_ERROR DataStream::getBufferSegmentInfo(BUFFER_HANDLE hBuffer, uint32_t iSegme
 
     return getBufferInfo(hBuffer, bufCmd, piType, pBuffer, piSize);
 }
+
+std::vector<Buffer*> DataStream::getInputPool() {
+    std::vector<Buffer*> ret;
+    for(unsigned int i=0; i<inputPool.size(); i++) {
+        ret.push_back(inputPool[i].get());
+    }
+    return ret;
+}
+
+/*
+
+bool DataStream::isQueuedForInput(Buffer* buffer) {
+    return findBuffer(inputPool, buffer);
+}
+bool DataStream::isQueuedForOutput(Buffer* buffer) {
+    return findBuffer(outputQueue, buffer);
+}
+bool DataStream::queueForInput(Buffer* buffer) {
+}
+bool DataStream::queueForOutput(Buffer* buffer) {
+}
+bool DataStream::unqueueFromInput(Buffer* buffer) {
+}
+bool DataStream::unqueueFromOutput(Buffer* buffer) {
+}
+*/
+
 
 }
