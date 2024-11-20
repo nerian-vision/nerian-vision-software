@@ -92,7 +92,7 @@ public:
             SEGMENT_INFO_CMD iInfoCmd, INFO_DATATYPE *piType, void *pBuffer, size_t *piSize);
 
     // Methods that are used internally
-    Buffer* requestBuffer();
+    Buffer* requestBuffer(Buffer* buffer);
     void queueOutputBuffer(Buffer* buffer);
     LogicalDevice* getLogicalDevice() {return logicalDevice;}
 
@@ -134,6 +134,9 @@ public:
     // transfer object when an acquisition is actually started.
     std::vector<Buffer*> getInputPool();
 
+    // Signals an underrun detected at the transfer protocol level
+    void signalUnderrun();
+
 private:
     LogicalDevice* logicalDevice; // The physical device this stream is associated with
     StreamType streamType;
@@ -145,8 +148,8 @@ private:
 
     //std::map<BUFFER_HANDLE,std::shared_ptr<Buffer> > buffers;
     std::vector<std::shared_ptr<Buffer> > buffers; // All allocated buffers
-    std::deque<std::shared_ptr<Buffer> > inputPool; // Buffers in the input pool
-    std::deque<std::shared_ptr<Buffer> > outputQueue; // Buffers in the output queue
+    std::deque<Buffer*> inputPool; // Buffers in the input pool
+    std::deque<Buffer*> outputQueue; // Buffers in the output queue
 
     Event* newBufferEvent; // Event object for new buffer events
     Event* errorEvent; // Event object for relaying errors

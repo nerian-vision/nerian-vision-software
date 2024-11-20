@@ -101,13 +101,22 @@ void DataStream::emitErrorEvent(GC_ERROR error) {
     }
 }
 
-Buffer* DataStream::requestBuffer() {
+Buffer* DataStream::requestBuffer(Buffer* buffer) {
     if(framesToAcquire > 0) {
-        if(inputPool.size() > 0) {
-            return inputPool.front().get();
+        if (streamType == POINTCLOUD_STREAM) {
+            // Range buffers are NOT governed by libvisiontransfer - old behavior
+            if(inputPool.size() > 0) {
+                return inputPool.front();
+            } else {
+                numUnderrun++;
+                return nullptr;
+            }
         } else {
-            numUnderrun++;
-            return nullptr;
+            // Image buffer - use reported handle (announced by the ImageSet itself)
+            // Underruns are signaled by the protocol (TODO)
+            auto it = std::find(inputPool.begin(), inputPool.end(), buffer);
+            if (it==inputPool.end()) throw std::runtime_error("Received buffer handle not present in GenTL input pool");
+            return buffer;
         }
     } else {
         return nullptr;
@@ -115,8 +124,13 @@ Buffer* DataStream::requestBuffer() {
 }
 
 void DataStream::queueOutputBuffer(Buffer* buffer) {
-    outputQueue.push_back(inputPool.front());
-    inputPool.pop_front();
+    if (buffer == nullptr) throw std::runtime_error("Unexpected null pointer in queueOutputBuffer");
+    // TODO should insert check that the buffer is not still in the queue from before (like in the old versions ...)
+    outputQueue.push_back(buffer);
+    auto it = std::find(inputPool.begin(), inputPool.end(), buffer);
+    if (it != inputPool.end()) {
+        inputPool.erase(it);
+    } // else error condition
 
     if(framesToAcquire != GENTL_INFINITE) {
         framesToAcquire--;
@@ -125,11 +139,11 @@ void DataStream::queueOutputBuffer(Buffer* buffer) {
 
     // Event notification
     S_EVENT_NEW_BUFFER eventData;
-    eventData.BufferHandle = outputQueue.back().get();
-    eventData.pUserPointer = outputQueue.back()->getPrivateData();
+    eventData.BufferHandle = buffer;
+    eventData.pUserPointer = buffer->getPrivateData();
 
     if(newBufferEvent != nullptr) {
-        DEBUG_DSTREAM("Emitting EVENT_NEW_BUFFER");
+        DEBUG_DSTREAM("Emitting EVENT_NEW_BUFFER for handle " << ((off_t) buffer));
         newBufferEvent->emitEvent(eventData);
     }
 }
@@ -142,6 +156,11 @@ bool DataStream::findBuffer(T queue, Buffer* buffer) {
         }
     }
     return false;
+}
+
+template <>
+bool DataStream::findBuffer(std::deque<Buffer*> queue, Buffer* buffer) {
+    return std::find(queue.begin(), queue.end(), buffer) != queue.end();
 }
 
 GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate, BUFFER_HANDLE* phBuffer) {
@@ -304,7 +323,7 @@ GC_ERROR DataStream::queueBuffer(BUFFER_HANDLE hBuffer) {
             // before starting acquisition - the entire pool will be added on start.)
             GC_ERROR physErr = logicalDevice->getPhysicalDevice()->tryRequeueBuffer(buf.get());
             if (physErr == GC_ERR_SUCCESS) {
-                inputPool.push_back(buf);
+                inputPool.push_back(buf.get());
             }
             return physErr;
         }
@@ -363,7 +382,7 @@ GC_ERROR DataStream::flushQueue(ACQ_QUEUE_TYPE iOperation) {
                 outputQueue.push_back(inputPool[i]);
 
                 S_EVENT_NEW_BUFFER eventData;
-                eventData.BufferHandle = inputPool[i].get();
+                eventData.BufferHandle = inputPool[i];
                 eventData.pUserPointer = inputPool[i]->getPrivateData();
                 if(newBufferEvent != nullptr) {
                     newBufferEvent->emitEvent(eventData);
@@ -379,13 +398,15 @@ GC_ERROR DataStream::flushQueue(ACQ_QUEUE_TYPE iOperation) {
             clearEvents = true;
             outputQueue.clear();
             inputPool.clear();
-            inputPool.insert(inputPool.end(), buffers.begin(), buffers.end());
+            for (auto& buf: buffers) {
+                inputPool.push_back(buf.get());
+            }
             break;
         case ACQ_QUEUE_UNQUEUED_TO_INPUT:
             inputPool.clear();
             for(const std::shared_ptr<Buffer>& buf: buffers) {
                 if(!findBuffer(outputQueue, buf.get())) {
-                    inputPool.push_back(buf);
+                    inputPool.push_back(buf.get());
                 }
             }
             break;
@@ -904,10 +925,13 @@ GC_ERROR DataStream::getBufferSegmentInfo(BUFFER_HANDLE hBuffer, uint32_t iSegme
 
 std::vector<Buffer*> DataStream::getInputPool() {
     std::vector<Buffer*> ret;
-    for(unsigned int i=0; i<inputPool.size(); i++) {
-        ret.push_back(inputPool[i].get());
-    }
+    ret.insert(ret.end(), inputPool.begin(), inputPool.end());
     return ret;
+}
+
+void DataStream::signalUnderrun() {
+    DEBUG_DSTREAM("signalUnderrun() called");
+    numUnderrun++;
 }
 
 /*

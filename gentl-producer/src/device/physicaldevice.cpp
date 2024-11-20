@@ -414,26 +414,31 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
             id = ID_IMAGE_RIGHT;
         }
 
-        // Copy to device buffer
-        Buffer* buffer = logicalDevices[id]->getStream()->requestBuffer();
-        if(buffer == nullptr) {
-            continue;
-        }
+        ImageSet::ExternalBufferHandle handle = receivedSet.getExternalBufferHandle(i);
 
-        int copiedBytes = copyImageToBufferMemory(receivedSet, i, buffer->getData(), static_cast<int>(buffer->getSize()));
-        if(copiedBytes < 0) {
-            buffer->setIncomplete(true);
+        if (handle == 0) {
+            // Should not happen - this indicates an exhausted library buffer pool
+            logicalDevices[id]->getStream()->emitErrorEvent(GC_ERR_RESOURCE_EXHAUSTED);
         } else {
-            buffer->setIncomplete(false);
+            Buffer* buffer = reinterpret_cast<Buffer*>(handle);
+            // Update the logical device pools (the device will find the buffer description in its pool)
+            buffer = logicalDevices[id]->getStream()->requestBuffer(buffer);
+            if(buffer == nullptr) {
+                // The device may not be capturing any more frames.
+                // Forcing handle to be ready:=0
+                transfer->signalExternalBufferDone(handle);
+                return;
+            }
+            buffer->setMetaData(receivedSet);
+            logicalDevices[id]->getStream()->queueOutputBuffer(buffer);
+            DEBUG_PHYS("Queued a single buffer");
+
+            if(buffer->isIncomplete()) {
+                logicalDevices[id]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);
+            }
+
         }
 
-        buffer->setMetaData(receivedSet);
-        logicalDevices[id]->getStream()->queueOutputBuffer();
-        DEBUG_PHYS("Queued a single buffer");
-
-        if(buffer->isIncomplete()) {
-            logicalDevices[id]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);
-        }
     }
 }
 
@@ -459,7 +464,8 @@ int PhysicalDevice::copyImageToBufferMemory(const ImageSet& receivedSet, int id,
 }
 
 void PhysicalDevice::copy3dDataToBuffer(const ImageSet& receivedSet) {
-    Buffer* buffer = logicalDevices[ID_POINTCLOUD]->getStream()->requestBuffer();
+    // Special case - the point cloud has no external buffer support inside the transfer protocol
+    Buffer* buffer = logicalDevices[ID_POINTCLOUD]->getStream()->requestBuffer(nullptr);
     if(buffer == nullptr) {
         // No buffer available
         return;
@@ -473,7 +479,7 @@ void PhysicalDevice::copy3dDataToBuffer(const ImageSet& receivedSet) {
     }
 
     buffer->setMetaData(receivedSet);
-    logicalDevices[ID_POINTCLOUD]->getStream()->queueOutputBuffer();
+    logicalDevices[ID_POINTCLOUD]->getStream()->queueOutputBuffer(buffer);
 
     if(buffer->isIncomplete()) {
         logicalDevices[ID_POINTCLOUD]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);
@@ -507,9 +513,14 @@ int PhysicalDevice::copy3dDataToBufferMemory(const ImageSet& receivedSet, unsign
 
 void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
     auto stream = logicalDevices[ID_MULTIPART]->getStream();
-    Buffer* buffer = stream->requestBuffer();
+    ImageSet::ExternalBufferHandle handle = receivedSet.getExternalBufferHandle(0); // all identical
+    Buffer* buffer = reinterpret_cast<Buffer*>(handle);
+    // Update the logical device pools (the device will find the buffer description in its pool)
+    buffer = logicalDevices[ID_MULTIPART]->getStream()->requestBuffer(buffer);
     if(buffer == nullptr) {
-        // No buffer available
+        // The device may not be capturing any more frames.
+        // Forcing handle to be ready:=0
+        transfer->signalExternalBufferDone(handle);
         return;
     }
     auto& bufferMapping = stream->getBufferMapping();
@@ -529,7 +540,9 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         auto func = bufferMapping.getBufferPartImageSetFunction(i);
         auto offset = bufferMapping.getBufferPartOffset(i);
         auto sz = bufferMapping.getBufferPartSize(i);
-        if (func != ImageSet::IMAGE_UNDEFINED) { // not the point cloud channel
+        if (func != ImageSet::IMAGE_UNDEFINED) { // not the point cloud channel - data already in place!
+            //
+
             // FIXME remove if working
             /*
             auto idx = receivedSet.getIndexOf(func);
@@ -548,7 +561,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
             }
             */
         } else {
-            // Special case: point cloud
+            // Special case: point cloud - we actually still need to write data here
             if (getComponentEnabledRange() && receivedSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
                 DEBUG_PHYS("Multipart function UNDEF (point cloud) from 3d buf, starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
                 copiedBytes = copy3dDataToBufferMemory(receivedSet, &buffer->getData()[offset],
@@ -564,7 +577,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         }
     }
     buffer->setMetaData(receivedSet);
-    logicalDevices[ID_MULTIPART]->getStream()->queueOutputBuffer();
+    logicalDevices[ID_MULTIPART]->getStream()->queueOutputBuffer(buffer);
 
     DEBUG_PHYS("Queued a multipart buffer");
 
