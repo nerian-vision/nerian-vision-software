@@ -83,6 +83,11 @@ public:
         /// 3rd color camera for devices where this is supported
         IMAGE_COLOR
     };
+    
+    /** \brief Get pretty-printed name for ImageType enum value */
+    static const char* getNameForImageType(ImageType what);
+    /** \brief Get pretty-printed name for ImageFormat enum value */
+    static const char* getNameForImageFormat(ImageFormat what);
 
     /**
      * \brief Default constructor creating an image set with no pixel data.

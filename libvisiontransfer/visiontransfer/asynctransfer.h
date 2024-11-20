@@ -228,6 +228,24 @@ public:
      */
     ExternalBufferSet getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const;
 
+    /**
+     * \brief Add the specified buffer set to the buffer pool.
+     *
+     * It may be immediately picked for reception by the background thread.
+     */
+    void addExternalBufferSet(ExternalBufferSet externalBufferSet);
+
+    /**
+     * \brief Retract buffer set with the specified handle from the buffer pool.
+     *
+     * If the buffer is currently being filled by an incoming frame, this
+     * operation will block until reception (and subsequent retraction) is
+     * completed to ensure that the underlying buffers are no longer written
+     * to. The resulting ImageSet will however no longer make reference to this
+     * external buffer set.
+     */
+    void retractExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle);
+
 private:
     // We follow the pimpl idiom
     class Pimpl;

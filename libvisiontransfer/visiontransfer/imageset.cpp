@@ -723,6 +723,28 @@ ImageSet::ExternalBufferHandle ImageSet::getExternalBufferHandle(ImageSet::Image
     auto idx = getIndexOf(imageType, true);
     return pimpl->getExternalBufferHandle(idx);
 }
+    
+// static
+const char* ImageSet::getNameForImageType(ImageSet::ImageType what) {
+    switch (what) {
+        case ImageSet::IMAGE_UNDEFINED: return "IMAGE_UNDEFINED";
+        case ImageSet::IMAGE_LEFT: return "IMAGE_LEFT";
+        case ImageSet::IMAGE_DISPARITY: return "IMAGE_DISPARITY";
+        case ImageSet::IMAGE_RIGHT: return "IMAGE_RIGHT";
+        case ImageSet::IMAGE_COLOR: return "IMAGE_COLOR";
+        default: return "(INVALID_ENUM_VALUE)";
+    }
+}
+// static
+const char* ImageSet::getNameForImageFormat(ImageSet::ImageFormat what) {
+    switch (what) {
+        case ImageSet::FORMAT_8_BIT_MONO: return "FORMAT_8_BIT_MONO";
+        case ImageSet::FORMAT_8_BIT_RGB: return "FORMAT_8_BIT_RGB";
+        case ImageSet::FORMAT_12_BIT_MONO: return "FORMAT_12_BIT_MONO";
+        default: return "(INVALID_ENUM_VALUE)";
+    }
+}
+
 
 } // namespace
 

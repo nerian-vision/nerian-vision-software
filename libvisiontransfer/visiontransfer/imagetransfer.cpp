@@ -107,6 +107,7 @@ private:
     bool externalBufferingActive; // TODO maybe obsolete (use protocol->get/setExt....)
     // The registered external sets of buffers
     std::map<ImageSet::ExternalBufferHandle, ExternalBufferSet> externalBufferPool;
+    mutable std::recursive_mutex externalBufferPoolMutex;
     // Filtered by ImageType (their single-part role or IMAGE_UNDEFINED for multipart)
     std::map<ImageSet::ImageType, std::set<ImageSet::ExternalBufferHandle> > externalBuffersByImageType;
     std::map<ImageSet::ExternalBufferHandle, long> externalBufferLastWrite;
@@ -414,6 +415,7 @@ bool ImageTransfer::Pimpl::getExternalBufferingActive() const {
 }
 
 void ImageTransfer::Pimpl::assignExternalBuffers() {
+    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
     if (externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED].size() > 0) {
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_LEFT);
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_RIGHT);
@@ -421,9 +423,9 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_COLOR);
         // Only considering the registered multi-part buffers
         for (auto handle : externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED]) {
-            auto bufset = externalBufferPool[handle];
+            auto& bufset = externalBufferPool[handle];
             if (!bufset.getReady()) { // eligible for next buffer fill
-                //std::cout << "ImageProtocol gets wildcard buffer set #" << handle << std::endl;
+                std::cout << "ImageProtocol gets wildcard buffer set #" << handle << std::endl;
                 //assignedBufferHandle = handle;
                 // Assign as wildcard
                 protocol->setExternalBufferSet(ImageSet::IMAGE_UNDEFINED, bufset);
@@ -432,6 +434,11 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
         }
         // Nothing available - the protocol will fill default internal buffers
         // This will be apparent in the ImageSet as a zero getExternalBufferHandle() for all channels
+        std::cout << "\033[31mNo multipart buffer available\033[m" << std::endl;
+        for (auto handle : externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED]) {
+            auto& bufset = externalBufferPool[handle];
+            std::cout << " BufSet " << handle << " - user-ready " << bufset.getReady() << std::endl;
+        }
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_UNDEFINED);
     } else {
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_UNDEFINED);
@@ -797,6 +804,7 @@ bool ImageTransfer::Pimpl::receivePartialImageSet(ImageSet& imageSet,
     // make sure that the next external available buffer set is rotated in (if enabled)
     if (complete) {
         if (externalBufferingActive) {
+            unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
             auto handle = protocol->getExternalBufferHandleFor(ImageSet::IMAGE_UNDEFINED);
             // N.B. 0 means 'unset/internal buffer mode', -1 means 'pool was exhausted'
             if (handle!=0 && handle!=-1) {
@@ -1157,15 +1165,23 @@ void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
 void ImageTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
     //std::cout << "\033[32msignalExternalBufferDone\033[m for handle #" << handle << std::endl;
     if (handle == 0) return; // No-op, not an image set with external buffering
+    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
     if (!externalBufferPool.count(handle)) {
         throw ProtocolException("Invalid external buffer handle");
     }
+    std::cout << "BEEP" << std::endl;
     // Allow the buffers to be filled again
     externalBufferPool[handle].setReady(false);
+    // DEBUG diag
+    std::cout << "Buffer ready state:" << std::endl;
+    for (auto const& kv: externalBufferPool) {
+        std::cout << "  " << kv.first << " " << kv.second.getReady() << std::endl;
+    }
 }
 
 
 void ImageTransfer::Pimpl::addExternalBufferSet(const ExternalBufferSet& bufset) {
+    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
     /*
     std::cout << "DEBUG: Adding an ExternalBufferSet, handle " << bufset.getHandle() << ", consisting of:" << std::endl;
     for (int i=0; i<bufset.getNumBuffers(); ++i) {
@@ -1225,10 +1241,12 @@ void ImageTransfer::Pimpl::removeExternalBufferSet(const ExternalBufferSet& bufs
 */
 
 bool ImageTransfer::Pimpl::hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
     return externalBufferPool.count(externalBufferHandle) > 0;
 }
 
 ExternalBufferSet ImageTransfer::Pimpl::getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const {
+    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
     auto it = externalBufferPool.find(externalBufferHandle);
     if (it == externalBufferPool.end()) throw BufferException(std::string("Cannot return buffer set for unknown handle ") + std::to_string(externalBufferHandle));
     return it->second;

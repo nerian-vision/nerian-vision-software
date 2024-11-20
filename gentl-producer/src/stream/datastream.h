@@ -93,7 +93,7 @@ public:
 
     // Methods that are used internally
     Buffer* requestBuffer();
-    void queueOutputBuffer();
+    void queueOutputBuffer(Buffer* buffer);
     LogicalDevice* getLogicalDevice() {return logicalDevice;}
 
     Event* allocNewBufferEvent();
@@ -118,6 +118,16 @@ public:
     // Return the number of remaining frames to acquire (0 if stopped).
     // This is observed by the PhysicalDevice to connect/disconnect the network transfer on demand
     uint64_t getFramesToAcquire() { return framesToAcquire; }
+
+    // Check whether specified buffer is currently in input queue or output queue, or "currently being filled"
+    bool isQueuedForInput(Buffer* buffer);
+    bool isQueuedForOutput(Buffer* buffer);
+    bool isBeingUsedInProtocol(Buffer* buffer);
+    // Place specified buffer in the input queue, updating the transfer protocol
+    bool queueInputBuffer(Buffer* buffer);
+    // Retract the specified buffer from the respective queue, updating the transfer protocol
+    bool unqueueFromInput(Buffer* buffer);
+    bool unqueueFromOutput(Buffer* buffer);
 
     // Returns the current state of the input pool. This is available specifically
     // for the physical device lazy-loading all buffers into a newly constructed

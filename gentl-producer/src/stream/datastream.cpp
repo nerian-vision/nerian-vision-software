@@ -114,7 +114,7 @@ Buffer* DataStream::requestBuffer() {
     }
 }
 
-void DataStream::queueOutputBuffer() {
+void DataStream::queueOutputBuffer(Buffer* buffer) {
     outputQueue.push_back(inputPool.front());
     inputPool.pop_front();
 
@@ -255,6 +255,40 @@ GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void 
     // Buffer wasn't in the list
     return GC_ERR_INVALID_HANDLE;
 }
+
+/*
+void DataStream::queueInputBuffer(Buffer* buffer) {
+    // This is the implementation of the DS queueBuffer request:
+    // the buffer is placed in the input pool. The physicalDevice is
+    // notified: if a transfer is already running, the requeue is
+    // relayed (otherwise the PhysicalDevice queues all input pools
+    // lazily when the transfer is instantiated, i.e. with the first
+    // start of acquisition for any of its streams after being idle.
+    if (findBuffer(outputQueue, buffer)) {
+        return GC_ERR_BUSY;
+    }
+    
+    if(!findBuffer(inputPool, buffer)) {
+        inputPool.push_back(buf);
+        return GC_ERR_SUCCESS;
+    }
+
+    if(framesToAcquire != GENTL_INFINITE) {
+        framesToAcquire--;
+    }
+    numCaptured++;
+
+    // Event notification
+    S_EVENT_NEW_BUFFER eventData;
+    eventData.BufferHandle = outputQueue.back().get();
+    eventData.pUserPointer = outputQueue.back()->getPrivateData();
+
+    if(newBufferEvent != nullptr) {
+        DEBUG_DSTREAM("Emitting EVENT_NEW_BUFFER");
+        newBufferEvent->emitEvent(eventData);
+    }
+}
+*/
 
 GC_ERROR DataStream::queueBuffer(BUFFER_HANDLE hBuffer) {
     DEBUG_DSTREAM("\033[33;1mqueueBuffer(),\033[m handle = " << ((off_t) hBuffer));

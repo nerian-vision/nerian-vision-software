@@ -530,6 +530,8 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         auto offset = bufferMapping.getBufferPartOffset(i);
         auto sz = bufferMapping.getBufferPartSize(i);
         if (func != ImageSet::IMAGE_UNDEFINED) { // not the point cloud channel
+            // FIXME remove if working
+            /*
             auto idx = receivedSet.getIndexOf(func);
             DEBUG_PHYS("Multipart function " << func << " at imageset index " << idx << ", starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
             if (idx != -1) {
@@ -544,6 +546,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
                 // Channel disabled since stream was initialized; deliver zeroed-out frame
                 std::memset(&buffer->getData()[offset], 0, std::min(sz, static_cast<int>(buffer->getSize()) - offset));
             }
+            */
         } else {
             // Special case: point cloud
             if (getComponentEnabledRange() && receivedSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
@@ -827,8 +830,47 @@ void PhysicalDevice::updateConnectionState() {
         DEBUG_PHYS("Starting image acquisition from network");
         // Now grabbing: connect and start network transfer
         // Initialize network receiver
-        transfer.reset(new AsyncTransfer(this->host.c_str(), "7681",
-            this->udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
+        AsyncTransfer::Config cfg = AsyncTransfer::Config(this->host.c_str());
+        cfg.setProtocolType(this->udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP);
+        if (isMultipartOpen) {
+            // Forward the multi-part buffer (configured to the currently active BufferMapping)
+            // to the network protocol. All buffers already queued for input are considered.
+            auto stream = logicalDevices[ID_MULTIPART]->getStream();
+            auto initialBufferPool = stream->getInputPool();
+            auto& bufferMapping = stream->getBufferMapping(); // plus current setting of intensitySource
+            std::cout << "Using effective mapping with " << bufferMapping.getNumBufferParts() << " parts:" << std::endl;
+            for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
+                auto imageType = bufferMapping.getBufferPartImageSetFunction(pi);
+                std::cout << "  Part " << pi << " -> " << ImageSet::getNameForImageType(imageType) << ((imageType==0)?" (gap reserved for point cloud data)":"") << std::endl;
+            }
+            std::cout << "On this initial buffer pool:" << std::endl;
+            for (auto buffer: initialBufferPool) {
+                ImageSet::ExternalBufferHandle handle = (off_t) buffer;
+                std::cout << "  Buffer*/Handle " << handle << std::endl;
+                // Wrap raw buffer and translate layout to visiontransfer buffer parts
+                ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
+                for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
+                    // The imageType maps directly to the needed part spec
+                    // (including IMAGE_UNDEFINED, the placeholder for the gap for the point cloud data).
+                    auto imageType = bufferMapping.getBufferPartImageSetFunction(pi);
+                    ebuf.appendPartDefinition(ExternalBuffer::Part(imageType, ExternalBuffer::CONVERSION_NONE)); // TODO future conversions on DBP level
+                }
+                // For visiontransfer, we reuse the same buffer handle we emit externally (the value of the Buffer*)
+                ExternalBufferSet ebufset(handle);
+                ebufset.addBuffer(ebuf);
+                // Register the prepared buffer
+                cfg.addExternalBufferSet(ebufset);
+            }
+
+        } else {
+            // Forward all registered single-part buffers (except Range) to the network protocol
+            
+        }
+        cfg.setExternalBufferingActive(true);
+        transfer.reset(new AsyncTransfer(cfg));
+
+        //transfer.reset(new AsyncTransfer(this->host.c_str(), "7681",
+        //    this->udp ? ImageProtocol::PROTOCOL_UDP : ImageProtocol::PROTOCOL_TCP));
     } else if ((!grabbing) && transfer) {
         DEBUG_PHYS("Stopping image acquisition from network");
         // Now idle: flag for the acquisition thread to orderly disconnect
@@ -853,8 +895,9 @@ int PhysicalDevice::getCurrentLogicalDeviceState() {
 GC_ERROR PhysicalDevice::tryRequeueBuffer(Buffer* buffer) {
     if (transfer) {
         auto handle = reinterpret_cast<visiontransfer::ImageSet::ExternalBufferHandle>(buffer);
-        std::cout << "IMPLEMENT_ME: signal done for handle " << handle << std::endl;
-        //transfer->signalExternalBufferDone(handle);
+        std::cout << "Signal done for handle " << handle << std::endl;
+        transfer->signalExternalBufferDone(handle);
+        std::cout << "ok" << std::endl;
         return GC_ERR_SUCCESS;
     } else {
         // If acquisition is not active, we defer the actual operation until the transfer is constructed

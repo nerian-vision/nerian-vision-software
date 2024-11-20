@@ -138,6 +138,24 @@ public:
     int getCurrentLogicalDeviceState();
     
     GC_ERROR tryRequeueBuffer(Buffer* buffer);
+
+    /*
+    // Add or remove an ExternalBufferSet (visiontransfer's descriptive wrapper for buffers)
+    // When an acquisition is started, the transfer is initialized with these buffers registered
+    GC_ERROR addExternalBufferSet(const visiontransfer::ExternalBufferSet& bufSet);
+    GC_ERROR removeExternalBufferSet(visiontransfer::ImageSet::ExternalBufferHandle handle);
+
+    GC_ERROR tryAnnounceBuffer(Buffer* buffer, DataStream::StreamType streamType);
+    GC_ERROR tryRevokeBuffer(Buffer* buffer);
+
+    GC_ERROR tryStartAcquisition(DataStream::StreamType streamType);
+    // Stop acquisition for a specific logical device must also pull all 'in
+    // use' affected buffers from the protocol, since a retract and possibly
+    // closeDevice is likely to follow, which may free the underlying memory.
+    // But other devices may and should still have their buffers in the loop!)
+    GC_ERROR tryStopAcquisition(DataStream::StreamType streamType);
+    */
+
 private:
     Interface* interface; // Associated system object
     std::unique_ptr<visiontransfer::AsyncTransfer> transfer; // Object for receiving image data - with background receiver thread
