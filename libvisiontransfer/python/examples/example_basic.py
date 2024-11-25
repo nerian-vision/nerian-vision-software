@@ -15,17 +15,13 @@
 ###############################################################################/
 
 #
-# Minimal console pickle / unpickle example
+# Minimal console image set reception example
 #
-
-MAX_IMAGES = 1
 
 import sys
 import time
 
-import pickle
 import numpy as np
-
 import visiontransfer
 
 if __name__=='__main__':
@@ -47,36 +43,16 @@ if __name__=='__main__':
         print(f'Selected device #{selected_device+1}')
         device = devices[selected_device]
 
-    print('Ask parameter server to set stereo mode ...')
-    params = visiontransfer.DeviceParameters(device)
-    params.set_operation_mode(visiontransfer.OperationMode.STEREO_MATCHING)
-
     print('Starting acquisition ...')
     transfer = visiontransfer.AsyncTransfer(device)
 
-    idx = 0
     while True:
-        if idx>=MAX_IMAGES: break
-        image_set_orig = transfer.collect_received_image_set()
+        image_set = transfer.collect_received_image_set()
+        # Pretty-print the image types here for a quick glance
+        image_types = ', '.join([str(image_set.get_pixel_format(i)).split('_', 1)[1] for i in range(image_set.get_number_of_images())])
+        print('Received ImageSet, size', image_set.get_width(), 'x', image_set.get_height(),
+              '- with', image_set.get_number_of_images(), 'images:', image_types)
 
-        print('Received an image set')
 
-        # Use case 1: Preserve an ImageSet locally by cloning it (unaffected by C++ API)
-        image_set = image_set_orig.copy()  # (just for reference, not used below; but you could)
 
-        # Use case 2: Serialize / deserialize an ImageSet using pickle
-        filename = 'pickled_imageset.p'
-        with open(filename, 'wb') as f:
-            pickle.dump(image_set_orig, f)
-            print('Pickled an ImageSet as', filename)
-
-        # (Load and verify)
-        with open(filename, 'rb') as f:
-            loaded = pickle.load(f)
-            print('Unpickled an ImageSet with', loaded.get_number_of_images(), 'images')
-            print(' Resolution', loaded.get_width(), 'x' , loaded.get_height())
-            for i in range(loaded.get_number_of_images()):
-                print(' Image', i, ' identical to original? ', np.all(image_set_orig.get_pixel_data(i) == loaded.get_pixel_data(i)))
-
-        idx += 1
 
