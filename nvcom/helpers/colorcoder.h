@@ -30,7 +30,8 @@ public:
     };
 
     ColorCoder(ColorScale colorScale, float min, float max, bool shadowLess, bool shadowGreater,
-        std::pair<unsigned short, unsigned short> invalidRange = std::pair<unsigned short, unsigned short>(0xFFF, 0xFFFF));
+        std::pair<unsigned short, unsigned short> invalidRange = std::pair<unsigned short, unsigned short>(
+            (unsigned short)0xFFF, (unsigned short)0xFFFF));
 
     // Color-codes a single value
     cv::Vec3b getColor(float val) {
