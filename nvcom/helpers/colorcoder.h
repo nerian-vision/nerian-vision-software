@@ -74,11 +74,11 @@ public:
     void recalculateLookups();
 
     // Set new min / max values (for dynamic range adaptation)
-    inline void setMin(float minVal) {
-        this->minVal = minVal;
+    inline void setMin(float val) {
+        minVal = val;
     }
-    inline void setMax(float maxVal) {
-        this->maxVal = maxVal;
+    inline void setMax(float val) {
+        maxVal = val;
     }
 
     // Get min / max values
