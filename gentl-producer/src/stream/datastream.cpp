@@ -115,7 +115,7 @@ Buffer* DataStream::requestBuffer(Buffer* buffer) {
             // Image buffer - use reported handle (announced by the ImageSet itself)
             // Underruns are signaled by the protocol (TODO)
             auto it = std::find(inputPool.begin(), inputPool.end(), buffer);
-            if (it==inputPool.end()) throw std::runtime_error("Received buffer handle not present in GenTL input pool");
+            if (it==inputPool.end()) throw std::runtime_error(std::string("Received buffer handle ") + std::to_string((off_t) buffer) + std::string(" not present in GenTL input pool"));
             return buffer;
         }
     } else {

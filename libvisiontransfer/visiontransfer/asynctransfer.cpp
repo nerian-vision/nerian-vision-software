@@ -439,9 +439,9 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                     if (uncollectedDroppedFrames > -1) uncollectedDroppedFrames++;
                     // Immediately queue the previous (unhandled) buffers again in external buffering mode
                     auto handle = receivedSet.getExternalBufferHandle(0);
-                    //if (handle) {
-                    //    std::cout << "\033[31;1mDropping an unclaimed ImageSet\033[m, ext buf handle(0) " << receivedSet.getExternalBufferHandle(0) << std::endl;
-                    //}
+                    if (handle) {
+                        std::cout << "\033[31;1mDropping an unclaimed ImageSet\033[m, ext buf handle(0) " << receivedSet.getExternalBufferHandle(0) << std::endl;
+                    }
                     for (int i=0; i<receivedSet.getNumberOfImages(); ++i) {
                         signalExternalBufferDone(receivedSet.getExternalBufferHandle(i));
                     }
@@ -452,6 +452,7 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                     // No external buffers specified and used ->
                     // Copy the pixel data
                     for(int i=0;i<currentSet.getNumberOfImages();i++) {
+                        auto srcData = currentSet.getPixelData(i);
                         int bytesPerPixel = currentSet.getBytesPerPixel(i);
                         int newStride = currentSet.getWidth() * bytesPerPixel;
                         int totalSize = currentSet.getHeight() * newStride;
@@ -460,12 +461,12 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                             receivedData[bufIdxHere].resize(totalSize);
                         }
                         if(newStride == currentSet.getRowStride(i)) {
-                            memcpy(&receivedData[bufIdxHere][0], currentSet.getPixelData(i),
+                            memcpy(&receivedData[bufIdxHere][0], srcData,
                                 newStride*currentSet.getHeight());
                         } else {
                             for(int y = 0; y<currentSet.getHeight(); y++) {
                                 memcpy(&receivedData[bufIdxHere][y*newStride],
-                                    &currentSet.getPixelData(i)[y*currentSet.getRowStride(i)],
+                                    srcData + y*currentSet.getRowStride(i),
                                     newStride);
                             }
                             currentSet.setRowStride(i, newStride);
@@ -476,7 +477,7 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                 } else {
                     // External buffering mode - buffer rotation is handled by ImageProtocol
                     // We have the handle of the underlying buffer in currentSet.getExternalBufferHandle()
-                    //std::cout << "Prepared received ImageSet, buffer handle[0] " << currentSet.getExternalBufferHandle(0) << std::endl;
+                    std::cout << "Prepared received ImageSet, buffer handle[0] " << currentSet.getExternalBufferHandle(0) << std::endl;
                     // Assign next external buffer set (inside this lock)
                     imgTrans.assignExternalBuffers();
                 }
