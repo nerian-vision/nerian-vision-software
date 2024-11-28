@@ -61,6 +61,7 @@ public:
     void signalExternalBufferDone(ImageSet::ExternalBufferHandle handle);
     bool hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const;
     ExternalBufferSet getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const;
+    void addExternalBufferSet(const ExternalBufferSet& bufset);
 
 private:
     static constexpr int NUM_BUFFERS = ImageSet::MAX_SUPPORTED_IMAGES * 3;
@@ -193,6 +194,10 @@ bool AsyncTransfer::hasExternalBufferHandle(ImageSet::ExternalBufferHandle exter
 
 ExternalBufferSet AsyncTransfer::getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const {
     return pimpl->getExternalBufferSet(externalBufferHandle);
+}
+
+void AsyncTransfer::addExternalBufferSet(const ExternalBufferSet& bufset) {
+    pimpl->addExternalBufferSet(bufset);
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -537,6 +542,10 @@ bool AsyncTransfer::Pimpl::hasExternalBufferHandle(ImageSet::ExternalBufferHandl
 
 ExternalBufferSet AsyncTransfer::Pimpl::getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const {
     return imgTrans.getExternalBufferSet(externalBufferHandle);
+}
+
+void AsyncTransfer::Pimpl::addExternalBufferSet(const ExternalBufferSet& bufset) {
+    imgTrans.addExternalBufferSet(bufset);
 }
 
 constexpr int AsyncTransfer::Pimpl::NUM_BUFFERS;

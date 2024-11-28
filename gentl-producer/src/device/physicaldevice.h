@@ -137,7 +137,7 @@ public:
     // This is to prevent simultaneously opening single part devices and the multipart one
     int getCurrentLogicalDeviceState();
     
-    GC_ERROR tryRequeueBuffer(Buffer* buffer);
+    GC_ERROR tryRequeueBuffer(DataStream* stream, Buffer* buffer);
 
     /*
     // Add or remove an ExternalBufferSet (visiontransfer's descriptive wrapper for buffers)

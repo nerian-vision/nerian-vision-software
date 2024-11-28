@@ -367,6 +367,10 @@ ExternalBufferSet ImageTransfer::getExternalBufferSet(ImageSet::ExternalBufferHa
     return pimpl->getExternalBufferSet(externalBufferHandle);
 }
 
+void ImageTransfer::addExternalBufferSet(const ExternalBufferSet& bufset) {
+    pimpl->addExternalBufferSet(bufset);
+}
+
 /******************** Implementation in pimpl classes *******************/
 
 // ImageTransfer

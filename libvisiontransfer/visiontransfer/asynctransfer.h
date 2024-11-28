@@ -233,7 +233,7 @@ public:
      *
      * It may be immediately picked for reception by the background thread.
      */
-    void addExternalBufferSet(ExternalBufferSet externalBufferSet);
+    void addExternalBufferSet(const ExternalBufferSet& externalBufferSet);
 
     /**
      * \brief Retract buffer set with the specified handle from the buffer pool.

@@ -360,6 +360,11 @@ public:
      */
     ExternalBufferSet getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const;
 
+    /**
+     * \brief Adds an ExternalBufferSet at runtime
+     */
+    void addExternalBufferSet(const ExternalBufferSet& bufset);
+
 private:
     // We follow the pimpl idiom
     class Pimpl;

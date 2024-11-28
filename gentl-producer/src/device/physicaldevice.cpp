@@ -970,12 +970,64 @@ int PhysicalDevice::getCurrentLogicalDeviceState() {
     return 0;
 }
 
-GC_ERROR PhysicalDevice::tryRequeueBuffer(Buffer* buffer) {
+GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
     if (transfer) {
         auto handle = reinterpret_cast<visiontransfer::ImageSet::ExternalBufferHandle>(buffer);
-        std::cout << "Signal done for handle " << handle << std::endl;
-        transfer->signalExternalBufferDone(handle);
-        std::cout << "ok" << std::endl;
+        if (transfer->hasExternalBufferHandle(handle)) {
+            // *RE*queue
+            std::cout << "Signal done for handle " << handle << std::endl;
+            transfer->signalExternalBufferDone(handle);
+            std::cout << "ok" << std::endl;
+        } else {
+            std::cout << "Adding a new external buffer at run-time" << std::endl;
+            // A new buffer added at runtime. This usually indicates more than one single-part
+            // device, opened after the acquisition of a previous one already started.
+            auto streamType = stream->getStreamType();
+            if (streamType == DataStream::MULTIPART_STREAM) {
+                auto& bufferMapping = stream->getBufferMapping(); // plus current setting of intensitySource
+                std::cout << "Using effective mapping with " << bufferMapping.getNumBufferParts() << " parts:" << std::endl;
+                for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
+                    auto imageType = bufferMapping.getBufferPartImageSetFunction(pi);
+                    std::cout << "  Part " << pi << " -> " << ImageSet::getNameForImageType(imageType) << ((imageType==0)?" (gap reserved for point cloud data)":"") << std::endl;
+                }
+                ImageSet::ExternalBufferHandle handle = (off_t) buffer;
+                std::cout << "  Buffer*/Handle " << handle << std::endl;
+                // Wrap raw buffer and translate layout to visiontransfer buffer parts
+                ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
+                for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
+                    // The imageType maps directly to the needed part spec
+                    // (including IMAGE_UNDEFINED, the placeholder for the gap for the point cloud data).
+                    auto imageType = bufferMapping.getBufferPartImageSetFunction(pi);
+                    ebuf.appendPartDefinition(ExternalBuffer::Part(imageType, ExternalBuffer::CONVERSION_NONE)); // TODO future conversions on DBP level
+                }
+                // For visiontransfer, we reuse the same buffer handle we emit externally (the value of the Buffer*)
+                ExternalBufferSet ebufset(handle);
+                ebufset.addBuffer(ebuf);
+                // Register the prepared buffer
+                transfer->addExternalBufferSet(ebufset);
+
+            } else {
+                // Forward all registered single-part buffers (except Range) to the network protocol
+                ImageSet::ImageType imageType;
+                switch (streamType) {
+                    case DataStream::IMAGE_LEFT_STREAM: imageType = ImageSet::IMAGE_LEFT; break;
+                    case DataStream::IMAGE_RIGHT_STREAM: imageType = ImageSet::IMAGE_RIGHT; break;
+                    case DataStream::IMAGE_THIRD_COLOR_STREAM: imageType = ImageSet::IMAGE_COLOR; break;
+                    case DataStream::DISPARITY_STREAM: imageType = ImageSet::IMAGE_DISPARITY; break;
+                    default: return GC_ERR_SUCCESS; // no-op for point cloud device
+                }
+                ImageSet::ExternalBufferHandle handle = (off_t) buffer;
+                std::cout << "  Buffer*/Handle " << handle << std::endl;
+                // Wrap raw buffer
+                ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
+                ebuf.appendPartDefinition(ExternalBuffer::Part(imageType, ExternalBuffer::CONVERSION_NONE)); // TODO future conversions on DBP level
+                // For visiontransfer, we reuse the same buffer handle we emit externally (the value of the Buffer*)
+                ExternalBufferSet ebufset(handle, imageType);
+                ebufset.addBuffer(ebuf);
+                // Register the prepared buffer
+                transfer->addExternalBufferSet(ebufset);
+            }
+        }
         return GC_ERR_SUCCESS;
     } else {
         // If acquisition is not active, we defer the actual operation until the transfer is constructed

@@ -321,7 +321,7 @@ GC_ERROR DataStream::queueBuffer(BUFFER_HANDLE hBuffer) {
             // Try to requeue into running transfer protocol.
             // (Also reports success for non-network buffers (Range) and also
             // before starting acquisition - the entire pool will be added on start.)
-            GC_ERROR physErr = logicalDevice->getPhysicalDevice()->tryRequeueBuffer(buf.get());
+            GC_ERROR physErr = logicalDevice->getPhysicalDevice()->tryRequeueBuffer(this, buf.get());
             if (physErr == GC_ERR_SUCCESS) {
                 inputPool.push_back(buf.get());
             }
