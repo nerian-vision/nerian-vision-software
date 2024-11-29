@@ -251,6 +251,12 @@ GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void 
         return GC_ERR_BUSY;
     }
 
+    // Extricate the buffer from the protocol pool
+    // This will block until the end of a started frame reception.
+    if(streamType != POINTCLOUD_STREAM) {
+        (void) logicalDevice->getPhysicalDevice()->tryRetractBuffer(buffer);
+    }
+
     // Erase buffer from list
     for(auto iter = buffers.begin(); iter != buffers.end(); iter++) {
         if(iter->get() == buffer) {

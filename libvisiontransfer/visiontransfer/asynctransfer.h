@@ -246,6 +246,13 @@ public:
      */
     void retractExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle);
 
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
+    /**
+     * \brief Retract one or more buffer sets in one operation. May block - see retractExternalBufferSet
+     */
+    void retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles);
+#endif
+
 private:
     // We follow the pimpl idiom
     class Pimpl;

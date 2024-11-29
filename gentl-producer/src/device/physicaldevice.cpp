@@ -406,18 +406,23 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
     for(int i=0; i<receivedSet.getNumberOfImages(); i++) {
         // Determine the correct logical device
         int id;
+        const char* devstr; // DEBUG
         if(i == receivedSet.getIndexOf(ImageSet::IMAGE_LEFT)) {
             id = ID_IMAGE_LEFT;
+            devstr = "left";
         } else if(i == receivedSet.getIndexOf(ImageSet::IMAGE_DISPARITY)) {
             id = ID_DISPARITY;
+            devstr = "disparity";
         } else if(i == receivedSet.getIndexOf(ImageSet::IMAGE_COLOR)) {
             id = ID_IMAGE_THIRD_COLOR;
+            devstr = "color";
         } else {
             id = ID_IMAGE_RIGHT;
+            devstr = "right";
         }
 
         if (logicalDevices[id]->getStream()->getFramesToAcquire() == 0) {
-            DEBUG_PHYS("Skipping non-grabbing single-part device #" << id);
+            DEBUG_PHYS("Skipping non-grabbing single-part device #" << id << " " << devstr);
             continue;
         }
 
@@ -426,7 +431,7 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
         if (handle == 0 || handle == -1) {
             // Indicates exhausted library buffer pool in visiontransfer background thread
             // (last buffer had already been filled / no old buffers were requeued in time)
-            DEBUG_PHYS("\033[31mReporting error - library buffer pool exhausted\033[m for device #" << id);
+            DEBUG_PHYS("\033[31mReporting error - library buffer pool exhausted\033[m for device #" << id << " " << devstr);
             logicalDevices[id]->getStream()->emitErrorEvent(GC_ERR_RESOURCE_EXHAUSTED);
             continue;
         } else {
@@ -487,7 +492,7 @@ void PhysicalDevice::copy3dDataToBuffer(const ImageSet& receivedSet) {
     ImageSet::ExternalBufferHandle handle = receivedSet.getExternalBufferHandle(ImageSet::IMAGE_DISPARITY);
     if (handle == 0 || handle == -1) {
         // Indicates exhausted library buffer pool in visiontransfer background thread
-        DEBUG_PHYS("\033[31mReporting error - library buffer pool exhausted\033[m");
+        DEBUG_PHYS("\033[31mReporting error - library buffer pool exhausted (disparity for range)\033[m");
         stream->emitErrorEvent(GC_ERR_RESOURCE_EXHAUSTED);
         return;
     }
@@ -979,9 +984,10 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
             transfer->signalExternalBufferDone(handle);
             std::cout << "ok" << std::endl;
         } else {
+            // A new buffer added at runtime. This usually indicates more than one
+            // single-part device, opened after the acquisition of a previous one
+            // already started (and the AsyncTransfer is already running).
             std::cout << "Adding a new external buffer at run-time" << std::endl;
-            // A new buffer added at runtime. This usually indicates more than one single-part
-            // device, opened after the acquisition of a previous one already started.
             auto streamType = stream->getStreamType();
             if (streamType == DataStream::MULTIPART_STREAM) {
                 auto& bufferMapping = stream->getBufferMapping(); // plus current setting of intensitySource
@@ -1031,6 +1037,20 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
         return GC_ERR_SUCCESS;
     } else {
         // If acquisition is not active, we defer the actual operation until the transfer is constructed
+        return GC_ERR_SUCCESS;
+    }
+}
+
+GC_ERROR PhysicalDevice::tryRetractBuffer(Buffer* buffer) {
+    if (!transfer) {
+        // No transfer -> buffer is no longer in use at all
+        return GC_ERR_SUCCESS;
+    } else {
+        // Another logical device is likely still capturing
+        auto handle = reinterpret_cast<visiontransfer::ImageSet::ExternalBufferHandle>(buffer);
+        // We retract this buffer, this may block until the end of the current frame
+        // Also, a started frame will be dropped as a side effect.
+        transfer->retractExternalBufferSet(handle);
         return GC_ERR_SUCCESS;
     }
 }

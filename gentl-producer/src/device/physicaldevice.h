@@ -138,6 +138,7 @@ public:
     int getCurrentLogicalDeviceState();
     
     GC_ERROR tryRequeueBuffer(DataStream* stream, Buffer* buffer);
+    GC_ERROR tryRetractBuffer(Buffer* buffer);
 
     /*
     // Add or remove an ExternalBufferSet (visiontransfer's descriptive wrapper for buffers)

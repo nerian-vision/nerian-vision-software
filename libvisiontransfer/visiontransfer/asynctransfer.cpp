@@ -62,6 +62,7 @@ public:
     bool hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const;
     ExternalBufferSet getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const;
     void addExternalBufferSet(const ExternalBufferSet& bufset);
+    void retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles);
 
 private:
     static constexpr int NUM_BUFFERS = ImageSet::MAX_SUPPORTED_IMAGES * 3;
@@ -198,6 +199,14 @@ ExternalBufferSet AsyncTransfer::getExternalBufferSet(ImageSet::ExternalBufferHa
 
 void AsyncTransfer::addExternalBufferSet(const ExternalBufferSet& bufset) {
     pimpl->addExternalBufferSet(bufset);
+}
+
+void AsyncTransfer::retractExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) {
+    pimpl->retractExternalBufferSets({externalBufferHandle});
+}
+
+void AsyncTransfer::retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles) {
+    pimpl->retractExternalBufferSets(externalBufferHandles);
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -484,14 +493,20 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                     // We have the handle of the underlying buffer in currentSet.getExternalBufferHandle()
                     std::cout << "Prepared received ImageSet, buffer handle[0] " << currentSet.getExternalBufferHandle(0) << std::endl;
                     // Assign next external buffer set (inside this lock)
+                    // Any pending changes to the buffer pool are now effective as well
                     imgTrans.assignExternalBuffers();
                 }
 
-                // Notify that a new image set has been received
-                //std::cout << "newDataReceived := true" << std::endl;
-                newDataReceived = true;
-                receivedSet = currentSet;
-                receiveCond.notify_one();
+                // Deliver the frame, unless any external buffer had to be retracted mid-transfer
+                if (imgTrans.isBufferPoolStable()) {
+                    // Notify that a new image set has been received
+                    //std::cout << "newDataReceived := true" << std::endl;
+                    newDataReceived = true;
+                    receivedSet = currentSet;
+                    receiveCond.notify_one();
+                } else {
+                    std::cerr << "Dropped an ImageSet due to deferred modifications of the buffer pool" << std::endl;
+                }
             }
 
         }
@@ -546,6 +561,17 @@ ExternalBufferSet AsyncTransfer::Pimpl::getExternalBufferSet(ImageSet::ExternalB
 
 void AsyncTransfer::Pimpl::addExternalBufferSet(const ExternalBufferSet& bufset) {
     imgTrans.addExternalBufferSet(bufset);
+}
+
+void AsyncTransfer::Pimpl::retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles) {
+    bool done = imgTrans.retractExternalBufferSets(externalBufferHandles);
+    if (!done) {
+        // We are in a frame. This will block until the next buffer allocation
+        // takes place, i.e. after the currently received ImageSet, when the current
+        // buffer use of the data protocol has ended.
+        std::cout << "Waiting for buffer pool to settle" << std::endl;
+        imgTrans.waitForBufferPool();
+    }
 }
 
 constexpr int AsyncTransfer::Pimpl::NUM_BUFFERS;

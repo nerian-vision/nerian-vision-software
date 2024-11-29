@@ -18,6 +18,8 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <thread>
+#include <mutex>
 #include "visiontransfer/imageprotocol.h"
 #include "visiontransfer/exceptions.h"
 #include "visiontransfer/internal/alignedallocator.h"
@@ -87,6 +89,8 @@ public:
     void setExternalBufferSet(ImageSet::ImageType imageType, const ExternalBufferSet& bufset);
     bool generateBufferLayout();
     ImageSet::ExternalBufferHandle getExternalBufferHandleFor(ImageSet::ImageType imageType);
+    std::mutex& getFrameStartMutex();
+    bool isReceptionInProgress() const;
 
 private:
     unsigned short MAGIC_SEQUECE = 0x3D15;
@@ -176,6 +180,10 @@ private:
     ExternalBufferSet currentExternalBufferSet[5]; // number of enum values of ImageSet::ImageType - currently 1+IMAGE_COLOR
     std::pair<unsigned char*, size_t> activeExternalBufferTargets[DataBlockProtocol::MAX_DATA_BLOCKS];
     ImageSet::ExternalBufferHandle activeExternalBufferTargetHandle[DataBlockProtocol::MAX_DATA_BLOCKS];
+
+    // Secures the start of a frame (parsing the header and subsequent buffer layout application, in recv thread)
+    // against a race with external buffer revocation (retractExternalBufferSet from user thread)
+    std::mutex frameStartMutex;
 
     // Copies the transmission header to the given buffer
     void copyHeaderToBuffer(const ImageSet& imageSet, int firstTileWidth,
@@ -300,6 +308,14 @@ void ImageProtocol::setExternalBufferSetUnavailable(ImageSet::ImageType imageTyp
 
 ImageSet::ExternalBufferHandle ImageProtocol::getExternalBufferHandleFor(ImageSet::ImageType imageType) {
     return pimpl->getExternalBufferHandleFor(imageType);
+}
+
+std::mutex& ImageProtocol::getFrameStartMutex() {
+    return pimpl->getFrameStartMutex();
+}
+
+bool ImageProtocol::isReceptionInProgress() const {
+    return pimpl->isReceptionInProgress();
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -539,6 +555,7 @@ void ImageProtocol::Pimpl::processReceivedMessage(int length) {
             int headerLen = 0;
             unsigned char* headerData = dataProt.getReceivedHeader(headerLen);
             if(headerData != nullptr) {
+                std::unique_lock<std::mutex> lock(frameStartMutex);
                 tryDecodeHeader(headerData, headerLen);
                 if (receiveHeaderParsed) {
                     // We received the header - we can now assign a
@@ -1148,6 +1165,14 @@ void ImageProtocol::Pimpl::setExternalBufferSet(ImageSet::ImageType imageType, c
 ImageSet::ExternalBufferHandle ImageProtocol::Pimpl::getExternalBufferHandleFor(ImageSet::ImageType imageType) {
     auto handle = currentExternalBufferSet[imageType].getHandle();
     return handle;
+}
+
+std::mutex& ImageProtocol::Pimpl::getFrameStartMutex() {
+    return frameStartMutex;
+}
+
+bool ImageProtocol::Pimpl::isReceptionInProgress() const {
+    return receiveHeaderParsed;
 }
 
 } // namespace

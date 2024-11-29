@@ -365,6 +365,35 @@ public:
      */
     void addExternalBufferSet(const ExternalBufferSet& bufset);
 
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
+    /**
+     * \brief Retract buffer set with the specified handle from the buffer pool.
+     *
+     * If the buffer is currently being filled by an incoming frame, the
+     * buffer is marked for retraction instead and actual retraction is queued
+     * until the next call of assignExternalBuffers.
+     *
+     * Returns true if buffer is fully retracted (or not present), or false
+     * if the buffer retraction has been deferred.
+     */
+    bool retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles);
+#endif
+
+    /**
+     * \brief Wait until the end of an ongoing frame and after the buffer pool
+     * has settled and the next buffer assignment took place.
+     *
+     * Only for use in multi-threaded environment with separate receiver thread
+     * (this is used internally in AsyncTransfer).
+     */
+    void waitForBufferPool();
+
+    /**
+     * /brief Return whether the buffer pool is guaranteed to be stable with respect
+     *  to the data in the currently processed ImageSet, or there are pending changes.
+     */
+    bool isBufferPoolStable() const;
+
 private:
     // We follow the pimpl idiom
     class Pimpl;

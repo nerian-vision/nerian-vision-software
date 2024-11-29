@@ -21,6 +21,11 @@
 
 #include <vector>
 
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
+#include <thread>
+#include <mutex>
+#endif
+
 namespace visiontransfer {
 
 /**
@@ -287,6 +292,15 @@ public:
     /// Prints status information to the console
     std::string statusReport();
 #endif
+
+#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+    /// Exposed frame-start lock, for external buffer retraction
+    std::mutex& getFrameStartMutex();
+#endif
+#endif
+
+    bool isReceptionInProgress() const;
 
 private:
     // We follow the pimpl idiom

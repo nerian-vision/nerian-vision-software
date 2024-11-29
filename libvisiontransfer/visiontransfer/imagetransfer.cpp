@@ -21,6 +21,7 @@
 #include <set>
 #include <mutex>
 #include <thread>
+#include <condition_variable>
 #include "visiontransfer/imagetransfer.h"
 #include "visiontransfer/exceptions.h"
 #include "visiontransfer/internal/datablockprotocol.h"
@@ -71,6 +72,9 @@ public:
     void addExternalBufferSet(const ExternalBufferSet& bufset);
     bool hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const;
     ExternalBufferSet getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const;
+    bool retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> handles);
+    void waitForBufferPool();
+    bool isBufferPoolStable() const;
 
 private:
     // Configuration parameters
@@ -107,7 +111,9 @@ private:
     bool externalBufferingActive; // TODO maybe obsolete (use protocol->get/setExt....)
     // The registered external sets of buffers
     std::map<ImageSet::ExternalBufferHandle, ExternalBufferSet> externalBufferPool;
-    mutable std::recursive_mutex externalBufferPoolMutex;
+    std::set<ImageSet::ExternalBufferHandle> queuedBufferRetractions;
+    mutable std::mutex externalBufferPoolMutex;
+    std::condition_variable externalBufferPoolCond;
     // Filtered by ImageType (their single-part role or IMAGE_UNDEFINED for multipart)
     std::map<ImageSet::ImageType, std::set<ImageSet::ExternalBufferHandle> > externalBuffersByImageType;
     std::map<ImageSet::ExternalBufferHandle, long> externalBufferLastWrite;
@@ -371,6 +377,19 @@ void ImageTransfer::addExternalBufferSet(const ExternalBufferSet& bufset) {
     pimpl->addExternalBufferSet(bufset);
 }
 
+bool ImageTransfer::retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> handles) {
+    std::cout << "ImTr::retract" << std::endl;
+    return pimpl->retractExternalBufferSets(handles);
+}
+
+void ImageTransfer::waitForBufferPool() {
+    pimpl->waitForBufferPool();
+}
+
+bool ImageTransfer::isBufferPoolStable() const {
+    return pimpl->isBufferPoolStable();
+}
+
 /******************** Implementation in pimpl classes *******************/
 
 // ImageTransfer
@@ -419,7 +438,18 @@ bool ImageTransfer::Pimpl::getExternalBufferingActive() const {
 }
 
 void ImageTransfer::Pimpl::assignExternalBuffers() {
-    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
+    unique_lock<mutex> extbufLock(externalBufferPoolMutex);
+    // First check whether any buffers were marked to be retracted mid-transfer
+    //  (i.e. apply deferred retractions now).
+    for (auto& handle: queuedBufferRetractions) {
+        externalBufferPool.erase(handle);
+        for (auto kv: externalBuffersByImageType) {
+            kv.second.erase(handle);
+        }
+        externalBufferLastWrite.erase(handle);
+    }
+    queuedBufferRetractions.clear();
+    // Assign the next available buffer set[s]
     if (externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED].size() > 0) {
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_LEFT);
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_RIGHT);
@@ -433,6 +463,7 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
                 //assignedBufferHandle = handle;
                 // Assign as wildcard
                 protocol->setExternalBufferSet(ImageSet::IMAGE_UNDEFINED, bufset);
+                externalBufferPoolCond.notify_all();
                 return;
             }
         }
@@ -467,6 +498,7 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
             }
         }
     }
+    externalBufferPoolCond.notify_all();
 }
 
 void ImageTransfer::Pimpl::establishConnection() {
@@ -505,6 +537,9 @@ ImageTransfer::Pimpl::~Pimpl() {
     if(addressInfo != nullptr) {
         freeaddrinfo(addressInfo);
     }
+
+    // Release any user thread waiting for retraction
+    externalBufferPoolCond.notify_all();
 
 }
 
@@ -809,7 +844,7 @@ bool ImageTransfer::Pimpl::receivePartialImageSet(ImageSet& imageSet,
     if (complete) {
         std::cout << "\033[1mComplete\033[m" << std::endl;
         if (externalBufferingActive) {
-            unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
+            unique_lock<mutex> extbufLock(externalBufferPoolMutex);
             for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
                 auto handle = imageSet.getExternalBufferHandle(i);
                 std::cout << handle << " ";
@@ -1184,7 +1219,7 @@ void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
 void ImageTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
     //std::cout << "\033[32msignalExternalBufferDone\033[m for handle #" << handle << std::endl;
     if (handle == 0 || handle == -1) return; // No-op, not an image set with external buffering
-    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
+    unique_lock<mutex> extbufLock(externalBufferPoolMutex);
     if (!externalBufferPool.count(handle)) {
         throw ProtocolException("Invalid external buffer handle");
     }
@@ -1200,7 +1235,7 @@ void ImageTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHand
 
 
 void ImageTransfer::Pimpl::addExternalBufferSet(const ExternalBufferSet& bufset) {
-    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
+    unique_lock<mutex> extbufLock(externalBufferPoolMutex);
     /*
     std::cout << "DEBUG: Adding an ExternalBufferSet, handle " << bufset.getHandle() << ", consisting of:" << std::endl;
     for (int i=0; i<bufset.getNumBuffers(); ++i) {
@@ -1260,15 +1295,55 @@ void ImageTransfer::Pimpl::removeExternalBufferSet(const ExternalBufferSet& bufs
 */
 
 bool ImageTransfer::Pimpl::hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const {
-    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
+    unique_lock<mutex> extbufLock(externalBufferPoolMutex);
     return externalBufferPool.count(externalBufferHandle) > 0;
 }
 
 ExternalBufferSet ImageTransfer::Pimpl::getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const {
-    unique_lock<recursive_mutex> extbufLock(externalBufferPoolMutex);
+    unique_lock<mutex> extbufLock(externalBufferPoolMutex);
     auto it = externalBufferPool.find(externalBufferHandle);
     if (it == externalBufferPool.end()) throw BufferException(std::string("Cannot return buffer set for unknown handle ") + std::to_string(externalBufferHandle));
     return it->second;
+}
+
+bool ImageTransfer::Pimpl::retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> handles) {
+    std::unique_lock<std::mutex> lock(protocol->getFrameStartMutex());
+    if (protocol->isReceptionInProgress()) {
+        // The protocol is in mid-transfer, we queue the retraction and wait
+        // for the current buffer to get rotated out first.
+        // For ImageTransfer, user must validate that the buffer is no
+        // longer in the pool, after delivery of the next frame.
+        // The wrapper in AsyncTransfer will wait on a cond until
+        // the buffer is actually retracted.
+        for (auto handle: handles) {
+            queuedBufferRetractions.insert(handle);
+        }
+        return false; // not done
+    } else {
+        // Nothing in use yet, we can remove our buffer and return immediately
+        
+        // Note: already protected by frameStartMutex
+        for (auto handle: handles) {
+            externalBufferPool.erase(handle);
+            for (auto kv: externalBuffersByImageType) {
+                kv.second.erase(handle);
+            }
+            externalBufferLastWrite.erase(handle);
+        }
+        // Force a new selection in protocol
+        assignExternalBuffers();
+        return true; // all done
+    }
+}
+
+void ImageTransfer::Pimpl::waitForBufferPool() {
+    unique_lock<mutex> extbufLock(externalBufferPoolMutex);
+    std::cout << "waiting" << std::endl;
+    externalBufferPoolCond.wait(extbufLock);
+}
+
+bool ImageTransfer::Pimpl::isBufferPoolStable() const {
+    return queuedBufferRetractions.size() == 0;
 }
 
 // ImageTransfer::Config
