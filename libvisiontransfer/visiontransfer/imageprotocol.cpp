@@ -328,7 +328,6 @@ ImageProtocol::Pimpl::Pimpl(bool server, ProtocolType protType, int maxUdpPacket
     headerBuffer.resize(sizeof(HeaderData) + 128);
     memset(&headerBuffer[0], 0, sizeof(headerBuffer.size()));
     memset(&receiveHeader, 0, sizeof(receiveHeader));
-    //std::cout << "ImageProtocol::Pimpl()" << std::endl;
 }
 
 void ImageProtocol::Pimpl::setTransferImageSet(const ImageSet& imageSet) {
@@ -561,7 +560,6 @@ void ImageProtocol::Pimpl::processReceivedMessage(int length) {
                     // We received the header - we can now assign a
                     // buffer layout (if external buffering is active).
                     if (externalBufferingActive) {
-                        //std::cout << "ext buf is active" << std::endl;
                         bool success = generateBufferLayout();
                     }
 
@@ -575,22 +573,11 @@ void ImageProtocol::Pimpl::processReceivedMessage(int length) {
 }
 
 bool ImageProtocol::Pimpl::generateBufferLayout() {
-    // For each image channel / data block, determine whether there
-    // is an immediate external buffer target, or intermediate buffering
-    // should be used.
-    //std::cout << "generateBufferLayout" << std::endl;
-    //if (currentExternalBufferSet.getNumBuffers() == 0) {
-    //    throw TransferException("External buffer was unavailable");
-    //}
-
     // Check whether a valid multi-part buffer is present, otherwise use the single-channel lookup
     // Technically, when the multi-part pool is underrun, unnecessary extra checks are then made below,
     // but this is just one per frame and only in the exhausted pool state.
     bool isMultipartBuffer = currentExternalBufferSet[ImageSet::IMAGE_UNDEFINED].getHandle() != -1;
 
-    //for (int i=0; i<DataBlockProtocol::MAX_DATA_BLOCKS; ++i) {
-    //    activeExternalBufferTargetValid[i] = false;
-    //}
     std::vector<std::pair<unsigned char*, size_t> > immediateTargets;
     
     std::vector<int> bufferOffsets(currentExternalBufferSet[ImageSet::IMAGE_UNDEFINED].getNumBuffers()+1, 0);
@@ -598,7 +585,6 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
     int numPixels = receiveHeader.width * receiveHeader.height;
     for (int imageNumber=0; imageNumber<receiveHeader.numberOfImages; ++imageNumber) {
         int partSize = dataProt.getBlockReceiveSize(imageNumber);
-        //std::cout << "Image #" << imageNumber << " with received size " << partSize << std::endl;
         ImageSet::ImageFormat format;
         int bits = 8;
         switch (imageNumber) {
@@ -617,16 +603,12 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
             const auto& bufset = currentExternalBufferSet[ImageSet::IMAGE_UNDEFINED];
             for (int b=0; b<bufset.getNumBuffers(); ++b) {
                 const auto& buf = bufset.getBuffer(b);
-                //std::cout << " Checking buffer " << b << " with " << buf.getNumParts() << " parts " << std::endl;
                 for (int p=0; p<buf.getNumParts(); ++p) {
-                    //std::cout << "  Checking buffer " << b << " part " << p << std::endl;
                     const auto& part = buf.getPart(p);
                     // TODO effective part size including the requested transformations
                     if (static_cast<unsigned char>(part.imageType) == imageType) {
                         // Channel found in buffer mapping
-                        //std::cout << "   Image #" << imageNumber << " header image type " << ((int) imageType) << " - found, rel addr " << ((off_t)(buf.getBufferPtr())) << " + " << bufferOffsets[b] << " with flags " << part.conversionFlags << std::endl;
                         buffer = buf.getBufferPtr() + bufferOffsets[b];
-                        //finalTargets.push_back({buffer, partSize});
                         activeExternalBufferTargets[imageNumber] = {buffer, partSize};
                         activeExternalBufferTargetHandle[imageNumber] = bufset.getHandle();
                         if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP?
@@ -646,7 +628,6 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
                                     + " is too small to hold part #" +std::to_string(p)
                                     + " with image type " + std::to_string(imageType));
                         }
-                        //std::cout << "   (advanced buffer " << b << " offset to " << bufferOffsets[b] << ")" << std::endl;
                         break;
                     }
                 }
@@ -683,13 +664,9 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
         // TODO in the case of pool exhaustion, it would be possible to signal this for the individual channel
         // in the resulting ImageSet instead. In the case of unexpected channels, we could also just ignore them.
         if (!buffer) {
-            /*
-            //std::cout << "  Transfer part #" << imageNumber << " header image type " << ((int) receiveHeader.imageTypes[imageNumber]) << " - not consistent with part spec!" << std::endl;
-            throw TransferException(std::string("External buffers were not set up correctly for image type ")+std::to_string(receiveHeader.imageTypes[imageNumber]));
-            */
             // No buffer allocated - either not interested or pool exhausted -
             //  process normally but discard the internal buffer reference later
-            std::cout << "DEBUG: No external buffer currently available for part " << imageNumber << ", type " << ((int) receiveHeader.imageTypes[imageNumber]) << std::endl;
+            //std::cout << "DEBUG: No external buffer currently available for part " << imageNumber << ", type " << ((int) receiveHeader.imageTypes[imageNumber]) << std::endl;
             activeExternalBufferTargetHandle[imageNumber] = -1;
             activeExternalBufferTargets[imageNumber] = {nullptr, partSize};
             immediateTargets.push_back({nullptr, 0});
@@ -837,8 +814,6 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
             for (int i=0; i<receiveHeader.numberOfImages; ++i) {
                 int validBytes = dataProt.getBlockValidSize(i);
                 bool isExternalBuffer = true;
-                //std::cout << "img " << i << std::endl;
-                //std::cout << "ext " << externalBufferingActive << " extbuf " << std::hex << ((off_t) dataProt.getExternalBuffer(i)) << " blockrecvbuf " << ((off_t) dataProt.getBlockReceiveBuffer(i)) << std::dec << std::endl;
                 unsigned char* data = externalBufferingActive ? dataProt.getExternalBuffer(i) : nullptr;
                 if (!data) {
                     isExternalBuffer = false;
@@ -903,7 +878,6 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
 
         for (int i=0; i<receiveHeader.numberOfImages; ++i) {
             imageSet.setRowStride(i, rowStrideArr[i]);
-            //if (validRows == receiveHeader.height || receptionDone) std::cout << "Set data for image " << i << " to " << ((off_t) pixelArr[i]) << std::endl;
             imageSet.setPixelData(i, pixelArr[i]);
         }
         imageSet.setQMatrix(receiveHeader.q);
@@ -964,7 +938,8 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExterna
             ret = &data[bufferOffset0];
             rowStride = bufferRowStride;
             validRows = std::min(receivedBytes / bufferRowStride, (int)receiveHeader.height);
-            if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> immediate at " << ((off_t) ret) << std::endl;
+            // DEBUG:
+            // if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> immediate at " << ((off_t) ret) << std::endl;
         } else {
             // Perform 12-bit => 16 bit decoding
             allocateDecodeBuffer(imageNumber);
@@ -980,10 +955,10 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExterna
             } else {
                 ret = &decodeBuffer[imageNumber][0];
             }
-            //std::cout << "Decode 12->16 from " << std::hex << ((off_t) (&data[bufferOffset0])) << " to " << ((off_t) ret) << std::dec << std::endl;
             BitConversions::decode12BitPacked(lastRow, validRows, &data[bufferOffset0],
                 ret, bufferRowStride, rowStride, receiveHeader.width);
-            if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " ->  unpacked to " << ((off_t) ret) << std::endl;
+            // DEBUG:
+            //if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " ->  unpacked to " << ((off_t) ret) << std::endl;
         }
     } else {
         // Decode the tiled transfer
@@ -1004,7 +979,8 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExterna
             validRows, format, false);
         rowStride = receiveHeader.width*getFormatBits(
             static_cast<ImageSet::ImageFormat>(format), true)/8;
-        if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> untiled to " << ((off_t) ret) << std::endl;
+        // DEBUG:
+        // if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> untiled to " << ((off_t) ret) << std::endl;
     }
 
     lastReceivedPayloadBytes[imageNumber] = receivedBytes;

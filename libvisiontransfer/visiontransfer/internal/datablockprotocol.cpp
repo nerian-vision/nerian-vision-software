@@ -759,7 +759,6 @@ bool DataBlockProtocol::processControlMessage(int length) {
                             // Confirmed extended protocol
                             extendedConnectionStateProtocol = true;
                             if (!isServer) {
-                                //std::cout << "Sending back five knocks" << std::endl;
                                 // Client replies with a knock sequence as well
                                 heartbeatRepliesQueued = 5;
                             }
@@ -860,7 +859,6 @@ const unsigned char* DataBlockProtocol::getNextControlMessage(int& length) {
             (!isServer && std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - lastSentHeartbeat).count() > HEARTBEAT_INTERVAL_MS)) {
         // Send a heartbeat message
-        //std::cout << "Queued a heartbeat, " << heartbeatRepliesQueued << std::endl;
         controlMessageBuffer[0] = HEARTBEAT_MESSAGE;
         length = 1;
         lastSentHeartbeat = std::chrono::steady_clock::now();
@@ -1034,15 +1032,12 @@ void DataBlockProtocol::setExternalBufferingActive(bool active) {
 }
 
 void DataBlockProtocol::setExternalBufferTargets(const std::vector<std::pair<unsigned char*, size_t> >& targets) {
-    //std::cout << "setExternalBufferTargets with #targets: " << targets.size() << std::endl;
     // TODO Should check whether we are currently mid-reception (but never called from outside)
     for (int i=0; i<MAX_DATA_BLOCKS; ++i) {
         if (i>=targets.size()) {
-            //std::cout << "  nullptr #" << i << std::endl;
             externalBufferLocations[i] = nullptr;
             externalBufferSizes[i] = 0;
         } else {
-            //std::cout << "  Ext buf for part #" << i << " addr " << ((off_t) targets[i].first) << (targets[i].first ? "" : " (intermediate buffer is used)") << std::endl;
             externalBufferLocations[i] = targets[i].first;
             externalBufferSizes[i] = targets[i].second;
         }

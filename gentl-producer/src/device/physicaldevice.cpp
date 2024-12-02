@@ -47,7 +47,7 @@ using namespace std::placeholders;
 #define ENABLE_DEBUGGING_PHYSICALDEVICE
 #endif
 // Extra toggle for just this module
-#define ENABLE_DEBUGGING_PHYSICALDEVICE
+//#define ENABLE_DEBUGGING_PHYSICALDEVICE
 
 #ifdef ENABLE_DEBUGGING_PHYSICALDEVICE
 #ifdef _WIN32
@@ -406,7 +406,8 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
     for(int i=0; i<receivedSet.getNumberOfImages(); i++) {
         // Determine the correct logical device
         int id;
-        const char* devstr; // DEBUG
+
+        const char* devstr; (void) devstr; // DEBUG
         if(i == receivedSet.getIndexOf(ImageSet::IMAGE_LEFT)) {
             id = ID_IMAGE_LEFT;
             devstr = "left";
@@ -422,7 +423,7 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
         }
 
         if (logicalDevices[id]->getStream()->getFramesToAcquire() == 0) {
-            DEBUG_PHYS("Skipping non-grabbing single-part device #" << id << " " << devstr);
+            //DEBUG_PHYS("Skipping non-grabbing single-part device #" << id << " " << devstr);
             continue;
         }
 
@@ -431,7 +432,7 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
         if (handle == 0 || handle == -1) {
             // Indicates exhausted library buffer pool in visiontransfer background thread
             // (last buffer had already been filled / no old buffers were requeued in time)
-            DEBUG_PHYS("\033[31mReporting error - library buffer pool exhausted\033[m for device #" << id << " " << devstr);
+            DEBUG_PHYS("Library buffer pool exhausted for device #" << id << " " << devstr);
             logicalDevices[id]->getStream()->emitErrorEvent(GC_ERR_RESOURCE_EXHAUSTED);
             continue;
         } else {
@@ -441,13 +442,13 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
             if(buffer == nullptr) {
                 // The device may not be capturing any more frames.
                 // Forcing handle to be ready:=0
-                DEBUG_PHYS("requestBuffer() for dev " << id << " returned nullptr - requeueing");
+                //DEBUG_PHYS("requestBuffer() for dev " << id << " returned nullptr - requeueing");
                 transfer->signalExternalBufferDone(handle);
                 continue;
             }
             buffer->setMetaData(receivedSet);
             logicalDevices[id]->getStream()->queueOutputBuffer(buffer);
-            DEBUG_PHYS("Queued a single buffer");
+            //DEBUG_PHYS("Queued a single buffer");
 
             if(buffer->isIncomplete()) {
                 logicalDevices[id]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);
@@ -485,14 +486,14 @@ int PhysicalDevice::copyImageToBufferMemory(const ImageSet& receivedSet, int id,
 void PhysicalDevice::copy3dDataToBuffer(const ImageSet& receivedSet) {
     auto stream = logicalDevices[ID_POINTCLOUD]->getStream();
     if (stream->getFramesToAcquire() == 0) {
-        DEBUG_PHYS("Skipping pointcloud device");
+        //DEBUG_PHYS("Skipping pointcloud device");
         return;
     }
 
     ImageSet::ExternalBufferHandle handle = receivedSet.getExternalBufferHandle(ImageSet::IMAGE_DISPARITY);
     if (handle == 0 || handle == -1) {
         // Indicates exhausted library buffer pool in visiontransfer background thread
-        DEBUG_PHYS("\033[31mReporting error - library buffer pool exhausted (disparity for range)\033[m");
+        //DEBUG_PHYS("Library buffer pool exhausted (disparity for range)");
         stream->emitErrorEvent(GC_ERR_RESOURCE_EXHAUSTED);
         return;
     }
@@ -547,13 +548,13 @@ int PhysicalDevice::copy3dDataToBufferMemory(const ImageSet& receivedSet, unsign
 void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
     auto stream = logicalDevices[ID_MULTIPART]->getStream();
     if (stream->getFramesToAcquire() == 0) {
-        DEBUG_PHYS("Ignoring multi-part device");
+        //DEBUG_PHYS("Ignoring multi-part device");
         return;
     }
     ImageSet::ExternalBufferHandle handle = receivedSet.getExternalBufferHandle(0); // all identical
     if (handle == 0 || handle == -1) {
         // Indicates exhausted library buffer pool in visiontransfer background thread
-        DEBUG_PHYS("\033[31mReporting error - library buffer pool exhausted\033[m");
+        DEBUG_PHYS("Library buffer pool exhausted (multipart device)");
         stream->emitErrorEvent(GC_ERR_RESOURCE_EXHAUSTED);
         return;
     }
@@ -563,7 +564,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
     if(buffer == nullptr) {
         // The device may not be capturing any more frames.
         // Forcing handle to be ready:=0
-        DEBUG_PHYS("requestBuffer(MULTIPART) returned nullptr - requeueing");
+        //DEBUG_PHYS("requestBuffer(MULTIPART) returned nullptr - requeueing");
         transfer->signalExternalBufferDone(handle);
         return;
     }
@@ -584,30 +585,10 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         auto func = bufferMapping.getBufferPartImageSetFunction(i);
         auto offset = bufferMapping.getBufferPartOffset(i);
         auto sz = bufferMapping.getBufferPartSize(i);
-        if (func != ImageSet::IMAGE_UNDEFINED) { // not the point cloud channel - data already in place!
-            //
-
-            // FIXME remove if working
-            /*
-            auto idx = receivedSet.getIndexOf(func);
-            DEBUG_PHYS("Multipart function " << func << " at imageset index " << idx << ", starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
-            if (idx != -1) {
-                copiedBytes = copyImageToBufferMemory(receivedSet, idx, &buffer->getData()[offset],
-                    static_cast<int>(buffer->getSize()) - offset);
-                if (copiedBytes < 0) {
-                    DEBUG_PHYS("Buffer incomplete at ImageSet index " << idx);
-                    buffer->setIncomplete(true);
-                    break;
-                }
-            } else {
-                // Channel disabled since stream was initialized; deliver zeroed-out frame
-                std::memset(&buffer->getData()[offset], 0, std::min(sz, static_cast<int>(buffer->getSize()) - offset));
-            }
-            */
-        } else {
+        if (func == ImageSet::IMAGE_UNDEFINED) {
             // Special case: point cloud - we actually still need to write data here
             if (getComponentEnabledRange() && receivedSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
-                DEBUG_PHYS("Multipart function UNDEF (point cloud) from 3d buf, starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
+                //DEBUG_PHYS("Multipart function UNDEF (point cloud) from 3d buf, starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
                 copiedBytes = copy3dDataToBufferMemory(receivedSet, &buffer->getData()[offset],
                     static_cast<int>(buffer->getSize()) - offset);
                 if(copiedBytes < 0) {
@@ -623,7 +604,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
     buffer->setMetaData(receivedSet);
     logicalDevices[ID_MULTIPART]->getStream()->queueOutputBuffer(buffer);
 
-    DEBUG_PHYS("Queued a multipart buffer");
+    //DEBUG_PHYS("Queued a multipart buffer");
 
     if(buffer->isIncomplete()) {
         logicalDevices[ID_MULTIPART]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);
@@ -895,15 +876,17 @@ void PhysicalDevice::updateConnectionState() {
             auto stream = logicalDevices[ID_MULTIPART]->getStream();
             auto initialBufferPool = stream->getInputPool();
             auto& bufferMapping = stream->getBufferMapping(); // plus current setting of intensitySource
+            /*
             std::cout << "Using effective mapping with " << bufferMapping.getNumBufferParts() << " parts:" << std::endl;
             for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
                 auto imageType = bufferMapping.getBufferPartImageSetFunction(pi);
                 std::cout << "  Part " << pi << " -> " << ImageSet::getNameForImageType(imageType) << ((imageType==0)?" (gap reserved for point cloud data)":"") << std::endl;
             }
             std::cout << "On this initial buffer pool:" << std::endl;
+            */
             for (auto buffer: initialBufferPool) {
                 ImageSet::ExternalBufferHandle handle = (off_t) buffer;
-                std::cout << "  Buffer*/Handle " << handle << std::endl;
+                //std::cout << "  Buffer*/Handle " << handle << std::endl;
                 // Wrap raw buffer and translate layout to visiontransfer buffer parts
                 ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
                 for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
@@ -934,10 +917,10 @@ void PhysicalDevice::updateConnectionState() {
             
                 auto stream = logicalDevices[devid]->getStream();
                 auto initialBufferPool = stream->getInputPool();
-                std::cout << "Function " << devid << " has this initial buffer pool:" << std::endl;
+                //std::cout << "Function " << devid << " has this initial buffer pool:" << std::endl;
                 for (auto buffer: initialBufferPool) {
                     ImageSet::ExternalBufferHandle handle = (off_t) buffer;
-                    std::cout << "  Buffer*/Handle " << handle << std::endl;
+                    //std::cout << "  Buffer*/Handle " << handle << std::endl;
                     // Wrap raw buffer
                     ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
                     ebuf.appendPartDefinition(ExternalBuffer::Part(imageType, ExternalBuffer::CONVERSION_NONE)); // TODO future conversions on DBP level
@@ -980,24 +963,26 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
         auto handle = reinterpret_cast<visiontransfer::ImageSet::ExternalBufferHandle>(buffer);
         if (transfer->hasExternalBufferHandle(handle)) {
             // *RE*queue
-            std::cout << "Signal done for handle " << handle << std::endl;
+            //std::cout << "Signal done for handle " << handle << std::endl;
             transfer->signalExternalBufferDone(handle);
-            std::cout << "ok" << std::endl;
+            //std::cout << "ok" << std::endl;
         } else {
             // A new buffer added at runtime. This usually indicates more than one
             // single-part device, opened after the acquisition of a previous one
             // already started (and the AsyncTransfer is already running).
-            std::cout << "Adding a new external buffer at run-time" << std::endl;
+            //std::cout << "Adding a new external buffer at run-time" << std::endl;
             auto streamType = stream->getStreamType();
             if (streamType == DataStream::MULTIPART_STREAM) {
                 auto& bufferMapping = stream->getBufferMapping(); // plus current setting of intensitySource
+                /*
                 std::cout << "Using effective mapping with " << bufferMapping.getNumBufferParts() << " parts:" << std::endl;
                 for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
                     auto imageType = bufferMapping.getBufferPartImageSetFunction(pi);
                     std::cout << "  Part " << pi << " -> " << ImageSet::getNameForImageType(imageType) << ((imageType==0)?" (gap reserved for point cloud data)":"") << std::endl;
                 }
+                */
                 ImageSet::ExternalBufferHandle handle = (off_t) buffer;
-                std::cout << "  Buffer*/Handle " << handle << std::endl;
+                //std::cout << "  Buffer*/Handle " << handle << std::endl;
                 // Wrap raw buffer and translate layout to visiontransfer buffer parts
                 ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
                 for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
@@ -1023,7 +1008,7 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
                     default: return GC_ERR_SUCCESS; // no-op for point cloud device
                 }
                 ImageSet::ExternalBufferHandle handle = (off_t) buffer;
-                std::cout << "  Buffer*/Handle " << handle << std::endl;
+                //std::cout << "  Buffer*/Handle " << handle << std::endl;
                 // Wrap raw buffer
                 ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
                 ebuf.appendPartDefinition(ExternalBuffer::Part(imageType, ExternalBuffer::CONVERSION_NONE)); // TODO future conversions on DBP level

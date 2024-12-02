@@ -195,7 +195,7 @@ bool ExternalBufferSet::getReady() const {
 }
 
 void ExternalBufferSet::setReady(bool ready) {
-    std::cout << "ExternalBufferSet #" << pimpl->getHandle() << " -> ready:=" << ready << std::endl;
+    //std::cout << "ExternalBufferSet #" << pimpl->getHandle() << " -> ready:=" << ready << std::endl; // DEBUG
     pimpl->setReady(ready);
 }
 

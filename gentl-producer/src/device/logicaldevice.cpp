@@ -54,12 +54,12 @@ LogicalDevice::~LogicalDevice() {
 
 GC_ERROR LogicalDevice::open() {
     if (deviceOpen) {
-        std::cout << "\033[33;1mDEBUG\033[m LogicalDevice::open() - already opened this same device!" << std::endl;
+        //std::cout << "\033[33;1mDEBUG\033[m LogicalDevice::open() - already opened this same device!" << std::endl;
         return GC_ERR_RESOURCE_IN_USE;
     }
     bool isMulti = stream.getStreamType() == DataStream::MULTIPART_STREAM;
     int currentDevices = physicalDevice->getCurrentLogicalDeviceState();
-    std::cout << "\033[33;1mDEBUG\033[m LogicalDevice::open() with isMulti " << isMulti << " currentDevices " << currentDevices << std::endl;
+    //std::cout << "\033[33;1mDEBUG\033[m LogicalDevice::open() with isMulti " << isMulti << " currentDevices " << currentDevices << std::endl;
     if ((currentDevices == 0) // nothing open yet
             || ((currentDevices==1) && (!isMulti)) // another single-part device is open
         ) {

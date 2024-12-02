@@ -378,7 +378,6 @@ void ImageTransfer::addExternalBufferSet(const ExternalBufferSet& bufset) {
 }
 
 bool ImageTransfer::retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> handles) {
-    std::cout << "ImTr::retract" << std::endl;
     return pimpl->retractExternalBufferSets(handles);
 }
 
@@ -459,7 +458,7 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
         for (auto handle : externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED]) {
             auto& bufset = externalBufferPool[handle];
             if (!bufset.getReady()) { // eligible for next buffer fill
-                std::cout << "\033[34mImageProtocol gets wildcard buffer set\033[m #" << handle << std::endl;
+                //std::cout << "\033[34mImageProtocol gets wildcard buffer set\033[m #" << handle << std::endl;
                 //assignedBufferHandle = handle;
                 // Assign as wildcard
                 protocol->setExternalBufferSet(ImageSet::IMAGE_UNDEFINED, bufset);
@@ -469,11 +468,13 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
         }
         // Nothing available - the protocol will fill default internal buffers
         // This will be apparent in the ImageSet as a zero getExternalBufferHandle() for all channels
+        /*
         std::cout << "\033[31mNo multipart buffer available\033[m" << std::endl;
         for (auto handle : externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED]) {
             auto& bufset = externalBufferPool[handle];
             std::cout << " BufSet " << handle << " - user-ready " << bufset.getReady() << std::endl;
         }
+        */
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_UNDEFINED);
     } else {
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_UNDEFINED);
@@ -484,7 +485,6 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
             for (auto handle : externalBuffersByImageType[imageType]) {
                 auto bufset = externalBufferPool[handle];
                 if (!bufset.getReady()) { // eligible for next buffer fill
-                    //std::cout << "ImageProtocol image type " << imageType << " gets buffer set #" << handle << std::endl;
                     // Assign for this channel
                     protocol->setExternalBufferSet(imageType, bufset);
                     channelOK = true;
@@ -842,15 +842,14 @@ bool ImageTransfer::Pimpl::receivePartialImageSet(ImageSet& imageSet,
     // If the image set was completed now (and the transfer has hence reset),
     // make sure that the next external available buffer set is rotated in (if enabled)
     if (complete) {
-        std::cout << "\033[1mComplete\033[m" << std::endl;
+        //std::cout << "\033[1mComplete\033[m" << std::endl;
         if (externalBufferingActive) {
             unique_lock<mutex> extbufLock(externalBufferPoolMutex);
             for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
                 auto handle = imageSet.getExternalBufferHandle(i);
-                std::cout << handle << " ";
+                //std::cout << handle << " "; // DEBUG
                 if (handle!=0 && handle!=-1) externalBufferPool[handle].setReady(true); // marked for delivery to user
             }
-            std::cout << "DONE" << std::endl;
             /*auto handle = protocol->getExternalBufferHandleFor(ImageSet::IMAGE_UNDEFINED);
             // N.B. 0 means 'unset/internal buffer mode', -1 means 'pool was exhausted'
             if (handle!=0 && handle!=-1) {
@@ -958,11 +957,9 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
                 (remoteAddress.sin_port != 0)
             );
         if (isServer && newSender) {
-            //std::cout << "New connection" << std::endl;
             if (protocol->isConnected()) {
                 // Reject interfering client
                 // Note: this has no bearing on the receive buffer obtained above; we will overwrite in place
-                //std::cerr << "DEBUG- Rejecting interfering UDP client" << std::endl;
                 const unsigned char* disconnectionMsg;
                 int disconnectionMsgLen;
                 DataBlockProtocol::getDisconnectionMessage(disconnectionMsg, disconnectionMsgLen);
@@ -984,7 +981,6 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
                     int heartbeatMsgLen;
                     DataBlockProtocol::getHeartbeatMessage(heartbeatMsg, heartbeatMsgLen);
                     if (heartbeatMsgLen > 0) {
-                        //std::cout << "Sending five knocks" << std::endl;
                         for (int i=0; i<5; ++i) {
                             // Send 5 UDP knocks for good measure, the client looks for at least 3 within 0.5 s
                             sendNetworkMessage(heartbeatMsg, heartbeatMsgLen, &fromAddress);
@@ -995,7 +991,6 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
         }
         if (isServer && protType == ImageProtocol::PROTOCOL_UDP) {
             if (!protocol->isConnected() && (remoteAddress.sin_port != 0)) {
-                //std::cout << "Invalidating remote address" << std::endl;
                 // Existing UDP client has disconnected, invalidate the remote address
                 memset(&remoteAddress, 0, sizeof(remoteAddress));
             }
@@ -1217,20 +1212,21 @@ void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
 }
 
 void ImageTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
-    //std::cout << "\033[32msignalExternalBufferDone\033[m for handle #" << handle << std::endl;
     if (handle == 0 || handle == -1) return; // No-op, not an image set with external buffering
     unique_lock<mutex> extbufLock(externalBufferPoolMutex);
     if (!externalBufferPool.count(handle)) {
         throw ProtocolException("Invalid external buffer handle");
     }
-    std::cout << "\033[33msignalExternalBufferDone()\033[m" << std::endl;
+    //std::cout << "\033[33msignalExternalBufferDone()\033[m" << std::endl;
     // Allow the buffers to be filled again
     externalBufferPool[handle].setReady(false);
+    /*
     // DEBUG diag
     std::cout << "Buffer ready state:" << std::endl;
     for (auto const& kv: externalBufferPool) {
         std::cout << "  " << kv.first << " " << kv.second.getReady() << std::endl;
     }
+    */
 }
 
 
@@ -1338,7 +1334,6 @@ bool ImageTransfer::Pimpl::retractExternalBufferSets(std::vector<ImageSet::Exter
 
 void ImageTransfer::Pimpl::waitForBufferPool() {
     unique_lock<mutex> extbufLock(externalBufferPoolMutex);
-    std::cout << "waiting" << std::endl;
     externalBufferPoolCond.wait(extbufLock);
 }
 

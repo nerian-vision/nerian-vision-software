@@ -35,7 +35,7 @@ namespace GenTL {
 #define ENABLE_DEBUGGING_DATASTREAM
 #endif
 // Extra toggle for just this module
-#define ENABLE_DEBUGGING_DATASTREAM
+//#define ENABLE_DEBUGGING_DATASTREAM
 
 #ifdef ENABLE_DEBUGGING_DATASTREAM
 #ifdef _WIN32
