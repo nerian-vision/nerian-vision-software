@@ -46,7 +46,7 @@ namespace visiontransfer {
 class VT_EXPORT ImageTransfer {
 public:
     /// A configuration object for creating an ImageTransfer or AsyncTransfer
-    class Config {
+    class VT_EXPORT Config {
         public:
             /// Create and populate a config based on an IP address and global defaults
             Config(const char* address);
