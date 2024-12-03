@@ -20,6 +20,7 @@
 #include <exception>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 #include <stdio.h>
 
 #define DEBUG_FORCE_WAIT_AFTER_RECV 0
@@ -139,7 +140,7 @@ int main() {
             } else {
                 unsigned char* ptr = imageSet.getPixelData(idxLeft);
                 long val = 0;
-                for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
+                for (int i=0; i<(std::min)(imageSet.getWidth(), imageSet.getHeight()); ++i) {
                     val += *(ptr+(i*imageSet.getWidth())+i);
                 }
                 std::cout << " Left test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
@@ -150,7 +151,7 @@ int main() {
             } else {
                 unsigned char* ptr = imageSet.getPixelData(idxRight);
                 long val = 0;
-                for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
+                for (int i=0; i<(std::min)(imageSet.getWidth(), imageSet.getHeight()); ++i) {
                     val += *(ptr+(i*imageSet.getWidth())+i);
                 }
                 std::cout << " Right test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
@@ -161,7 +162,7 @@ int main() {
             } else {
                 unsigned char* ptr = imageSet.getPixelData(idxColor);
                 long val = 0;
-                for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
+                for (int i=0; i<(std::min)(imageSet.getWidth(), imageSet.getHeight()); ++i) {
                     val += *(ptr+3*((i*imageSet.getWidth()))+i);
                 }
                 std::cout << " Color test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
@@ -172,7 +173,7 @@ int main() {
             } else {
                 unsigned char* ptr = imageSet.getPixelData(idxDisparity);
                 long val = 0;
-                for (int i=0; i<std::min(imageSet.getWidth(), imageSet.getHeight()); ++i) {
+                for (int i=0; i<(std::min)(imageSet.getWidth(), imageSet.getHeight()); ++i) {
                     val += *(ptr+2*((i*imageSet.getWidth())+i));
                 }
                 std::cout << " Disparity test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
