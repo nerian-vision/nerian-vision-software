@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <thread>
 #include <mutex>
+#include <string>
 #include "visiontransfer/imageprotocol.h"
 #include "visiontransfer/exceptions.h"
 #include "visiontransfer/internal/alignedallocator.h"

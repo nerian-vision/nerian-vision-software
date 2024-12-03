@@ -21,6 +21,7 @@
 #include <set>
 #include <mutex>
 #include <thread>
+#include <string>
 #include <condition_variable>
 #include "visiontransfer/imagetransfer.h"
 #include "visiontransfer/exceptions.h"
