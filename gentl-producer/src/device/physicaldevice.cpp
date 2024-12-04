@@ -71,6 +71,7 @@ PhysicalDevice::PhysicalDevice(Interface* interface): interface(interface), tran
         disparityOffset = atof(offsetEnv);
     }
     DEBUG_PHYS("Created a PhysicalDevice");
+    DEBUG_PHYS("Handle size " << sizeof(ImageSet::ExternalBufferHandle) << ", ptr size " << sizeof(Buffer*));
 }
 
 PhysicalDevice::~PhysicalDevice() {
@@ -886,6 +887,7 @@ void PhysicalDevice::updateConnectionState() {
             */
             for (auto buffer: initialBufferPool) {
                 ImageSet::ExternalBufferHandle handle = (off_t) buffer;
+                DEBUG_PHYS(" Initial buffer pool: add handle " << handle);
                 //std::cout << "  Buffer*/Handle " << handle << std::endl;
                 // Wrap raw buffer and translate layout to visiontransfer buffer parts
                 ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
@@ -920,6 +922,7 @@ void PhysicalDevice::updateConnectionState() {
                 //std::cout << "Function " << devid << " has this initial buffer pool:" << std::endl;
                 for (auto buffer: initialBufferPool) {
                     ImageSet::ExternalBufferHandle handle = (off_t) buffer;
+                    DEBUG_PHYS(" Initial buffer pool: add handle " << handle << " for image type " << imageType);
                     //std::cout << "  Buffer*/Handle " << handle << std::endl;
                     // Wrap raw buffer
                     ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
@@ -964,6 +967,7 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
         if (transfer->hasExternalBufferHandle(handle)) {
             // *RE*queue
             //std::cout << "Signal done for handle " << handle << std::endl;
+            DEBUG_PHYS("Requeue buffer with handle " << handle);
             transfer->signalExternalBufferDone(handle);
             //std::cout << "ok" << std::endl;
         } else {
@@ -996,6 +1000,7 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
                 ebufset.addBuffer(ebuf);
                 // Register the prepared buffer
                 transfer->addExternalBufferSet(ebufset);
+                DEBUG_PHYS("Run-time addition of buffer with handle " << handle);
 
             } else {
                 // Forward all registered single-part buffers (except Range) to the network protocol
@@ -1017,6 +1022,7 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
                 ebufset.addBuffer(ebuf);
                 // Register the prepared buffer
                 transfer->addExternalBufferSet(ebufset);
+                DEBUG_PHYS("Run-time addition of buffer with handle " << handle << " for image type " << imageType);
             }
         }
         return GC_ERR_SUCCESS;
