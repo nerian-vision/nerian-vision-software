@@ -122,7 +122,7 @@ Buffer* DataStream::requestBuffer(Buffer* buffer) {
                     DEBUG_DSTREAM(" Handle " << ((long long) ptr));
                 }
 #endif
-                throw std::runtime_error(std::string("Received buffer handle ") + std::to_string((off_t) buffer) + std::string(" not present in GenTL input pool"));
+                throw std::runtime_error(std::string("Received buffer handle ") + std::to_string((ptrdiff_t) buffer) + std::string(" not present in GenTL input pool"));
             }
             return buffer;
         }
@@ -151,7 +151,7 @@ void DataStream::queueOutputBuffer(Buffer* buffer) {
     eventData.pUserPointer = buffer->getPrivateData();
 
     if(newBufferEvent != nullptr) {
-        DEBUG_DSTREAM("Emitting EVENT_NEW_BUFFER for handle " << ((off_t) buffer));
+        DEBUG_DSTREAM("Emitting EVENT_NEW_BUFFER for handle " << ((ptrdiff_t) buffer));
         newBufferEvent->emitEvent(eventData);
     }
 }
@@ -172,7 +172,7 @@ bool DataStream::findBuffer(std::deque<Buffer*> queue, Buffer* buffer) {
 }
 
 GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate, BUFFER_HANDLE* phBuffer) {
-    DEBUG_DSTREAM("announceBuffer(), ptr = " << ((off_t) (pBuffer)) << " with size " << iSize);
+    DEBUG_DSTREAM("announceBuffer(), ptr = " << ((ptrdiff_t) (pBuffer)) << " with size " << iSize);
     //std::cout << "announce" << std::endl;
     if(pBuffer == nullptr || phBuffer == nullptr) {
         return GC_ERR_INVALID_PARAMETER;
@@ -187,7 +187,7 @@ GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate,
         reinterpret_cast<unsigned char*>(pBuffer), iSize, bufferMapping));
     buffers.push_back(buffer);
     *phBuffer = buffer.get();
-    DEBUG_DSTREAM("  resulting handle " << ((off_t) (*phBuffer)));
+    DEBUG_DSTREAM("  resulting handle " << ((ptrdiff_t) (*phBuffer)));
 
     return GC_ERR_SUCCESS;
 }
@@ -206,7 +206,7 @@ GC_ERROR DataStream::allocAndAnnounceBuffer(size_t iBufferSize, void* pPrivate, 
     std::shared_ptr<Buffer> buffer(new Buffer(this, pPrivate, iBufferSize, bufferMapping));
     buffers.push_back(buffer);
     *phBuffer = buffer.get();
-    DEBUG_DSTREAM("  resulting handle " << ((off_t) (*phBuffer)));
+    DEBUG_DSTREAM("  resulting handle " << ((ptrdiff_t) (*phBuffer)));
 
     return GC_ERR_SUCCESS;
 }
@@ -250,7 +250,7 @@ GC_ERROR DataStream::close() {
 }
 
 GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void ** ppPrivate) {
-    DEBUG_DSTREAM("revokeBuffer(), handle = " << ((off_t) hBuffer));
+    DEBUG_DSTREAM("revokeBuffer(), handle = " << ((ptrdiff_t) hBuffer));
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
 
@@ -324,7 +324,7 @@ void DataStream::queueInputBuffer(Buffer* buffer) {
 */
 
 GC_ERROR DataStream::queueBuffer(BUFFER_HANDLE hBuffer) {
-    DEBUG_DSTREAM("\033[33;1mqueueBuffer(),\033[m handle = " << ((off_t) hBuffer));
+    DEBUG_DSTREAM("\033[33;1mqueueBuffer(),\033[m handle = " << ((ptrdiff_t) hBuffer));
     DEBUG_DSTREAM("  outputQueue size is currently " << (outputQueue.size()));
     Buffer* buffer = reinterpret_cast<Buffer*>(hBuffer);
     std::unique_lock<std::mutex> lock(logicalDevice->getPhysicalDevice()->lock());

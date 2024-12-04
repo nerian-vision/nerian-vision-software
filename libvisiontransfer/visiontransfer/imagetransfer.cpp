@@ -1237,7 +1237,7 @@ void ImageTransfer::Pimpl::addExternalBufferSet(const ExternalBufferSet& bufset)
     std::cout << "DEBUG: Adding an ExternalBufferSet, handle " << bufset.getHandle() << ", consisting of:" << std::endl;
     for (int i=0; i<bufset.getNumBuffers(); ++i) {
         auto const& buf = bufset.getBuffer(i);
-        std::cout << "DEBUG:     ExternalBuffer of size " << buf.getBufferSize() << " at address " << ((off_t) buf.getBufferPtr()) << " with target layout mapping: " << std::endl;
+        std::cout << "DEBUG:     ExternalBuffer of size " << buf.getBufferSize() << " at address " << ((ptrdiff_t) buf.getBufferPtr()) << " with target layout mapping: " << std::endl;
         for (int j=0; j<buf.getNumParts(); ++j) {
             auto const& part = buf.getPart(j);
             std::cout << "DEBUG:         ImageType " << part.imageType << " with conversion flags " << part.conversionFlags << " reserveBits " << part.reserveBits << std::endl;

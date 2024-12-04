@@ -940,7 +940,7 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExterna
             rowStride = bufferRowStride;
             validRows = std::min(receivedBytes / bufferRowStride, (int)receiveHeader.height);
             // DEBUG:
-            // if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> immediate at " << ((off_t) ret) << std::endl;
+            // if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> immediate at " << ((ptrdiff_t) ret) << std::endl;
         } else {
             // Perform 12-bit => 16 bit decoding
             allocateDecodeBuffer(imageNumber);
@@ -959,7 +959,7 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExterna
             BitConversions::decode12BitPacked(lastRow, validRows, &data[bufferOffset0],
                 ret, bufferRowStride, rowStride, receiveHeader.width);
             // DEBUG:
-            //if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " ->  unpacked to " << ((off_t) ret) << std::endl;
+            //if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " ->  unpacked to " << ((ptrdiff_t) ret) << std::endl;
         }
     } else {
         // Decode the tiled transfer
@@ -981,7 +981,7 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExterna
         rowStride = receiveHeader.width*getFormatBits(
             static_cast<ImageSet::ImageFormat>(format), true)/8;
         // DEBUG:
-        // if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> untiled to " << ((off_t) ret) << std::endl;
+        // if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> untiled to " << ((ptrdiff_t) ret) << std::endl;
     }
 
     lastReceivedPayloadBytes[imageNumber] = receivedBytes;

@@ -886,7 +886,7 @@ void PhysicalDevice::updateConnectionState() {
             std::cout << "On this initial buffer pool:" << std::endl;
             */
             for (auto buffer: initialBufferPool) {
-                ImageSet::ExternalBufferHandle handle = (off_t) buffer;
+                ImageSet::ExternalBufferHandle handle = (ptrdiff_t) buffer;
                 DEBUG_PHYS(" Initial buffer pool: add handle " << handle);
                 //std::cout << "  Buffer*/Handle " << handle << std::endl;
                 // Wrap raw buffer and translate layout to visiontransfer buffer parts
@@ -921,7 +921,7 @@ void PhysicalDevice::updateConnectionState() {
                 auto initialBufferPool = stream->getInputPool();
                 //std::cout << "Function " << devid << " has this initial buffer pool:" << std::endl;
                 for (auto buffer: initialBufferPool) {
-                    ImageSet::ExternalBufferHandle handle = (off_t) buffer;
+                    ImageSet::ExternalBufferHandle handle = (ptrdiff_t) buffer;
                     DEBUG_PHYS(" Initial buffer pool: add handle " << handle << " for image type " << imageType);
                     //std::cout << "  Buffer*/Handle " << handle << std::endl;
                     // Wrap raw buffer
@@ -985,7 +985,7 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
                     std::cout << "  Part " << pi << " -> " << ImageSet::getNameForImageType(imageType) << ((imageType==0)?" (gap reserved for point cloud data)":"") << std::endl;
                 }
                 */
-                ImageSet::ExternalBufferHandle handle = (off_t) buffer;
+                ImageSet::ExternalBufferHandle handle = (ptrdiff_t) buffer;
                 //std::cout << "  Buffer*/Handle " << handle << std::endl;
                 // Wrap raw buffer and translate layout to visiontransfer buffer parts
                 ExternalBuffer ebuf(buffer->getData(), buffer->getSize());
@@ -1012,7 +1012,7 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
                     case DataStream::DISPARITY_STREAM: imageType = ImageSet::IMAGE_DISPARITY; break;
                     default: return GC_ERR_SUCCESS; // no-op for point cloud device
                 }
-                ImageSet::ExternalBufferHandle handle = (off_t) buffer;
+                ImageSet::ExternalBufferHandle handle = (ptrdiff_t) buffer;
                 //std::cout << "  Buffer*/Handle " << handle << std::endl;
                 // Wrap raw buffer
                 ExternalBuffer ebuf(buffer->getData(), buffer->getSize());

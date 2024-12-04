@@ -184,7 +184,7 @@ int main() {
                 bool ok = false;
                 unsigned char* ptr = imageSet.getPixelData(i);
                 for (int j=0; j<NUM_MEM_BUFS; ++j) {
-                    off_t where = ((off_t) ptr) - ((off_t) buffers[j]);
+                    ptrdiff_t where = ((ptrdiff_t) ptr) - ((ptrdiff_t) buffers[j]);
                     if (where>=0 && where<16*1024*1024) {
                         std::cout << "Validated: image " << i << " in external buffer " << j << " at offset " << where << std::endl;
                         ok = true;
@@ -192,7 +192,7 @@ int main() {
                     }
                 }
                 if (!ok) {
-                        std::cout << "\033[31mCaution: image " << i << " pointer " << ((off_t) ptr) << " - not in external buffer!\033[m" << std::endl;
+                        std::cout << "\033[31mCaution: image " << i << " pointer " << ((ptrdiff_t) ptr) << " - not in external buffer!\033[m" << std::endl;
                 }
             }
 
