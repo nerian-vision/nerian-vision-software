@@ -483,19 +483,19 @@ size_t DataStream::getPayloadSize() {
     int totalSize = 0;
     switch(streamType) {
         case IMAGE_LEFT_STREAM:
-            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_LEFT);
+            totalSize = (int) getPayloadSizeForImageType(ImageSet::IMAGE_LEFT);
             break;
         case IMAGE_RIGHT_STREAM:
-            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_RIGHT);
+            totalSize = (int) getPayloadSizeForImageType(ImageSet::IMAGE_RIGHT);
             break;
         case IMAGE_THIRD_COLOR_STREAM:
-            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_COLOR);
+            totalSize = (int) getPayloadSizeForImageType(ImageSet::IMAGE_COLOR);
             break;
         case DISPARITY_STREAM:
-            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_DISPARITY);
+            totalSize = (int) getPayloadSizeForImageType(ImageSet::IMAGE_DISPARITY);
             break;
         case POINTCLOUD_STREAM:
-            totalSize = getPayloadSizeForImageType(ImageSet::IMAGE_UNDEFINED); // special case: point cloud
+            totalSize = (int) getPayloadSizeForImageType(ImageSet::IMAGE_UNDEFINED); // special case: point cloud
             break;
         default:
             // multipart: add all image/disparity sizes and finally the point cloud size (if actually enabled)
@@ -503,7 +503,7 @@ size_t DataStream::getPayloadSize() {
     }
     if (totalSize<=0) {
         // Fallback just in case: report size from first image
-        totalSize = getPayloadSizeForImageType(bufferMapping.getBufferPartImageSetFunction(0));
+        totalSize = (int) getPayloadSizeForImageType(bufferMapping.getBufferPartImageSetFunction(0));
     }
     return totalSize;
 }

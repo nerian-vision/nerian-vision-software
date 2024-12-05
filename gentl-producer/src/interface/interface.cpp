@@ -88,7 +88,7 @@ void Interface::updateDeviceMetadataCache() {
         }
         for (int i=0; i<(int)deviceSuffixes.size(); ++i) {
             sz = 1024;
-            (void) getDeviceID(iIndex*deviceSuffixes.size() + i, deviceID, &sz);
+            (void) getDeviceID((uint32_t) (iIndex*deviceSuffixes.size() + i), deviceID, &sz);
             std::string subName = modelName;
             if (i != 0) {
                 // Not the multipart device: add channel description to disambiguate name

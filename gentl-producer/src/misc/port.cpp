@@ -71,7 +71,7 @@ void Port::freeFeatureInvalidateEvent() {
 void Port::emitFeatureInvalidateEvent(const std::string& featureName) {
     if(featureInvalidateEvent != nullptr) {
         EventQueue::FeatureStringType buf; //MAX_LEN_FEATURE_NAME
-        int len = featureName.length();
+        int len = (int) featureName.length();
         if (len >= (int)sizeof(buf)) len = sizeof(buf)-1;
         std::strncpy(buf.str, featureName.c_str(), len+1);
         buf.str[sizeof(buf)-1] = 0;

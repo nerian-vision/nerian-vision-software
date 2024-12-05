@@ -178,9 +178,6 @@ private:
     Event* errorEvent; // Event object for reporting error events
     visiontransfer::Reconstruct3D reconstruct; // Object for 3D reconstruction
 
-    double disparityOffset;
-    unsigned short maxDisparity;
-
     bool componentEnabledRange;
     IntensitySource intensitySource;
 

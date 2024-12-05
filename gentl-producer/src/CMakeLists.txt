@@ -41,6 +41,13 @@ add_library(nerian-gentl SHARED
     event/eventqueue.h
 )
 
+if(MSVC)
+    # Exclude Visual Studio blanket warning when using some lib functions
+    #   std::getenv (used in the backtracer)
+    #   strncpy (used cautiously in port)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif()
+
 # Statically link against libvisiontransfer
 target_link_libraries(nerian-gentl visiontransfer-static${LIB_SUFFIX} ${EXTRA_LIBS})
 

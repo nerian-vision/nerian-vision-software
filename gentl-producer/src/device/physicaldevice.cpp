@@ -63,13 +63,8 @@ std::chrono::system_clock::time_point debugStreamPhysInitTime = std::chrono::sys
 #endif
 
 PhysicalDevice::PhysicalDevice(Interface* interface): interface(interface), transferJustDown(false), udp(true), threadRunning(false),
-    errorEvent(nullptr), disparityOffset(0.0), maxDisparity(0xFFF), componentEnabledRange(true),
-    intensitySource(INTENSITY_SOURCE_AUTO) {
+    errorEvent(nullptr), componentEnabledRange(true), intensitySource(INTENSITY_SOURCE_AUTO) {
 
-    const char* offsetEnv = getenv("NERIAN_DISPARITY_OFFSET");
-    if(offsetEnv != nullptr) {
-        disparityOffset = atof(offsetEnv);
-    }
     DEBUG_PHYS("Created a PhysicalDevice");
     DEBUG_PHYS("Handle size " << sizeof(ImageSet::ExternalBufferHandle) << ", ptr size " << sizeof(Buffer*));
 }
@@ -171,8 +166,8 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
             bool enabledColor = paramSet.count("output_channel_color_enabled") && paramSet["output_channel_color_enabled"].getCurrent<bool>();
             numChannels = (enabledLeft?1:0) + (enabledDisparity?1:0) + (enabledRight?1:0) + (enabledColor?1:0);
 
-            latestMetaData.setWidth(imgSize[0]);
-            latestMetaData.setHeight(imgSize[1]);
+            latestMetaData.setWidth((int) imgSize[0]);
+            latestMetaData.setHeight((int) imgSize[1]);
             latestMetaData.setNumberOfImages(numChannels);
             if (enabledLeft) {
                 latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, channelIdx);
@@ -340,21 +335,6 @@ void PhysicalDevice::deviceReceiveThread() {
                     for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
                         // this fetches latestMetaData internally, which is already up-to-date
                         logicalDevices[i]->getStream()->updateBufferMapping();
-                    }
-                }
-
-                // Apply disparity offset
-                if (receivedSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
-                    if(disparityOffset != 0.0) {
-                        unsigned short* startPtr = reinterpret_cast<unsigned short*>(receivedSet.getPixelData(ImageSet::IMAGE_DISPARITY));
-                        unsigned short* endPtr = reinterpret_cast<unsigned short*>(
-                            receivedSet.getPixelData(ImageSet::IMAGE_DISPARITY) +
-                            receivedSet.getRowStride(ImageSet::IMAGE_DISPARITY)*receivedSet.getHeight());
-                        int increment = int(receivedSet.getSubpixelFactor() * disparityOffset);
-                        for(unsigned short* ptr = startPtr; ptr < endPtr; ptr++) {
-                            *ptr += increment;
-                        }
-                        maxDisparity = 0xFFF + increment;
                     }
                 }
 
@@ -534,6 +514,7 @@ int PhysicalDevice::copy3dDataToBufferMemory(const ImageSet& receivedSet, unsign
         // GenTL does not support padding between pixels. Let's only
         // copy the non-padding bytes
 
+        const unsigned short maxDisparity = 0xFFF;
         float* inputPtr = reconstruct.createPointMap(receivedSet, 0, maxDisparity);
 
         float* outputPtr = reinterpret_cast<float*>(dst);

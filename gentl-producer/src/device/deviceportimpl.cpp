@@ -95,13 +95,13 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
         // Common device info, not related to component selector
         case 0: // SensorWidth / WidthMax
             {
-                int fullWidth = device->getPhysicalDevice()->getParameter("calib_image_size_full").at(0);
+                int fullWidth = (int) device->getPhysicalDevice()->getParameter("calib_image_size_full").at(0);
                 info.setUInt(fullWidth);
             }
             break;
         case 1: // SensorHeight / HeightMax
             {
-                int fullHeight = device->getPhysicalDevice()->getParameter("calib_image_size_full").at(1);
+                int fullHeight = (int) device->getPhysicalDevice()->getParameter("calib_image_size_full").at(1);
                 info.setUInt(fullHeight);
             }
             break;
@@ -423,13 +423,13 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
             break;
         case 0x2b: // AcquisitionFrameRate
             {
-                int rate = device->getPhysicalDevice()->getParameter("trigger_frequency").getCurrent<double>();
+                double rate = device->getPhysicalDevice()->getParameter("trigger_frequency").getCurrent<double>();
                 info.setDouble(rate);
             }
             break;
         case 0x2c: // AcquisitionFrameRate (max valid value)
             {
-                int maxRate = device->getPhysicalDevice()->getParameter("trigger_frequency").getMax<double>();
+                double maxRate = device->getPhysicalDevice()->getParameter("trigger_frequency").getMax<double>();
                 info.setDouble(maxRate);
             }
             break;
