@@ -41,7 +41,7 @@ public:
     Pimpl(unsigned char* data, size_t size);
     Pimpl(const Pimpl& orig);
     void appendPartDefinition(ExternalBuffer::Part part);
-    inline int getNumParts() const { return parts.size(); }
+    inline int getNumParts() const { return (int) parts.size(); }
     inline ExternalBuffer::Part getPart(int idx) const { return parts.at(idx); }
     inline unsigned char* getBufferPtr() const { return data; }
     inline size_t getBufferSize() const { return size; }
@@ -60,7 +60,7 @@ public:
     Pimpl(const Pimpl& orig);
     void addBuffer(ExternalBuffer buf);
     inline ImageSet::ExternalBufferHandle getHandle() const { return handle; }
-    inline int getNumBuffers() const { return buffers.size(); }
+    inline int getNumBuffers() const { return (int) buffers.size(); }
     inline ExternalBuffer getBuffer(int idx) const { return buffers.at(idx); }
     bool getReady() const { return ready; }
     void setReady(bool ready_) { ready = ready_; }
