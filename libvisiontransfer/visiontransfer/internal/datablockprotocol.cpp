@@ -413,7 +413,7 @@ void DataBlockProtocol::processReceivedUdpMessage(int length, bool& transferComp
             // a packet was dropped
             if(!waitingForMissingSegments && //receiveOffset > 0 &&
                     segmentOffset > blockReceiveOffsets[dataBlockID]
-                    && segmentOffset + payloadLength <= getBlockReceiveBufferSizeChecked(dataBlockID)) {
+                    && segmentOffset + payloadLength <= (int) getBlockReceiveBufferSizeChecked(dataBlockID)) {
                 // We can just ask for a retransmission of this packet
                 LOG_DEBUG_DBP("Missing segment: " << dataBlockID << " size " << payloadLength << " ofs " << segmentOffset
                     << " but blkRecvOfs " << blockReceiveOffsets[dataBlockID]
@@ -1034,7 +1034,7 @@ void DataBlockProtocol::setExternalBufferingActive(bool active) {
 void DataBlockProtocol::setExternalBufferTargets(const std::vector<std::pair<unsigned char*, size_t> >& targets) {
     // TODO Should check whether we are currently mid-reception (but never called from outside)
     for (int i=0; i<MAX_DATA_BLOCKS; ++i) {
-        if (i>=targets.size()) {
+        if (i>=(int) targets.size()) {
             externalBufferLocations[i] = nullptr;
             externalBufferSizes[i] = 0;
         } else {

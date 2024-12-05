@@ -447,7 +447,7 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                     // collectReceivedImageSet() frequency was too low; previous frame lost
                     if (uncollectedDroppedFrames > -1) uncollectedDroppedFrames++;
                     // Immediately queue the previous (unhandled) buffers again in external buffering mode
-                    auto handle = receivedSet.getExternalBufferHandle(0);
+                    //auto handle = receivedSet.getExternalBufferHandle(0);
                     //if (handle) std::cerr << "Dropping an unclaimed ImageSet, ext buf handle(0) " << receivedSet.getExternalBufferHandle(0) << std::endl;
                     for (int i=0; i<receivedSet.getNumberOfImages(); ++i) {
                         signalExternalBufferDone(receivedSet.getExternalBufferHandle(i));

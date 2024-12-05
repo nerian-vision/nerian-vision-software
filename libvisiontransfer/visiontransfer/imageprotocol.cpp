@@ -88,7 +88,7 @@ public:
     // External buffering setup (mostly passed to DBProto)
     void setExternalBufferingActive(bool active);
     void setExternalBufferSet(ImageSet::ImageType imageType, const ExternalBufferSet& bufset);
-    bool generateBufferLayout();
+    void generateBufferLayout();
     ImageSet::ExternalBufferHandle getExternalBufferHandleFor(ImageSet::ImageType imageType);
     std::mutex& getFrameStartMutex();
     bool isReceptionInProgress() const;
@@ -194,7 +194,7 @@ private:
     void tryDecodeHeader(const unsigned char* receivedData, int receivedBytes);
 
     // Decodes (or silently passes) a received image from a non-interleaved buffer
-    unsigned char* decodeImage(int imageNumber, bool isExternalBuffer, int receivedBytes,
+    unsigned char* decodeImage(int imageNumber, int receivedBytes,
         unsigned char* data, int& validRows, int& rowStride);
 
     int getNumTiles(int width, int firstTileWidth, int middleTilesWidth, int lastTileWidth);
@@ -561,7 +561,7 @@ void ImageProtocol::Pimpl::processReceivedMessage(int length) {
                     // We received the header - we can now assign a
                     // buffer layout (if external buffering is active).
                     if (externalBufferingActive) {
-                        bool success = generateBufferLayout();
+                        generateBufferLayout();
                     }
 
                     // Now we can incorporate the initially received data as well.
@@ -573,7 +573,7 @@ void ImageProtocol::Pimpl::processReceivedMessage(int length) {
     } while(secondPass);
 }
 
-bool ImageProtocol::Pimpl::generateBufferLayout() {
+void ImageProtocol::Pimpl::generateBufferLayout() {
     // Check whether a valid multi-part buffer is present, otherwise use the single-channel lookup
     // Technically, when the multi-part pool is underrun, unnecessary extra checks are then made below,
     // but this is just one per frame and only in the exhausted pool state.
@@ -583,11 +583,9 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
     
     std::vector<int> bufferOffsets(currentExternalBufferSet[ImageSet::IMAGE_UNDEFINED].getNumBuffers()+1, 0);
     
-    int numPixels = receiveHeader.width * receiveHeader.height;
     for (int imageNumber=0; imageNumber<receiveHeader.numberOfImages; ++imageNumber) {
         int partSize = dataProt.getBlockReceiveSize(imageNumber);
         ImageSet::ImageFormat format;
-        int bits = 8;
         switch (imageNumber) {
             case 0: format = static_cast<ImageSet::ImageFormat>(receiveHeader.format0); break;
             case 1: format = static_cast<ImageSet::ImageFormat>(receiveHeader.format1); break;
@@ -622,7 +620,7 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
                     // Advance to region past this part   TODO also leave hole if requested
                     if (buffer) {
                         bufferOffsets[b] += partSize;
-                        if (bufferOffsets[b] > buf.getBufferSize()) {
+                        if (bufferOffsets[b] > (int) buf.getBufferSize()) {
                             // Would cause a buffer overflow if passed into the data block protocol
                             throw std::runtime_error(std::string("External buffer set ") + std::to_string(bufset.getHandle())
                                     + " constituent buffer #" + std::to_string(b)
@@ -642,7 +640,7 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
                 if (buf.getNumParts() == 1) {
                     const auto& part = buf.getPart(0);
                     if (part.imageType == imageType) {
-                        if (partSize > buf.getBufferSize()) {
+                        if (partSize > (int) buf.getBufferSize()) {
                             // Would cause a buffer overflow if passed into the data block protocol
                             throw std::runtime_error(std::string("External buffer set ") + std::to_string(bufset.getHandle())
                                     + " is too small to hold image type " + std::to_string(imageType));
@@ -676,7 +674,6 @@ bool ImageProtocol::Pimpl::generateBufferLayout() {
 
     // There are the targets that can be filled by the DataBlockProtocol without us converting
     dataProt.setExternalBufferTargets(immediateTargets);
-    return false;
 }
 
 void ImageProtocol::Pimpl::tryDecodeHeader(const
@@ -809,31 +806,21 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
             throw ProtocolException("Legacy interleaved transfers no longer supported. Upgrade firmware (or downgrade library.)");
         }
 
-        bool isMultipartBuffer = currentExternalBufferSet[ImageSet::IMAGE_UNDEFINED].getHandle() != -1;
         // Valid transfer
         try {
             for (int i=0; i<receiveHeader.numberOfImages; ++i) {
                 int validBytes = dataProt.getBlockValidSize(i);
-                bool isExternalBuffer = true;
                 unsigned char* data = externalBufferingActive ? dataProt.getExternalBuffer(i) : nullptr;
                 if (!data) {
-                    isExternalBuffer = false;
                     data = dataProt.getBlockReceiveBuffer(i);
                 }
-                pixelArr[i] = decodeImage(i, isExternalBuffer, validBytes, data, validRowsArr[i], rowStrideArr[i]);
+                pixelArr[i] = decodeImage(i, validBytes, data, validRowsArr[i], rowStrideArr[i]);
                 if (!externalBufferingActive) {
                     imageSet.setExternalBufferHandle(i, 0);
                 } else {
                     // either a real buffer handle, or -1 to indicate depleted pool
                     imageSet.setExternalBufferHandle(i, activeExternalBufferTargetHandle[i]);
                 }
-                //if (externalBufferingActive && !activeExternalBufferTargetValid[i]) {
-                //    // Error state - the buffer pool [for this channel] was depleted
-                //    // This is signaled in the ImageSet with a nullptr getPixelData
-                //    pixelArr[i] = nullptr;
-                //} else {
-                //    pixelArr[i] = decodeImage(i, isExternalBuffer, validBytes, data, validRowsArr[i], rowStrideArr[i]);
-                //}
             }
         } catch(const ProtocolException& ex) {
             LOG_DEBUG_IMPROTO("Protocol exception: " << ex.what());
@@ -904,7 +891,7 @@ bool ImageProtocol::Pimpl::getPartiallyReceivedImageSet(ImageSet& imageSet, int&
     }
 }
 
-unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, bool isExternalBuffer, int receivedBytes,
+unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, int receivedBytes,
         unsigned char* data, int& validRows, int& rowStride) {
     ImageSet::ImageFormat format;
     int bits = 8;
