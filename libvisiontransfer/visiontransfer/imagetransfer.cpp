@@ -109,7 +109,7 @@ private:
     // User callback for connection state changes
     std::function<void(visiontransfer::ConnectionState)> connectionStateChangeCallback;
 
-    bool externalBufferingActive; // TODO maybe obsolete (use protocol->get/setExt....)
+    bool externalBufferingActive;
     // The registered external sets of buffers
     std::map<ImageSet::ExternalBufferHandle, ExternalBufferSet> externalBufferPool;
     std::set<ImageSet::ExternalBufferHandle> queuedBufferRetractions;
@@ -469,13 +469,6 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
         }
         // Nothing available - the protocol will fill default internal buffers
         // This will be apparent in the ImageSet as a zero getExternalBufferHandle() for all channels
-        /*
-        std::cout << "\033[31mNo multipart buffer available\033[m" << std::endl;
-        for (auto handle : externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED]) {
-            auto& bufset = externalBufferPool[handle];
-            std::cout << " BufSet " << handle << " - user-ready " << bufset.getReady() << std::endl;
-        }
-        */
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_UNDEFINED);
     } else {
         protocol->setExternalBufferSetUnavailable(ImageSet::IMAGE_UNDEFINED);
@@ -630,15 +623,6 @@ bool ImageTransfer::Pimpl::tryAccept() {
         return false;
     }
 
-    {
-        // 2024-10-31 -- Logging block for LEM issue [TEMP DEBUG]
-        VT_IMAGETRANSFER_LOG_INFO("New connection in tryAccept");
-        if(newRemoteAddress.sin_family != AF_INET) {
-            VT_IMAGETRANSFER_LOG_INFO(" Not AF_INET! -- family: " << newRemoteAddress.sin_family);
-        }
-        VT_IMAGETRANSFER_LOG_INFO(" Remote address: " << std::string(inet_ntoa(newRemoteAddress.sin_addr)) << ":" << std::to_string(newRemoteAddress.sin_port));
-    }
-
     // For a new connection we require locks
     unique_lock<recursive_mutex> recvLock(receiveMutex);
     unique_lock<recursive_mutex> sendLock(sendMutex);
@@ -647,10 +631,7 @@ bool ImageTransfer::Pimpl::tryAccept() {
         // More robust TCP behavior: reject new connection.
         // (We had to accept first so we can close now.)
         // Remote client will detect that we closed immediately without sending data.
-        {
-            // 2024-10-31 -- Logging block for issue [TEMP DEBUG]
-            VT_IMAGETRANSFER_LOG_INFO("Refusing connection to new TCP client; already serving");
-        }
+        VT_IMAGETRANSFER_LOG_INFO("Refusing connection to new TCP client; already serving");
         Networking::closeSocket(newSocket);
         return false;
     }
@@ -724,10 +705,6 @@ ImageTransfer::TransferStatus ImageTransfer::Pimpl::transferData() {
             // Test if TCP pipe closed remotely (even when we have nothing to send)
             bool disconnected = isTcpClientClosed(clientSocket);
             if (disconnected) {
-                {
-                    // 2024-10-31 -- Logging block for issue [TEMP DEBUG]
-                    VT_IMAGETRANSFER_LOG_INFO("TCP client closed remotely");
-                }
                 // The connection has been closed
                 disconnect();
             }
@@ -904,10 +881,6 @@ bool ImageTransfer::Pimpl::receiveNetworkData(bool block) {
 
     auto err = Networking::getErrno();
     if(bytesReceived == 0 || (protType == ImageProtocol::PROTOCOL_TCP && bytesReceived < 0 && err == WSAECONNRESET)) {
-        {
-            // 2024-10-31 -- Logging block for issue [TEMP DEBUG]
-            VT_IMAGETRANSFER_LOG_INFO("Connection closed during recv");
-        }
         // Connection closed
         disconnect();
         if ((!isServer) && (!gotAnyData)) {
@@ -974,11 +947,6 @@ void ImageTransfer::Pimpl::disconnect() {
     // disconnect
     unique_lock<recursive_mutex> recvLock(receiveMutex);
     unique_lock<recursive_mutex> sendLock(sendMutex);
-    
-    {
-        // 2024-10-31 -- Logging block for LEM issue [TEMP DEBUG]
-        VT_IMAGETRANSFER_LOG_INFO("disconnect()");
-    }
 
     if(clientSocket != INVALID_SOCKET) {
         if ((!isServer) && isConnected() && protType == ImageProtocol::PROTOCOL_UDP) {
@@ -1073,10 +1041,6 @@ bool ImageTransfer::Pimpl::sendNetworkMessage(const unsigned char* msg, int leng
             // The socket is not yet ready for a new transfer
             return false;
         } else if(sendError == EPIPE) {
-            {
-                // 2024-10-31 -- Logging block for issue [TEMP DEBUG]
-                VT_IMAGETRANSFER_LOG_INFO("Connection closed during send");
-            }
             // The connection has been closed
             disconnect();
             return false;
@@ -1187,32 +1151,13 @@ void ImageTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHand
     if (!externalBufferPool.count(handle)) {
         throw ProtocolException("Invalid external buffer handle");
     }
-    //std::cout << "\033[33msignalExternalBufferDone()\033[m" << std::endl;
     // Allow the buffers to be filled again
     externalBufferPool[handle].setReady(false);
-    /*
-    // DEBUG diag
-    std::cout << "Buffer ready state:" << std::endl;
-    for (auto const& kv: externalBufferPool) {
-        std::cout << "  " << kv.first << " " << kv.second.getReady() << std::endl;
-    }
-    */
 }
 
 
 void ImageTransfer::Pimpl::addExternalBufferSet(const ExternalBufferSet& bufset) {
     unique_lock<mutex> extbufLock(externalBufferPoolMutex);
-    /*
-    std::cout << "DEBUG: Adding an ExternalBufferSet, handle " << bufset.getHandle() << ", consisting of:" << std::endl;
-    for (int i=0; i<bufset.getNumBuffers(); ++i) {
-        auto const& buf = bufset.getBuffer(i);
-        std::cout << "DEBUG:     ExternalBuffer of size " << buf.getBufferSize() << " at address " << ((ptrdiff_t) buf.getBufferPtr()) << " with target layout mapping: " << std::endl;
-        for (int j=0; j<buf.getNumParts(); ++j) {
-            auto const& part = buf.getPart(j);
-            std::cout << "DEBUG:         ImageType " << part.imageType << " with conversion flags " << part.conversionFlags << " reserveBits " << part.reserveBits << std::endl;
-        }
-    }
-    */
     auto handle = bufset.getHandle();
     if (externalBufferPool.count(handle)) {
         throw BufferException(std::string("Refused to add external buffer set with non-unique handle ") + std::to_string(handle));
@@ -1232,33 +1177,6 @@ void ImageTransfer::Pimpl::addExternalBufferSet(const ExternalBufferSet& bufset)
     externalBufferPool[handle] = bufset;
     externalBuffersByImageType[bufset.getImageType()].insert(handle);
 }
-
-/*
-void ImageTransfer::Pimpl::updateExternalBufferSet(const ExternalBufferSet& bufset) {
-    auto handle = bufset.getHandle();
-    if (! externalBufferPool.count(handle)) {
-        throw BufferException(std::string("Refused to update buffer set with unregistered handle ") + std::to_string(handle));
-    }
-    if (externalBufferPool[handle].getImageType() != bufset.getImageType()) {
-        throw BufferException(std::string("Refused to re-dedicate to a different image type, buffer set handle ") + std::to_string(handle));
-    }
-    externalBufferPool[handle] = bufset;
-}
-
-void ImageTransfer::Pimpl::removeExternalBufferSet(const ExternalBufferSet& bufset) {
-    auto handle = bufset.getHandle();
-    if (! externalBufferPool.count(handle)) {
-        throw BufferException(std::string("Cannot remove buffer set with unregistered handle ") + std::to_string(handle));
-    }
-    // TODO check and block if the set is still used in the background thread (==assignedBufferHandle)
-
-    // Take any needed fields from the stored set instead
-    auto imType = externalBufferPool[handle].getImageType();
-    externalBuffersByImageType[imType].erase(handle);
-    delete externalBufferPool[handle];
-    delete externalBufferLastWrite[handle];
-}
-*/
 
 bool ImageTransfer::Pimpl::hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const {
     unique_lock<mutex> extbufLock(externalBufferPoolMutex);
@@ -1287,7 +1205,6 @@ bool ImageTransfer::Pimpl::retractExternalBufferSets(std::vector<ImageSet::Exter
         return false; // not done
     } else {
         // Nothing in use yet, we can remove our buffer and return immediately
-        
         // Note: already protected by frameStartMutex
         for (auto handle: handles) {
             externalBufferPool.erase(handle);

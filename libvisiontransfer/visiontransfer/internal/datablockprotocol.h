@@ -445,8 +445,8 @@ private:
     // Null pointer means 'direct copying not enabled, use the internal allocation as a
     // temporary store' (i.e. the blockReceiveBuffers).
     unsigned char* externalBufferLocations[MAX_DATA_BLOCKS];
-    size_t externalBufferSizes[MAX_DATA_BLOCKS]; // TODO check if this can be removed - capacity verified by ImageProtocol
-    // TODO externalBufferConversion // immediate conversion flags
+    size_t externalBufferSizes[MAX_DATA_BLOCKS];
+    // TODO immediate conversion flags
 
     const unsigned char* extractPayload(const unsigned char* data, int& length, bool& error);
     bool processControlMessage(int length);

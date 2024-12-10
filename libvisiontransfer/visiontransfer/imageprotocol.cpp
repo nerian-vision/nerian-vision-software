@@ -28,8 +28,6 @@
 #include "visiontransfer/internal/bitconversions.h"
 #include "visiontransfer/internal/internalinformation.h"
 
-#include <iomanip> // Debug
-
 // Network headers
 #ifdef _WIN32
     #ifndef NOMINMAX
@@ -610,14 +608,15 @@ void ImageProtocol::Pimpl::generateBufferLayout() {
                         buffer = buf.getBufferPtr() + bufferOffsets[b];
                         activeExternalBufferTargets[imageNumber] = {buffer, partSize};
                         activeExternalBufferTargetHandle[imageNumber] = bufset.getHandle();
-                        if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP?
+                        if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP
                                 && (receiveHeader.lastTileWidth == 0)) { // tiled transfers need an intermediate buffer
                             immediateTargets.push_back({buffer, partSize});
                         } else {
                             immediateTargets.push_back({nullptr, 0});
                         }
                     }
-                    // Advance to region past this part   TODO also leave hole if requested
+                    // Advance to region past this part
+                    // TODO Also leave hole if requested
                     if (buffer) {
                         bufferOffsets[b] += partSize;
                         if (bufferOffsets[b] > (int) buf.getBufferSize()) {
@@ -650,7 +649,7 @@ void ImageProtocol::Pimpl::generateBufferLayout() {
                         activeExternalBufferTargets[imageNumber] = {buffer, partSize};
                         activeExternalBufferTargetHandle[imageNumber] = bufset.getHandle();
                         // Unless we need an intermediate buffer in the protocol, we can use it directly there
-                        if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP?
+                        if ((format == ImageSet::FORMAT_8_BIT_MONO || format == ImageSet::FORMAT_8_BIT_RGB) // TODO automatic 12->16 unpacking in the DBP
                                 && (receiveHeader.lastTileWidth == 0)) { // tiled transfers need an intermediate buffer
                             immediateTargets.push_back({buffer, partSize});
                         } else {
@@ -660,12 +659,10 @@ void ImageProtocol::Pimpl::generateBufferLayout() {
                 }
             }
         }
-        // TODO in the case of pool exhaustion, it would be possible to signal this for the individual channel
-        // in the resulting ImageSet instead. In the case of unexpected channels, we could also just ignore them.
+        // In the case of pool exhaustion, this is signaled as -1 for individual channels in the final ImageSet
         if (!buffer) {
             // No buffer allocated - either not interested or pool exhausted -
             //  process normally but discard the internal buffer reference later
-            //std::cout << "DEBUG: No external buffer currently available for part " << imageNumber << ", type " << ((int) receiveHeader.imageTypes[imageNumber]) << std::endl;
             activeExternalBufferTargetHandle[imageNumber] = -1;
             activeExternalBufferTargets[imageNumber] = {nullptr, partSize};
             immediateTargets.push_back({nullptr, 0});
@@ -926,8 +923,6 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, int receivedBy
             ret = &data[bufferOffset0];
             rowStride = bufferRowStride;
             validRows = std::min(receivedBytes / bufferRowStride, (int)receiveHeader.height);
-            // DEBUG:
-            // if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> immediate at " << ((ptrdiff_t) ret) << std::endl;
         } else {
             // Perform 12-bit => 16 bit decoding
             allocateDecodeBuffer(imageNumber);
@@ -945,8 +940,6 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, int receivedBy
             }
             BitConversions::decode12BitPacked(lastRow, validRows, &data[bufferOffset0],
                 ret, bufferRowStride, rowStride, receiveHeader.width);
-            // DEBUG:
-            //if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " ->  unpacked to " << ((ptrdiff_t) ret) << std::endl;
         }
     } else {
         // Decode the tiled transfer
@@ -967,8 +960,6 @@ unsigned char* ImageProtocol::Pimpl::decodeImage(int imageNumber, int receivedBy
             validRows, format, false);
         rowStride = receiveHeader.width*getFormatBits(
             static_cast<ImageSet::ImageFormat>(format), true)/8;
-        // DEBUG:
-        // if (validRows == (int)receiveHeader.height) std::cout << imageNumber << " fmt " << ((int)format) << " -> untiled to " << ((ptrdiff_t) ret) << std::endl;
     }
 
     lastReceivedPayloadBytes[imageNumber] = receivedBytes;

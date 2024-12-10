@@ -427,7 +427,7 @@ void DataBlockProtocol::processReceivedUdpMessage(int length, bool& transferComp
                 missingReceiveSegments[dataBlockID].push_back(missingSeg);
 
                 // Move the received data to the right place in the buffer
-                // TODO RYT TODO: in-place conversion support
+                // TODO in-place conversion support
                 memcpy(getBlockReceiveBufferChecked(dataBlockID) + segmentOffset, &receiveBuffer[0 + realPayloadOffset], payloadLength);
                 // Advance block receive offset
                 blockReceiveOffsets[dataBlockID] = segmentOffset + payloadLength;
@@ -451,7 +451,7 @@ void DataBlockProtocol::processReceivedUdpMessage(int length, bool& transferComp
             }
 
             // append to correct block buffer
-            // TODO RYT TODO: in-place conversion support
+            // TODO in-place conversion support
             memcpy(getBlockReceiveBufferChecked(dataBlockID) + segmentOffset, &receiveBuffer[0 + realPayloadOffset], payloadLength);
             // advance the expected next data offset for this block
             blockReceiveOffsets[dataBlockID] = segmentOffset + payloadLength;
@@ -552,7 +552,7 @@ void DataBlockProtocol::processReceivedTcpMessage(int length, bool& transferComp
         int remainingSize = blockReceiveSize[0] - blockValidSize[0];
         int availableSize = std::min(receiveOffset, remainingSize);
         // Update actual target buffer
-        // TODO RYT TODO: in-place conversion support
+        // TODO in-place conversion support
         std::memcpy(getBlockReceiveBufferChecked(0) + blockReceiveOffsets[0], &receiveBuffer[0], availableSize);
         blockReceiveOffsets[0] += availableSize;
         blockValidSize[0] = blockReceiveOffsets[0];
@@ -583,7 +583,7 @@ void DataBlockProtocol::processReceivedTcpMessage(int length, bool& transferComp
                 if (offset != blockReceiveOffsets[block]) {
                     throw ProtocolException("Received invalid header!");
                 }
-                // TODO RYT TODO: in-place conversion support
+                // TODO in-place conversion support
                 std::memcpy(getBlockReceiveBufferChecked(block) + blockReceiveOffsets[block], &receiveBuffer[ofs+sizeof(SegmentHeaderTCP)], fragsize);
                 blockReceiveOffsets[block] += fragsize;
                 blockValidSize[block] = blockReceiveOffsets[block];
@@ -1027,12 +1027,10 @@ void DataBlockProtocol::getHeartbeatMessage(const unsigned char* &buf, int &sz) 
 }
 
 void DataBlockProtocol::setExternalBufferingActive(bool active) {
-    // TODO Should check whether we are currently mid-reception (but never called from outside)
     externalBufferingActive = active;
 }
 
 void DataBlockProtocol::setExternalBufferTargets(const std::vector<std::pair<unsigned char*, size_t> >& targets) {
-    // TODO Should check whether we are currently mid-reception (but never called from outside)
     for (int i=0; i<MAX_DATA_BLOCKS; ++i) {
         if (i>=(int) targets.size()) {
             externalBufferLocations[i] = nullptr;

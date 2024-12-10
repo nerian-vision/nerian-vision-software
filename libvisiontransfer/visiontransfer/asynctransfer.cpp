@@ -453,7 +453,7 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                         signalExternalBufferDone(receivedSet.getExternalBufferHandle(i));
                     }
                 }
-                if (currentSet.getExternalBufferHandle(0) == 0) { // TODO test
+                if (currentSet.getExternalBufferHandle(0) == 0) {
                     // No external buffers specified and used ->
                     // Copy the pixel data
                     for(int i=0;i<currentSet.getNumberOfImages();i++) {
@@ -493,8 +493,6 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                     newDataReceived = true;
                     receivedSet = currentSet;
                     receiveCond.notify_one();
-                } else {
-                    //std::cerr << "Dropped an ImageSet due to deferred modifications of the buffer pool" << std::endl;
                 }
             }
 
