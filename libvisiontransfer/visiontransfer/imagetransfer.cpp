@@ -843,43 +843,12 @@ bool ImageTransfer::Pimpl::receivePartialImageSet(ImageSet& imageSet,
     // If the image set was completed now (and the transfer has hence reset),
     // make sure that the next external available buffer set is rotated in (if enabled)
     if (complete) {
-        //std::cout << "\033[1mComplete\033[m" << std::endl;
         if (externalBufferingActive) {
             unique_lock<mutex> extbufLock(externalBufferPoolMutex);
             for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
                 auto handle = imageSet.getExternalBufferHandle(i);
-                //std::cout << handle << " "; // DEBUG
                 if (handle!=0 && handle!=-1) externalBufferPool[handle].setReady(true); // marked for delivery to user
             }
-            /*auto handle = protocol->getExternalBufferHandleFor(ImageSet::IMAGE_UNDEFINED);
-            // N.B. 0 means 'unset/internal buffer mode', -1 means 'pool was exhausted'
-            if (handle!=0 && handle!=-1) {
-                // Backed by multipart buffer
-                for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
-                    if (imageSet.getPixelData(i) == nullptr) { // depleted buffer pool
-                        imageSet.setExternalBufferHandle(i, 0);
-                    } else {
-                        imageSet.setExternalBufferHandle(i, handle);
-                    }
-                }
-                externalBufferPool[handle].setReady(true);
-            } else {
-                // Backed by single-part buffers (or internal buffers)
-                for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
-                    //auto iType = imageSet.getImageType(i);
-                    //handle = protocol->getExternalBufferHandleFor(iType);
-                    ////if (handle==-1) handle = 0; // Uniform signaling of missing ext buffer
-                    //if (imageSet.getPixelData(i) == nullptr) { // depleted buffer pool for this channel
-                    //    imageSet.setExternalBufferHandle(i, 0);
-                    //} else {
-                    //    imageSet.setExternalBufferHandle(i, handle);
-                    //}
-                    if (handle!=0 && handle!=-1) externalBufferPool[handle].setReady(true);
-                }
-            }*/
-            //assignExternalBuffers(); // new assignment must be done externally (already OK if using AsyncTransfer)
-            // May have returned empty bufset if all buffer sets have not returned from external control!
-            // The protocol will then discard any incoming data until a new buffer set is provided.
         }
     }
 

@@ -23,67 +23,49 @@
 #include <algorithm>
 #include <stdio.h>
 
-#define DEBUG_FORCE_WAIT_AFTER_RECV 0
-#define NUM_MEM_BUFS 6
+// This is an example using libvisiontransfer to receive images into
+// pre-allocated external buffers without extra copying.
+//
+// This is *not* required or recommended for normal operation
+// -> Please refer to asynctransfer_example instead!
 
-#define USE_MULTIPART_BUFFERS 1
+
+// Size of the pool; must be at least 2 (one buffer with the user, one for current reception).
+//  If you set this to just one, every other frame will report an exhausted buffer pool.
+const int numBufferSets = 3;
 
 using namespace visiontransfer;
 
 int main() {
-    // This is an example using libvisiontransfer to receive images into externally allocated buffers with minimal copying.
-    // For normal operation, refer to the asynctransfer.cpp example file, which uses automatic internal allocation.
 
     // The target receive buffers (in this example, `buffers` holds three 16 MB buffers).
     // They must be large enough to receive the entire configured image set, your hand is not held here.
     const size_t myBufSize = 16*1024*1024;
-    unsigned char* buffers[NUM_MEM_BUFS];
-    for (int i=0; i<NUM_MEM_BUFS; ++i) {
+    unsigned char* buffers[numBufferSets];
+    for (int i=0; i<numBufferSets; ++i) {
         buffers[i] = new unsigned char[myBufSize];
     }
 
-    // One or more buffers are added to a buffer set; for each buffer in the set you select which image channels it accepts.
-#if USE_MULTIPART_BUFFERS
-    // Alternative 1: multi-part buffers
     // In this example, we generate sets with a single buffer each, which will accept several image channels (they will be packed consecutively).
-    const int numBufferSets = 3;
-    ExternalBufferSet bufferSets[3] = {100, 101, 102}; // handles can be either provided to the constructors or auto-generated internally (do not mix)
-    for (int i=0; i<3; ++i) {
+    ExternalBufferSet bufferSets[numBufferSets]; // Handles can be either provided to the constructors or auto-generated internally (do not mix)
+    for (int i=0; i<numBufferSets; ++i) {
         // Wrap the raw buffer allocated above
         ExternalBuffer ebuf(buffers[i], myBufSize);
         // Define the mapping of ImageSet types and desired conversion rules. They will be packed in the defined order.
         ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_COLOR, ExternalBuffer::CONVERSION_NONE));
-        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_DISPARITY, ExternalBuffer::CONVERSION_MONO_12_TO_16)); // convert 12bit packed to 16, as usual
-        // In this example, we leave out any other ImageSet::ImageTypes - this means they are not packed into
-        // the resulting buffer layout, and will not be available as part of the ImageSets (even if enabled on-device).
+        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_LEFT, ExternalBuffer::CONVERSION_NONE));
+        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_DISPARITY, ExternalBuffer::CONVERSION_MONO_12_TO_16)); // convert 12bit packed to 16 (currently hardwired internally)
+        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_RIGHT, ExternalBuffer::CONVERSION_NONE));
         // Absent channels are omitted, unless CONVERSION_RESERVE_IF_NOT_PRESENT is requested (which would leave a gap
         // in the buffer data for more predictable, unchanging offsets inside the buffer).
 
         // Populate buffer set with one buffer
         bufferSets[i].addBuffer(ebuf);
     }
-    // We now have three buffer sets with one buffer each (which are configured to accept the left and disparity channels).
-#else
-    // Alternative 2: Separate buffers for each channel (mainly for our GenTL legacy compatibility layer)
-    const int numBufferSets = 6;
-    ExternalBufferSet bufferSets[numBufferSets] = {
-        {100, ImageSet::IMAGE_COLOR}, {101, ImageSet::IMAGE_COLOR}, {102, ImageSet::IMAGE_COLOR},
-        {200, ImageSet::IMAGE_DISPARITY}, {201, ImageSet::IMAGE_DISPARITY}, {202, ImageSet::IMAGE_DISPARITY},
-    };
-    for (int i=0; i<3; ++i) {
-        ExternalBuffer ebuf(buffers[i], myBufSize);
-        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_COLOR, ExternalBuffer::CONVERSION_NONE));
-        bufferSets[i].addBuffer(ebuf);
-    }
-    for (int i=3; i<6; ++i) {
-        ExternalBuffer ebuf(buffers[i], myBufSize);
-        ebuf.appendPartDefinition(ExternalBuffer::Part(ImageSet::IMAGE_DISPARITY, ExternalBuffer::CONVERSION_MONO_12_TO_16));
-        bufferSets[i].addBuffer(ebuf);
-    }
-    // We now have six buffers sets, three each for color and disparity
-#endif
+    // We now have three buffer sets with one multi-part buffer each (configured to accept all four possible channels).
 
-    // -> We have the prerequisites for an external receive queue of three ImageSets.
+    // -> We have the prerequisites for an external receive queue of three ImageSets
+    //  (of which one must always remain available to the receiver thread to avoid frame loss).
 
     try {
         // Search for Nerian stereo devices
@@ -131,98 +113,65 @@ int main() {
             // on your known data buffer (data was packed according
             // to the reported pixel formats and conversion settings).
 
+            // imageSet.getExternalBufferHandle() will return 0 for image channels
+            // that were not configured to use an external buffer (their data
+            // refers to a library buffer), and -1 to signal pool exhaustion
+            // (data also pointing to internal buffer and NOT an external one).
+            //
+            // You must check this for each image channel.
+
             // ImageSet processing proper goes here
 
             std::cout << "Processing image set." << std::endl;
-            int idxLeft = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_LEFT);
-            if (idxLeft == -1) {
-                std::cout << " Left channel -----" << std::endl;
-            } else {
-                unsigned char* ptr = imageSet.getPixelData(idxLeft);
-                long val = 0;
-                for (int i=0; i<(std::min)(imageSet.getWidth(), imageSet.getHeight()); ++i) {
-                    val += *(ptr+(i*imageSet.getWidth())+i);
-                }
-                std::cout << " Left test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
-            }
-            int idxRight = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_RIGHT);
-            if (idxRight == -1) {
-                std::cout << " Right channel -----" << std::endl;
-            } else {
-                unsigned char* ptr = imageSet.getPixelData(idxRight);
-                long val = 0;
-                for (int i=0; i<(std::min)(imageSet.getWidth(), imageSet.getHeight()); ++i) {
-                    val += *(ptr+(i*imageSet.getWidth())+i);
-                }
-                std::cout << " Right test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
-            }
-            int idxColor = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_COLOR);
-            if (idxColor == -1) {
-                std::cout << " Color channel -----" << std::endl;
-            } else {
-                unsigned char* ptr = imageSet.getPixelData(idxColor);
-                long val = 0;
-                for (int i=0; i<(std::min)(imageSet.getWidth(), imageSet.getHeight()); ++i) {
-                    val += *(ptr+3*((i*imageSet.getWidth()))+i);
-                }
-                std::cout << " Color test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
-            }
-            int idxDisparity = imageSet.getIndexOf(visiontransfer::ImageSet::IMAGE_DISPARITY);
-            if (idxDisparity == -1) {
-                std::cout << " Disparity channel -----" << std::endl;
-            } else {
-                unsigned char* ptr = imageSet.getPixelData(idxDisparity);
-                long val = 0;
-                for (int i=0; i<(std::min)(imageSet.getWidth(), imageSet.getHeight()); ++i) {
-                    val += *(ptr+2*((i*imageSet.getWidth())+i));
-                }
-                std::cout << " Disparity test sum " << (val?"\033[32m":"\033[31;1m") << val << "\033[m" << std::endl;
-            }
 
-            // Validation of buffer layout
-            for(int i = 0; i < imageSet.getNumberOfImages(); i++) {
-                bool ok = false;
-                unsigned char* ptr = imageSet.getPixelData(i);
-                for (int j=0; j<NUM_MEM_BUFS; ++j) {
-                    ptrdiff_t where = ((ptrdiff_t) ptr) - ((ptrdiff_t) buffers[j]);
-                    if (where>=0 && where<16*1024*1024) {
-                        std::cout << "Validated: image " << i << " in external buffer " << j << " at offset " << where << std::endl;
-                        ok = true;
-                        break;
+            // Example: we validate that we get all image channels in external buffers
+            std::vector<std::pair<visiontransfer::ImageSet::ImageType, std::string> > channelsToProcess = {
+                {visiontransfer::ImageSet::IMAGE_LEFT, "left"},
+                {visiontransfer::ImageSet::IMAGE_DISPARITY, "disparity"},
+                {visiontransfer::ImageSet::IMAGE_RIGHT, "right"},
+                {visiontransfer::ImageSet::IMAGE_COLOR, "color"},
+            };
+            for (auto const& typeAndName: channelsToProcess) {
+                auto const& name = typeAndName.second;
+                int idx = imageSet.getIndexOf(typeAndName.first);
+                if (idx == -1) {
+                    std::cout << " Channel " << name << " not present in ImageSet" << std::endl;
+                } else {
+                    auto handle = imageSet.getExternalBufferHandle(idx);
+                    if (handle==0) {
+                        // Should not happen, we defined all image types in the buffer layout
+                        std::cerr << "ERROR: Unexpected handle 0 for channel " << name << std::endl;
+                        return 1;
+                    } else if (handle==-1) {
+                        std::cerr << "Buffer pool currently exhausted for channel " << name << std::endl;
+                    } else {
+                        std::cout << " Channel " << name << " with external buffer handle " << handle << std::endl;
+
+                        //
+                        // Normal image processing for the channel goes here
+                        //
                     }
-                }
-                if (!ok) {
-                        std::cout << "\033[31mCaution: image " << i << " pointer " << ((ptrdiff_t) ptr) << " - not in external buffer!\033[m" << std::endl;
-                }
-            }
-
-            if (imgNum<5) {
-                // Write all included images one after another
-                for(int i = 0; i < imageSet.getNumberOfImages(); i++) {
-                    // Create PGM file
-                    char fileName[100];
-                    snprintf(fileName, sizeof(fileName), "image%03d_%d.pgm", imgNum, i);
-                    imageSet.writePgmFile(i, fileName);
                 }
             }
 
             std::cout << "Unlocking the processed image set." << std::endl;
+
             // *IMPORTANT* - Cleanup phase for each processed ImageSet
             //               (in external buffer mode only.)
+
             // Signal the AsyncTransfer that we are done using the ImageSet
             // and the underlying buffer -> it can be reused in reception now.
-            // If usable buffer sets are exhausted when reception is called,
-            // frames would be discarded otherwise.
+            // Otherwise channels would be marked as exhausted by the receiver thread
+            // instead if no buffer sets are available when the next image set arrives.
+            // (See above on how to detect this.)
             asyncTransfer.signalImageSetDone(imageSet);
-
-            if (DEBUG_FORCE_WAIT_AFTER_RECV) std::this_thread::sleep_for(std::chrono::milliseconds(DEBUG_FORCE_WAIT_AFTER_RECV));
 
         }
     } catch(const std::exception& ex) {
         std::cerr << "Exception occurred: " << ex.what() << std::endl;
     }
 
-    for (int i=0; i<NUM_MEM_BUFS; ++i) {
+    for (int i=0; i<numBufferSets; ++i) {
         delete[] buffers[i];
     }
 
