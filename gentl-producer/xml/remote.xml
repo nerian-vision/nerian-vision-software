@@ -114,11 +114,15 @@
         <pFeature>QMatrixData</pFeature>
         <pFeature>NumberOfDisparities</pFeature>
         <pFeature>DisparityOffset</pFeature>
-        <pFeature>SgmP1NoEdge</pFeature>
-        <pFeature>SgmP1Edge</pFeature>
-        <pFeature>SgmP2NoEdge</pFeature>
-        <pFeature>SgmP2Edge</pFeature>
-        <pFeature>SgmEdgeSensitivity</pFeature>
+        <pFeature>SgmWithEdgeDetectionPresent</pFeature>
+        <pFeature>SgmWithoutEdgeDetectionPresent</pFeature>
+        <pFeature>SgmP1</pFeature>
+        <pFeature>SgmP2</pFeature>
+        <pFeature>SgmP1NoEdge</pFeature> <!-- deprecated -->
+        <pFeature>SgmP1Edge</pFeature>   <!-- deprecated -->
+        <pFeature>SgmP2NoEdge</pFeature> <!-- deprecated -->
+        <pFeature>SgmP2Edge</pFeature>   <!-- deprecated -->
+        <pFeature>SgmEdgeSensitivity</pFeature> <!-- deprecated -->
         <pFeature>SubpixelOptimizationROIEnabled</pFeature>
         <pFeature>SubpixelOptimizationROIWidth</pFeature>
         <pFeature>SubpixelOptimizationROIHeight</pFeature>
@@ -129,11 +133,17 @@
         <pFeature>ConsistencyCheckSensitivity</pFeature>
         <pFeature>UniquenessCheckEnabled</pFeature>
         <pFeature>UniquenessCheckSensitivity</pFeature>
+        <pFeature>TextureFilterAvailable</pFeature>
+        <pFeature>GapInterpolationAvailable</pFeature>
+        <pFeature>NoiseReductionAvailable</pFeature>
+        <pFeature>SpeckleFilterAvailable</pFeature>
         <pFeature>TextureFilterEnabled</pFeature>
         <pFeature>TextureFilterSensitivity</pFeature>
         <pFeature>GapInterpolationEnabled</pFeature>
         <pFeature>NoiseReductionEnabled</pFeature>
         <pFeature>SpeckleFilterIterations</pFeature>
+        <pFeature>VerticalSubsamplingAvailable</pFeature>
+        <pFeature>VerticalSubsampling</pFeature>
         <pFeature>HardwareTriggerInputPresent</pFeature>
         <pFeature>BalanceControlAvailable</pFeature>
         <pFeature>ThirdCameraPresent</pFeature>
@@ -686,6 +696,7 @@
 
     <Integer Name="Height" NameSpace="Standard">
         <ImposedAccessMode>RW</ImposedAccessMode>
+        <pInvalidator>VerticalSubsampling</pInvalidator>
         <pValue>HeightReg</pValue>
         <pMin>HeightMinReg</pMin>
         <pMax>HeightMaxReg</pMax>
@@ -696,6 +707,7 @@
         <Length>4</Length>
         <AccessMode>RW</AccessMode>
         <pPort>Device</pPort>
+        <pInvalidator>VerticalSubsampling</pInvalidator>
         <Sign>Unsigned</Sign>
         <Endianess>LittleEndian</Endianess>
     </IntReg>
@@ -704,6 +716,7 @@
         <Length>4</Length>
         <AccessMode>RO</AccessMode>
         <pPort>Device</pPort>
+        <pInvalidator>VerticalSubsampling</pInvalidator>
         <Sign>Unsigned</Sign>
         <Endianess>LittleEndian</Endianess>
     </IntReg>
@@ -712,6 +725,7 @@
         <Length>4</Length>
         <AccessMode>RO</AccessMode>
         <pPort>Device</pPort>
+        <pInvalidator>VerticalSubsampling</pInvalidator>
         <Sign>Unsigned</Sign>
         <Endianess>LittleEndian</Endianess>
     </IntReg>
@@ -720,6 +734,7 @@
         <Length>4</Length>
         <AccessMode>RO</AccessMode>
         <pPort>Device</pPort>
+        <pInvalidator>VerticalSubsampling</pInvalidator>
         <Sign>Unsigned</Sign>
         <Endianess>LittleEndian</Endianess>
     </IntReg>
@@ -1443,16 +1458,29 @@
         <Formula>maxNumDisp - numDisp</Formula>
     </IntSwissKnife>
 
-    <Integer Name="SgmP1NoEdge" NameSpace="Custom">
-        <ToolTip>The SGM P1 penalty parameter for small disparity changes, where not at an edge in the image</ToolTip>
-        <Description>The SGM P1 penalty parameter for small disparity changes, where not at an edge in the image</Description>
+    <IntSwissKnife Name="SgmWithoutEdgeDetectionPresent" NameSpace="Custom">
+        <Visibility>Guru</Visibility>
+        <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
+        <Formula>( bitmask &amp; 16 ) ? 1 : 0</Formula> <!-- Bit 4: Presence of edge-independent single penalties -->
+    </IntSwissKnife>
+    <IntSwissKnife Name="SgmWithEdgeDetectionPresent" NameSpace="Custom"> <!-- legacy FW with edge-dependent penalties -->
+        <Visibility>Guru</Visibility>
+        <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
+        <Formula>( bitmask &amp; 16 ) ? 0 : 1</Formula>
+    </IntSwissKnife>
+
+    <Integer Name="SgmP1" NameSpace="Custom">
+        <ToolTip>The SGM P1 penalty parameter for small disparity changes</ToolTip>
+        <Description>The SGM P1 penalty parameter for small disparity changes</Description>
         <Visibility>Expert</Visibility>
+        <pIsAvailable>SgmWithoutEdgeDetectionPresent</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
-        <pValue>SgmP1NoEdgeReg</pValue>
+        <pValue>SgmP1Reg</pValue>
         <Min>0</Min>
         <Max>255</Max>
     </Integer>
-    <IntReg Name="SgmP1NoEdgeReg" NameSpace="Custom">
+    <!-- Previously called SgmP1NoEdgeReg: -->
+    <IntReg Name="SgmP1Reg" NameSpace="Custom">
         <Address>0xC0035000</Address>
         <Length>4</Length>
         <AccessMode>RW</AccessMode>
@@ -1461,10 +1489,42 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
 
+    <Integer Name="SgmP2" NameSpace="Custom">
+        <ToolTip>The SGM P2 penalty parameter for larger disparity changes</ToolTip>
+        <Description>The SGM P2 penalty parameter for larger disparity changes</Description>
+        <Visibility>Expert</Visibility>
+        <pIsAvailable>SgmWithoutEdgeDetectionPresent</pIsAvailable>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SgmP2Reg</pValue>
+        <Min>0</Min>
+        <Max>255</Max>
+    </Integer>
+    <!-- Previously called SgmP2NoEdgeReg: -->
+    <IntReg Name="SgmP2Reg" NameSpace="Custom">
+        <Address>0xC0037000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <Integer Name="SgmP1NoEdge" NameSpace="Custom">
+        <ToolTip>The SGM P1 penalty parameter for small disparity changes, where not at an edge in the image</ToolTip>
+        <Description>The SGM P1 penalty parameter for small disparity changes, where not at an edge in the image</Description>
+        <Visibility>Expert</Visibility>
+        <pIsAvailable>SgmWithEdgeDetectionPresent</pIsAvailable>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>SgmP1Reg</pValue>
+        <Min>0</Min>
+        <Max>255</Max>
+    </Integer>
+
     <Integer Name="SgmP1Edge" NameSpace="Custom">
         <ToolTip>The SGM P1 penalty parameter for small disparity changes, where at a detected edge in the image</ToolTip>
         <Description>The SGM P1 penalty parameter for small disparity changes, where at a detected edge in the image</Description>
         <Visibility>Expert</Visibility>
+        <pIsAvailable>SgmWithEdgeDetectionPresent</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP1EdgeReg</pValue>
         <Min>0</Min>
@@ -1483,24 +1543,18 @@
         <ToolTip>The SGM P2 penalty parameter for larger disparity changes, where not at an edge in the image</ToolTip>
         <Description>The SGM P2 penalty parameter for larger disparity changes, where not at an edge in the image</Description>
         <Visibility>Expert</Visibility>
+        <pIsAvailable>SgmWithEdgeDetectionPresent</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
-        <pValue>SgmP2NoEdgeReg</pValue>
+        <pValue>SgmP2Reg</pValue>
         <Min>0</Min>
         <Max>255</Max>
     </Integer>
-    <IntReg Name="SgmP2NoEdgeReg" NameSpace="Custom">
-        <Address>0xC0037000</Address>
-        <Length>4</Length>
-        <AccessMode>RW</AccessMode>
-        <pPort>Device</pPort>
-        <Sign>Unsigned</Sign>
-        <Endianess>LittleEndian</Endianess>
-    </IntReg>
 
     <Integer Name="SgmP2Edge" NameSpace="Custom">
         <ToolTip>The SGM P2 penalty parameter for larger disparity changes, where at a detected edge in the image</ToolTip>
         <Description>The SGM P2 penalty parameter for larger disparity changes, where at a detected edge in the image</Description>
         <Visibility>Expert</Visibility>
+        <pIsAvailable>SgmWithEdgeDetectionPresent</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmP2EdgeReg</pValue>
         <Min>0</Min>
@@ -1517,6 +1571,7 @@
 
     <Integer Name="SgmEdgeSensitivity" NameSpace="Custom">
         <Visibility>Expert</Visibility>
+        <pIsAvailable>SgmWithEdgeDetectionPresent</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SgmEdgeSensitivityReg</pValue>
         <Min>0</Min>
@@ -1683,8 +1738,14 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
 
+    <IntSwissKnife Name="TextureFilterAvailable" NameSpace="Custom">
+        <Visibility>Guru</Visibility>
+        <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
+        <Formula>( bitmask &amp; 32 ) ? 1 : 0</Formula> <!-- Bit 5: texture filter available on platform? -->
+    </IntSwissKnife>
     <Boolean Name="TextureFilterEnabled" NameSpace="Custom">
         <Visibility>Expert</Visibility>
+        <pIsAvailable>TextureFilterAvailable</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>TextureFilterEnabledReg</pValue>
     </Boolean>
@@ -1699,6 +1760,7 @@
 
     <Integer Name="TextureFilterSensitivity" NameSpace="Custom">
         <Visibility>Expert</Visibility>
+        <pIsAvailable>TextureFilterAvailable</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>TextureFilterSensitivityReg</pValue>
         <Min>0</Min>
@@ -1713,8 +1775,14 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
 
+    <IntSwissKnife Name="GapInterpolationAvailable" NameSpace="Custom">
+        <Visibility>Guru</Visibility>
+        <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
+        <Formula>( bitmask &amp; 128 ) ? 1 : 0</Formula> <!-- Bit 7: gap interpolation available on platform? -->
+    </IntSwissKnife>
     <Boolean Name="GapInterpolationEnabled" NameSpace="Custom">
         <Visibility>Expert</Visibility>
+        <pIsAvailable>GapInterpolationAvailable</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>GapInterpolationEnabledReg</pValue>
     </Boolean>
@@ -1727,8 +1795,14 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
 
+    <IntSwissKnife Name="NoiseReductionAvailable" NameSpace="Custom">
+        <Visibility>Guru</Visibility>
+        <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
+        <Formula>( bitmask &amp; 256 ) ? 1 : 0</Formula> <!-- Bit 8: noise reduction available on platform? -->
+    </IntSwissKnife>
     <Boolean Name="NoiseReductionEnabled" NameSpace="Custom">
         <Visibility>Expert</Visibility>
+        <pIsAvailable>NoiseReductionAvailable</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>NoiseReductionEnabledReg</pValue>
     </Boolean>
@@ -1741,8 +1815,14 @@
         <Endianess>LittleEndian</Endianess>
     </IntReg>
 
+    <IntSwissKnife Name="SpeckleFilterAvailable" NameSpace="Custom">
+        <Visibility>Guru</Visibility>
+        <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
+        <Formula>( bitmask &amp; 64 ) ? 1 : 0</Formula> <!-- Bit 6: speckle filter available on platform? -->
+    </IntSwissKnife>
     <Integer Name="SpeckleFilterIterations" NameSpace="Custom">
         <Visibility>Expert</Visibility>
+        <pIsAvailable>SpeckleFilterAvailable</pIsAvailable>
         <ImposedAccessMode>RW</ImposedAccessMode>
         <pValue>SpeckleFilterIterationsReg</pValue>
         <Min>0</Min>
@@ -1758,6 +1838,36 @@
     </IntReg>
     <IntReg Name="SpeckleFilterIterationsMaxReg" NameSpace="Custom">
         <Address>0xC0049000</Address>
+        <Length>4</Length>
+        <AccessMode>RO</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+
+    <IntSwissKnife Name="VerticalSubsamplingAvailable" NameSpace="Custom">
+        <Visibility>Guru</Visibility>
+        <pVariable Name="bitmask">DeviceFeatureReg</pVariable>
+        <Formula>( bitmask &amp; 512 ) ? 1 : 0</Formula> <!-- Bit 9: vertical subsamping available on platform? -->
+    </IntSwissKnife>
+    <Integer Name="VerticalSubsampling" NameSpace="Custom">
+        <Visibility>Expert</Visibility>
+        <pIsAvailable>VerticalSubsamplingAvailable</pIsAvailable>
+        <ImposedAccessMode>RW</ImposedAccessMode>
+        <pValue>VerticalSubsamplingReg</pValue>
+        <Min>1</Min>
+        <pMax>VerticalSubsamplingMaxReg</pMax>
+    </Integer>
+    <IntReg Name="VerticalSubsamplingReg" NameSpace="Custom">
+        <Address>0xC005A000</Address>
+        <Length>4</Length>
+        <AccessMode>RW</AccessMode>
+        <pPort>Device</pPort>
+        <Sign>Unsigned</Sign>
+        <Endianess>LittleEndian</Endianess>
+    </IntReg>
+    <IntReg Name="VerticalSubsamplingMaxReg" NameSpace="Custom">
+        <Address>0xC005B000</Address>
         <Length>4</Length>
         <AccessMode>RO</AccessMode>
         <pPort>Device</pPort>

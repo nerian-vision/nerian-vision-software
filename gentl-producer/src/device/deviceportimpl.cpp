@@ -32,6 +32,12 @@ using namespace visiontransfer;
 namespace GenTL {
 
 #ifdef ENABLE_DEBUGGING
+#define ENABLE_DEBUGGING_DEVICEPORTIMPL
+#endif
+// Extra toggle for just this module
+//#define ENABLE_DEBUGGING_DEVICEPORTIMPL
+
+#ifdef ENABLE_DEBUGGING_DEVICEPORTIMPL
 #ifdef _WIN32
     std::fstream debugStreamDevPort("C:\\debug\\gentl-debug-devport-" + std::to_string(time(nullptr)) + ".txt", std::ios::out);
 #else
@@ -486,31 +492,39 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setUInt(num);
             }
             break;
-        case 0x35: // SgmP1NoEdge
+        case 0x35: // SgmP1 (used for NoEdge in older FW)
             {
-                int num = device->getPhysicalDevice()->getParameter("sgm_p1_no_edge").getCurrent<int>();
+                auto dev = device->getPhysicalDevice();
+                bool edgelessSgm = dev->hasParameter("sgm_p1");
+                int num = dev->getParameter(edgelessSgm ? "sgm_p1" : "sgm_p1_no_edge").getCurrent<int>();
                 info.setUInt(num);
             }
             break;
-        case 0x36: // SgmP1Edge
+        case 0x36: // SgmP1Edge (only meaningful for older FW) [DEPRECATED]
             {
-                int num = device->getPhysicalDevice()->getParameter("sgm_p1_edge").getCurrent<int>();
+                auto dev = device->getPhysicalDevice();
+                bool edgelessSgm = dev->hasParameter("sgm_p1");
+                int num = dev->getParameter(edgelessSgm ? "sgm_p1" : "sgm_p1_edge").getCurrent<int>();
                 info.setUInt(num);
             }
             break;
-        case 0x37: // SgmP2NoEdge
+        case 0x37: // SgmP2NoEdge (used for NoEdge in older FW)
             {
-                int num = device->getPhysicalDevice()->getParameter("sgm_p2_no_edge").getCurrent<int>();
+                auto dev = device->getPhysicalDevice();
+                bool edgelessSgm = dev->hasParameter("sgm_p2");
+                int num = dev->getParameter(edgelessSgm ? "sgm_p2" : "sgm_p2_no_edge").getCurrent<int>();
                 info.setUInt(num);
             }
             break;
-        case 0x38: // SgmP2Edge
+        case 0x38: // SgmP2Edge (only meaningful for older FW) [DEPRECATED]
             {
-                int num = device->getPhysicalDevice()->getParameter("sgm_p2_edge").getCurrent<int>();
+                auto dev = device->getPhysicalDevice();
+                bool edgelessSgm = dev->hasParameter("sgm_p2");
+                int num = dev->getParameter(edgelessSgm ? "sgm_p2" : "sgm_p2_edge").getCurrent<int>();
                 info.setUInt(num);
             }
             break;
-        case 0x39: // SgmEdgeSensitivity
+        case 0x39: // SgmEdgeSensitivity (only meaningful for older FW) [DEPRECATED]
             {
                 int num = device->getPhysicalDevice()->getParameter("sgm_edge_sensitivity").getCurrent<int>();
                 info.setUInt(num);
@@ -885,6 +899,21 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 info.setUInt(device->getPhysicalDevice()->getParameter("capture_roi_height").getMax<int>());
             }
             break;
+        case 0x5a: // Vertical subsampling
+            {
+                info.setUInt(device->getPhysicalDevice()->getParameter("RT_vertical_output_subsampling").getCurrent<int>());
+            }
+            break;
+        case 0x5b: // Vertical subsampling - available maximum
+            {
+                int maxVal = 1;
+                auto opts = device->getPhysicalDevice()->getParameter("vertical_subsampling").getOptions<int>();
+                for (auto val: opts) {
+                    if (val > maxVal) maxVal = val;
+                }
+                info.setUInt(maxVal);
+            }
+            break;
         case 0xff: // Nerian device feature map (used to mask the availability of other features via the XML) (DeviceFeatureReg)
             {
                 auto dev = device->getPhysicalDevice();
@@ -898,6 +927,43 @@ GC_ERROR DevicePortImpl::readChildFeature(unsigned int selector, unsigned int fe
                 featureMap |= triggerInputAvailable ? 4 : 0;
                 // Bit 3: Availability of pattern projector
                 featureMap |= dev->hasParameter("projector_brightness") ? 8 : 0;
+                // Bit 4: Presence of edge-independent single penalties
+                featureMap |= dev->hasParameter("sgm_p1") ? 16 : 0;
+                // Bit 5: Availability in PL of texture filter
+                if (dev->hasParameter("texture_filter_enabled")) {
+                    auto par = dev->getParameter("texture_filter_enabled");
+                    if (par.getAccessForApi() == visiontransfer::param::Parameter::ACCESS_READWRITE) {
+                        featureMap |= 32;
+                    }
+                }
+                // Bit 6: Availability in PL of speckle filter
+                if (dev->hasParameter("speckle_filter_iterations")) {
+                    auto par = dev->getParameter("speckle_filter_iterations");
+                    if (par.getAccessForApi() == visiontransfer::param::Parameter::ACCESS_READWRITE) {
+                        featureMap |= 64;
+                    }
+                }
+                // Bit 7: Availability in PL of gap interpolation
+                if (dev->hasParameter("gap_interpolation_enabled")) {
+                    auto par = dev->getParameter("gap_interpolation_enabled");
+                    if (par.getAccessForApi() == visiontransfer::param::Parameter::ACCESS_READWRITE) {
+                        featureMap |= 128;
+                    }
+                }
+                // Bit 8: Availability in PL of median filter / noise reduction
+                if (dev->hasParameter("noise_reduction_enabled")) {
+                    auto par = dev->getParameter("noise_reduction_enabled");
+                    if (par.getAccessForApi() == visiontransfer::param::Parameter::ACCESS_READWRITE) {
+                        featureMap |= 256;
+                    }
+                }
+                // Bit 9: Availability in PL of (post-cost) vertical subsampling
+                if (dev->hasParameter("vertical_subsampling")) {
+                    auto par = dev->getParameter("vertical_subsampling");
+                    if (par.getAccessForApi() == visiontransfer::param::Parameter::ACCESS_READWRITE) {
+                        featureMap |= 512;
+                    }
+                }
                 // Feature bitmap complete
                 DEBUG_DEVPORT("Device feature bit map: " << featureMap);
                 info.setInt(featureMap);
@@ -1166,43 +1232,62 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                 return GC_ERR_SUCCESS;
             }
             break;
-        case 0x35: // SgmP1NoEdge
+        case 0x35: // SgmP1 (used for NoEdge in older FW)
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                auto dev = device->getPhysicalDevice();
+                bool edgelessSgm = dev->hasParameter("sgm_p1");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                device->getPhysicalDevice()->setParameter("sgm_p1_no_edge", newVal);
+                dev->setParameter(edgelessSgm ? "sgm_p1" : "sgm_p1_no_edge", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
-        case 0x36: // SgmP1Edge
+        case 0x36: // SgmP1Edge (only meaningful for older FW) [DEPRECATED]
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                auto dev = device->getPhysicalDevice();
+                bool edgelessSgm = dev->hasParameter("sgm_p1");
+                if (edgelessSgm) {
+                    return GC_ERR_NOT_AVAILABLE;
+                }
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                device->getPhysicalDevice()->setParameter("sgm_p1_edge", newVal);
+                dev->setParameter("sgm_p1_edge", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
-        case 0x37: // SgmP2NoEdge
+        case 0x37: // SgmP2 (used for NoEdge in older FW)
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                auto dev = device->getPhysicalDevice();
+                bool edgelessSgm = dev->hasParameter("sgm_p2");
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                device->getPhysicalDevice()->setParameter("sgm_p2_no_edge", newVal);
+                dev->setParameter(edgelessSgm ? "sgm_p2" : "sgm_p2_no_edge", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
-        case 0x38: // SgmP2Edge
+        case 0x38: // SgmP2Edge (only meaningful for older FW) [DEPRECATED]
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                auto dev = device->getPhysicalDevice();
+                bool edgelessSgm = dev->hasParameter("sgm_p2");
+                if (edgelessSgm) {
+                    return GC_ERR_NOT_AVAILABLE;
+                }
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                device->getPhysicalDevice()->setParameter("sgm_p2_edge", newVal);
+                dev->setParameter("sgm_p2_edge", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
-        case 0x39: // SgmEdgeSensitivity
+        case 0x39: // SgmEdgeSensitivity (only meaningful for older FW) [DEPRECATED]
             {
                 if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                auto dev = device->getPhysicalDevice();
+                bool edgelessSgm = dev->hasParameter("sgm_p1");
+                if (edgelessSgm) {
+                    return GC_ERR_NOT_AVAILABLE;
+                }
                 int32_t newVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
-                device->getPhysicalDevice()->setParameter("sgm_edge_sensitivity", newVal);
+                dev->setParameter("sgm_edge_sensitivity", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;
@@ -1515,6 +1600,20 @@ GC_ERROR DevicePortImpl::writeChildFeature(unsigned int selector, unsigned int f
                         device->getPhysicalDevice()->setParameter("trigger_1_offset", newVal);
                     }
                 }
+                return GC_ERR_SUCCESS;
+            }
+            break;
+        case 0x5A: // Vertical subsampling
+            {
+                if (*piSize != 4) throw std::runtime_error("Expected a new feature value of size 4");
+                int32_t reqVal = (reinterpret_cast<const int32_t*>(pBuffer))[0];
+                // Clip within enum: select the largest value from the enum that does not exceed the requested value
+                int32_t newVal = 1;
+                auto opts = device->getPhysicalDevice()->getParameter("vertical_subsampling").getOptions<int>();
+                for (auto val: opts) {
+                    if ((val>newVal) && (val <= reqVal)) newVal = val;
+                }
+                device->getPhysicalDevice()->setParameter("vertical_subsampling", newVal);
                 return GC_ERR_SUCCESS;
             }
             break;

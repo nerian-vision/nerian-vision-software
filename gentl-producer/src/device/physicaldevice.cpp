@@ -92,6 +92,99 @@ void PhysicalDevice::freeErrorEvent() {
     }
 }
 
+bool PhysicalDevice::initializeMetadataFromNvparam() {
+    DEBUG_PHYS("initializeMetadataFromNvparam()");
+    try {
+        int numChannels = -1;
+        int channelIdx = 0;
+        auto paramSet = deviceParameters->getParameterSet();
+        std::vector<double> imgSize;
+        if (paramSet.count("RT_output_image_size")) {
+            imgSize = paramSet["RT_output_image_size"].getTensorData();
+        } else {
+            // Fallback read of configured calibrated ROI
+            imgSize = paramSet["calib_image_size"].getTensorData();
+            std::cerr << "Caution: device does not report RT_output_image_size; consider updating the firmware. Inferred output size " << ((int)imgSize.at(0)) << "x" << ((int)imgSize.at(1)) << std::endl;
+            DEBUG_PHYS("Caution: device does not report RT_output_image_size; consider updating the firmware. Inferred output size " << ((int)imgSize.at(0)) << "x" << ((int)imgSize.at(1)));
+        }
+        bool enabledLeft = paramSet["output_channel_left_enabled"].getCurrent<bool>();
+        bool enabledDisparity = paramSet["output_channel_disparity_enabled"].getCurrent<bool>();
+        bool enabledRight = paramSet["output_channel_right_enabled"].getCurrent<bool>();
+        int fmtInt;
+        if (paramSet.count("RT_output_format")) {
+            fmtInt = paramSet["RT_output_format"].getCurrent<int>();
+        } else {
+            // Fallback read of capture format - converted by FPGA by rules below.
+            fmtInt = paramSet["capture_pixel_format"].getCurrent<int>();
+            switch (fmtInt) {
+                case 0x01080008:
+                case 0x01080009:
+                case 0x0108000a:
+                case 0x0108000b:
+                    // Bayer was converted to RGB8
+                    fmtInt = 0x02180014;
+                    break;
+                case 0x01100005:
+                case 0x010C0047:
+                case 0x010C0006:
+                    // Only one 12 bit output format, 12P
+                    fmtInt = 0x010C0047;
+                    break;
+                default:
+                    // Directly supported
+                    break;
+            }
+            std::cerr << "Caution: device does not report RT_output_format; consider updating the firmware. Inferred L/R pixel format " << fmtInt << std::endl;
+            DEBUG_PHYS("Caution: device does not report RT_output_format; consider updating the firmware. Inferred L/R pixel format " << fmtInt);
+        }
+        // Note: when outputPixelFormat of FPGA is 12P, receive buffer is unpacked to 12 (in 16)
+        ImageSet::ImageFormat outputPixelFormat = (fmtInt==0x010C0047)?ImageSet::FORMAT_12_BIT_MONO:((fmtInt==0x02180014)?ImageSet::FORMAT_8_BIT_RGB:ImageSet::FORMAT_8_BIT_MONO);
+        bool enabledColor = paramSet.count("output_channel_color_enabled") && paramSet["output_channel_color_enabled"].getCurrent<bool>();
+        numChannels = (enabledLeft?1:0) + (enabledDisparity?1:0) + (enabledRight?1:0) + (enabledColor?1:0);
+
+        latestMetaData.setWidth((int) imgSize[0]);
+        latestMetaData.setHeight((int) imgSize[1]);
+        latestMetaData.setNumberOfImages(numChannels);
+        if (enabledLeft) {
+            latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, channelIdx);
+            latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
+            channelIdx++;
+        } else {
+            latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, -1);
+        }
+        if (enabledDisparity) {
+            latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, channelIdx);
+            latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_12_BIT_MONO);
+            channelIdx++;
+        } else {
+            latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, -1);
+        }
+        if (enabledColor) {
+            latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, channelIdx);
+            latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_8_BIT_RGB);
+            channelIdx++;
+        } else {
+            latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, -1);
+        }
+        if (enabledRight) {
+            latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, channelIdx);
+            latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
+            channelIdx++;
+        } else {
+            latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, -1);
+        }
+        // Also set initial values for the Q matrix, so all features can be calculated
+        auto qMatData = paramSet["calib_Q_12"].getTensorData();
+        for (int i=0; i<16; ++i) initialQMatrixData[i] = (float) qMatData[i];
+        latestMetaData.setQMatrix(initialQMatrixData);
+        bool valid = (channelIdx==numChannels) && (latestMetaData.getHeight() > 0);
+        return valid;
+    } catch(std::exception& ex) {
+        std::cerr << "Exception: " << ex.what() << std::endl;
+        throw;
+    }
+}
+
 GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
     // Open device
     try {
@@ -118,94 +211,7 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         logicalDevices[ID_POINTCLOUD].reset(new LogicalDevice(this, baseURL + "/pointcloud", DataStream::POINTCLOUD_STREAM));
 
         // Infer initial metadata from nvparam (later overridden by incoming frames)
-        int numChannels = -1;
-        int channelIdx = 0;
-        try {
-            auto paramSet = deviceParameters->getParameterSet();
-            std::vector<double> imgSize;
-            if (paramSet.count("RT_output_image_size")) {
-                imgSize = paramSet["RT_output_image_size"].getTensorData();
-            } else {
-                // Fallback read of configured calibrated ROI
-                imgSize = paramSet["calib_image_size"].getTensorData();
-                std::cerr << "Caution: device does not report RT_output_image_size; consider updating the firmware. Inferred output size " << ((int)imgSize.at(0)) << "x" << ((int)imgSize.at(1)) << std::endl;
-                DEBUG_PHYS("Caution: device does not report RT_output_image_size; consider updating the firmware. Inferred output size " << ((int)imgSize.at(0)) << "x" << ((int)imgSize.at(1)));
-            }
-            bool enabledLeft = paramSet["output_channel_left_enabled"].getCurrent<bool>();
-            bool enabledDisparity = paramSet["output_channel_disparity_enabled"].getCurrent<bool>();
-            bool enabledRight = paramSet["output_channel_right_enabled"].getCurrent<bool>();
-            int fmtInt;
-            if (paramSet.count("RT_output_format")) {
-                fmtInt = paramSet["RT_output_format"].getCurrent<int>();
-            } else {
-                // Fallback read of capture format - converted by FPGA by rules below.
-                fmtInt = paramSet["capture_pixel_format"].getCurrent<int>();
-                switch (fmtInt) {
-                    case 0x01080008:
-                    case 0x01080009:
-                    case 0x0108000a:
-                    case 0x0108000b:
-                        // Bayer was converted to RGB8
-                        fmtInt = 0x02180014;
-                        break;
-                    case 0x01100005:
-                    case 0x010C0047:
-                    case 0x010C0006:
-                        // Only one 12 bit output format, 12P
-                        fmtInt = 0x010C0047;
-                        break;
-                    default:
-                        // Directly supported
-                        break;
-                }
-                std::cerr << "Caution: device does not report RT_output_format; consider updating the firmware. Inferred L/R pixel format " << fmtInt << std::endl;
-                DEBUG_PHYS("Caution: device does not report RT_output_format; consider updating the firmware. Inferred L/R pixel format " << fmtInt);
-            }
-            // Note: when outputPixelFormat of FPGA is 12P, receive buffer is unpacked to 12 (in 16)
-            ImageSet::ImageFormat outputPixelFormat = (fmtInt==0x010C0047)?ImageSet::FORMAT_12_BIT_MONO:((fmtInt==0x02180014)?ImageSet::FORMAT_8_BIT_RGB:ImageSet::FORMAT_8_BIT_MONO);
-            bool enabledColor = paramSet.count("output_channel_color_enabled") && paramSet["output_channel_color_enabled"].getCurrent<bool>();
-            numChannels = (enabledLeft?1:0) + (enabledDisparity?1:0) + (enabledRight?1:0) + (enabledColor?1:0);
-
-            latestMetaData.setWidth((int) imgSize[0]);
-            latestMetaData.setHeight((int) imgSize[1]);
-            latestMetaData.setNumberOfImages(numChannels);
-            if (enabledLeft) {
-                latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, channelIdx);
-                latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
-                channelIdx++;
-            } else {
-                latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, -1);
-            }
-            if (enabledDisparity) {
-                latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, channelIdx);
-                latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_12_BIT_MONO);
-                channelIdx++;
-            } else {
-                latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, -1);
-            }
-            if (enabledColor) {
-                latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, channelIdx);
-                latestMetaData.setPixelFormat(channelIdx, ImageSet::FORMAT_8_BIT_RGB);
-                channelIdx++;
-            } else {
-                latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, -1);
-            }
-            if (enabledRight) {
-                latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, channelIdx);
-                latestMetaData.setPixelFormat(channelIdx, outputPixelFormat);
-                channelIdx++;
-            } else {
-                latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, -1);
-            }
-            // Also set initial values for the Q matrix, so all features can be calculated
-            auto qMatData = paramSet["calib_Q_12"].getTensorData();
-            for (int i=0; i<16; ++i) initialQMatrixData[i] = (float) qMatData[i];
-            latestMetaData.setQMatrix(initialQMatrixData);
-        } catch(std::exception& ex) {
-            std::cerr << "Exception: " << ex.what() << std::endl;
-            throw;
-        }
-        bool valid = (channelIdx==numChannels) && (latestMetaData.getHeight() > 0);
+        bool valid = initializeMetadataFromNvparam();
 
         if(!valid) {
             threadRunning = false;
@@ -583,13 +589,15 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
             }
         }
     }
-    buffer->setMetaData(receivedSet);
-    logicalDevices[ID_MULTIPART]->getStream()->queueOutputBuffer(buffer);
 
     //DEBUG_PHYS("Queued a multipart buffer");
 
     if(buffer->isIncomplete()) {
+        DEBUG_PHYS("Buffer too small - emitting error (if registered)");
         logicalDevices[ID_MULTIPART]->getStream()->emitErrorEvent(GC_ERR_BUFFER_TOO_SMALL);
+    } else {
+        buffer->setMetaData(receivedSet);
+        logicalDevices[ID_MULTIPART]->getStream()->queueOutputBuffer(buffer);
     }
 }
 
@@ -719,6 +727,7 @@ void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
     //  when the corresponding parameter is modified on the remote side.
     DEBUG_PHYS("Got remote update for " << uid);
     std::string featureName = "";
+    bool needMetadataReinitialization = false;
     if (uid == "manual_exposure_time" || uid == "manual_exposure_time_color") {
         invalidateFeatureFromAsyncEvent("ExposureTimeReg");
         invalidateFeatureFromAsyncEvent("ExposureTimeMinReg");
@@ -734,7 +743,22 @@ void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
         invalidateFeatureFromAsyncEvent("GainAutoReg");
         invalidateFeatureFromAsyncEvent("ExposureAuto");
         invalidateFeatureFromAsyncEvent("GainAuto");
+    } else if (uid == "RT_vertical_output_subsampling" || uid == "RT_output_image_size") {
+        needMetadataReinitialization = true;
+        if (uid=="RT_vertical_output_subsampling") {
+            invalidateFeatureFromAsyncEvent("VerticalSubsamplingReg");
+            invalidateFeatureFromAsyncEvent("VerticalSubsampling");
+        }
+        invalidateFeatureFromAsyncEvent("WidthReg");
+        invalidateFeatureFromAsyncEvent("HeightReg");
+        invalidateFeatureFromAsyncEvent("OffsetXReg");
+        invalidateFeatureFromAsyncEvent("OffsetYReg");
+        invalidateFeatureFromAsyncEvent("Width");
+        invalidateFeatureFromAsyncEvent("Height");
+        invalidateFeatureFromAsyncEvent("OffsetX");
+        invalidateFeatureFromAsyncEvent("OffsetY");
     } else if (uid == "RT_input_roi_ofs_left_x" || uid == "RT_input_roi_ofs_left_y" || uid == "calib_image_size") {
+        needMetadataReinitialization = true;
         invalidateFeatureFromAsyncEvent("WidthReg");
         invalidateFeatureFromAsyncEvent("HeightReg");
         invalidateFeatureFromAsyncEvent("OffsetXReg");
@@ -761,6 +785,10 @@ void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
         invalidateFeatureFromAsyncEvent("NumberOfDisparities");
         invalidateFeatureFromAsyncEvent("DisparityOffsetMax");
         invalidateFeatureFromAsyncEvent("DisparityOffset");
+    } else if (uid == "sgm_p1") {
+        invalidateFeatureFromAsyncEvent("SgmP1Reg");
+    } else if (uid == "sgm_p2") {
+        invalidateFeatureFromAsyncEvent("SgmP2Reg");
     } else if (uid == "sgm_p1_no_edge") {
         invalidateFeatureFromAsyncEvent("SgmP1NoEdgeReg");
         invalidateFeatureFromAsyncEvent("SgmP1NoEdge");
@@ -814,6 +842,17 @@ void PhysicalDevice::remoteParameterChangeCallback(const std::string& uid) {
     } else {
         return; // Unmapped feature - ignore parameter change
     }
+    if (needMetadataReinitialization) {
+        if (!transfer) {
+            // Outside of transfer, update our cached metadata for the feature tree updates
+            initializeMetadataFromNvparam();
+        }
+        // Also signal all DataStreams - they must update their metadata reporting
+        for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
+            // this fetches latestMetaData internally, which is already up-to-date
+            logicalDevices[i]->getStream()->updateBufferMapping();
+        }
+    }
 }
 
 void PhysicalDevice::invalidateFeatureFromAsyncEvent(const std::string& featureName) {
@@ -858,14 +897,6 @@ void PhysicalDevice::updateConnectionState() {
             auto stream = logicalDevices[ID_MULTIPART]->getStream();
             auto initialBufferPool = stream->getInputPool();
             auto& bufferMapping = stream->getBufferMapping(); // plus current setting of intensitySource
-            /*
-            std::cout << "Using effective mapping with " << bufferMapping.getNumBufferParts() << " parts:" << std::endl;
-            for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
-                auto imageType = bufferMapping.getBufferPartImageSetFunction(pi);
-                std::cout << "  Part " << pi << " -> " << ImageSet::getNameForImageType(imageType) << ((imageType==0)?" (gap reserved for point cloud data)":"") << std::endl;
-            }
-            std::cout << "On this initial buffer pool:" << std::endl;
-            */
             for (auto buffer: initialBufferPool) {
                 ImageSet::ExternalBufferHandle handle = (ptrdiff_t) buffer;
                 DEBUG_PHYS(" Initial buffer pool: add handle " << handle);
@@ -959,13 +990,6 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
             auto streamType = stream->getStreamType();
             if (streamType == DataStream::MULTIPART_STREAM) {
                 auto& bufferMapping = stream->getBufferMapping(); // plus current setting of intensitySource
-                /*
-                std::cout << "Using effective mapping with " << bufferMapping.getNumBufferParts() << " parts:" << std::endl;
-                for (int pi=0; pi<bufferMapping.getNumBufferParts(); ++pi) {
-                    auto imageType = bufferMapping.getBufferPartImageSetFunction(pi);
-                    std::cout << "  Part " << pi << " -> " << ImageSet::getNameForImageType(imageType) << ((imageType==0)?" (gap reserved for point cloud data)":"") << std::endl;
-                }
-                */
                 ImageSet::ExternalBufferHandle handle = (ptrdiff_t) buffer;
                 //std::cout << "  Buffer*/Handle " << handle << std::endl;
                 // Wrap raw buffer and translate layout to visiontransfer buffer parts

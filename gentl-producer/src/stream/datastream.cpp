@@ -97,6 +97,7 @@ void DataStream::freeErrorEvent() {
 
 void DataStream::emitErrorEvent(GC_ERROR error) {
     if(errorEvent != nullptr) {
+        DEBUG_DSTREAM("Emitting error " << error);
         errorEvent->emitEvent(error);
     }
 }

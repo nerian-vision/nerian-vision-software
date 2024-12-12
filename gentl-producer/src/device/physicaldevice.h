@@ -193,6 +193,8 @@ private:
 
     void remoteParameterChangeCallback(const std::string& uid);
     void invalidateFeatureFromAsyncEvent(const std::string& featureName);
+    bool initializeMetadataFromNvparam();
+
 };
 
 }
