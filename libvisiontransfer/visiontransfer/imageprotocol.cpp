@@ -592,6 +592,11 @@ void ImageProtocol::Pimpl::generateBufferLayout() {
             default: throw ProtocolException("Invalid image index for buffer layout");
         }
 
+        if (format == ImageSet::FORMAT_12_BIT_MONO) {
+            // 12-bit: consider the room for unpacking to 16 bits for advancing offset
+            partSize = (partSize*4)/3;
+        }
+
         ImageSet::ImageType imageType = static_cast<ImageSet::ImageType>(receiveHeader.imageTypes[imageNumber]);
 
         unsigned char* buffer = nullptr;
