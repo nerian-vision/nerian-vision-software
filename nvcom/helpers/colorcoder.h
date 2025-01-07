@@ -30,7 +30,8 @@ public:
     };
 
     ColorCoder(ColorScale colorScale, float min, float max, bool shadowLess, bool shadowGreater,
-        std::pair<unsigned short, unsigned short> invalidRange = std::pair<unsigned short, unsigned short>(0xFFF, 0xFFFF));
+        std::pair<unsigned short, unsigned short> invalidRange = std::pair<unsigned short, unsigned short>(
+            (unsigned short)0xFFF, (unsigned short)0xFFFF));
 
     // Color-codes a single value
     cv::Vec3b getColor(float val) {
@@ -44,7 +45,7 @@ public:
             else val = maxVal;
         }
 
-        double relVal = (val - minVal)/(maxVal-minVal);
+        float relVal = (val - minVal)/(maxVal-minVal);
         return codeRelativeValue(relVal);
     }
 
@@ -74,11 +75,11 @@ public:
     void recalculateLookups();
 
     // Set new min / max values (for dynamic range adaptation)
-    inline void setMin(float minVal) {
-        this->minVal = minVal;
+    inline void setMin(float val) {
+        minVal = val;
     }
-    inline void setMax(float maxVal) {
-        this->maxVal = maxVal;
+    inline void setMax(float val) {
+        maxVal = val;
     }
 
     // Get min / max values

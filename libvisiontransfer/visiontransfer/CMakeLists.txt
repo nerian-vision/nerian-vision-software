@@ -99,4 +99,3 @@ endif()
 install(TARGETS visiontransfer${LIB_SUFFIX} DESTINATION lib)
 install(TARGETS visiontransfer-static${LIB_SUFFIX} DESTINATION lib)
 install(FILES ${HEADERS} DESTINATION include/visiontransfer)
-

@@ -153,7 +153,7 @@ int ClientSideDataChannelIMUBNO080::handleMessage(DataChannelMessage& message, s
         data += elemlen; datalen -= elemlen;
     }
     return 1;
-};
+}
 
 }} // namespaces
 
