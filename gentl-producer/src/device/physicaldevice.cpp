@@ -393,20 +393,14 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
     for(int i=0; i<receivedSet.getNumberOfImages(); i++) {
         // Determine the correct logical device
         int id;
-
-        const char* devstr; (void) devstr; // DEBUG
         if(i == receivedSet.getIndexOf(ImageSet::IMAGE_LEFT)) {
             id = ID_IMAGE_LEFT;
-            devstr = "left";
         } else if(i == receivedSet.getIndexOf(ImageSet::IMAGE_DISPARITY)) {
             id = ID_DISPARITY;
-            devstr = "disparity";
         } else if(i == receivedSet.getIndexOf(ImageSet::IMAGE_COLOR)) {
             id = ID_IMAGE_THIRD_COLOR;
-            devstr = "color";
         } else {
             id = ID_IMAGE_RIGHT;
-            devstr = "right";
         }
 
         if (logicalDevices[id]->getStream()->getFramesToAcquire() == 0) {
@@ -430,7 +424,7 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
                 // The device may not be capturing any more frames.
                 // Forcing handle to be ready:=0
                 //DEBUG_PHYS("requestBuffer() for dev " << id << " returned nullptr - requeueing");
-                transfer->signalExternalBufferDone(handle);
+                transfer->requeueExternalBuffer(handle);
                 continue;
             }
             buffer->setMetaData(receivedSet);
@@ -529,7 +523,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         // The device may not be capturing any more frames.
         // Forcing handle to be ready:=0
         //DEBUG_PHYS("requestBuffer(MULTIPART) returned nullptr - requeueing");
-        transfer->signalExternalBufferDone(handle);
+        transfer->requeueExternalBuffer(handle);
         return;
     }
     auto& bufferMapping = stream->getBufferMapping();
@@ -956,7 +950,7 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
             // *RE*queue
             //std::cout << "Signal done for handle " << handle << std::endl;
             DEBUG_PHYS("Requeue buffer with handle " << handle);
-            transfer->signalExternalBufferDone(handle);
+            transfer->requeueExternalBuffer(handle);
             //std::cout << "ok" << std::endl;
         } else {
             // A new buffer added at runtime. This usually indicates more than one

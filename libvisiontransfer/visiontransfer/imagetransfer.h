@@ -21,7 +21,7 @@
 #include "visiontransfer/imageprotocol.h"
 #include "visiontransfer/imageset.h"
 #include "visiontransfer/deviceinfo.h"
-#include "visiontransfer/externalbuffer.h"
+#include "visiontransfer/externalbufferset.h"
 
 #if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
 #include <functional>
@@ -54,6 +54,7 @@ public:
             Config(DeviceInfo& deviceInfo);
             /// Destroy and deallocate Pimpl
             ~Config();
+
             /// Override the device address
             Config& setAddress(const char* address);
             /// Override the device image data port (default "7681")
@@ -103,6 +104,7 @@ public:
             ExternalBufferSet getExternalBufferSet(int idx) const;
             /// Return the external buffering active state
             bool getExternalBufferingActive() const;
+
         private:
             class Pimpl;
             Pimpl* pimpl;
@@ -333,8 +335,8 @@ public:
      */
     void setAutoReconnect(int secondsBetweenRetries=1);
     
-    /// See AsyncTransfer::signalImageSetDone
-    void signalExternalBufferDone(ImageSet::ExternalBufferHandle handle);
+    /// See AsyncTransfer::requeueExternalBuffersForImageSet
+    void requeueExternalBuffer(ImageSet::ExternalBufferHandle handle);
 
     /** \brief Rotate to the next free configured ExternalBufferSet for all
      * available image types (if external buffering is active)
@@ -365,9 +367,8 @@ public:
      */
     void addExternalBufferSet(const ExternalBufferSet& bufset);
 
-#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
     /**
-     * \brief Retract buffer set with the specified handle from the buffer pool.
+     * \brief Retract buffer sets with the specified handle from the buffer pool.
      *
      * If the buffer is currently being filled by an incoming frame, the
      * buffer is marked for retraction instead and actual retraction is queued
@@ -376,8 +377,11 @@ public:
      * Returns true if buffer is fully retracted (or not present), or false
      * if the buffer retraction has been deferred.
      */
-    bool retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles);
-#endif
+    bool retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles) {
+       return retractExternalBufferSets(externalBufferHandles.data(), externalBufferHandles.size());
+    }
+
+    bool retractExternalBufferSets(ImageSet::ExternalBufferHandle* externalBufferHandleArr, int len);
 
     /**
      * \brief Wait until the end of an ongoing frame and after the buffer pool

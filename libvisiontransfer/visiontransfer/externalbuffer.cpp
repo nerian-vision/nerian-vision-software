@@ -47,26 +47,6 @@ public:
     inline size_t getBufferSize() const { return size; }
 };
 
-class ExternalBufferSet::Pimpl {
-private:
-    // A unique buffer set handle, either allocated sequentially or administered by the user
-    ImageSet::ExternalBufferHandle handle;
-    // Limit the role of the buffer set to a single channel; or multipart for IMAGE_UNDEFINED (default)
-    ImageSet::ImageType imageType;
-    std::vector<ExternalBuffer> buffers;
-    bool ready;
-public:
-    Pimpl(ImageSet::ExternalBufferHandle userProvidedHandle=0, ImageSet::ImageType imageType=ImageSet::IMAGE_UNDEFINED);
-    Pimpl(const Pimpl& orig);
-    void addBuffer(ExternalBuffer buf);
-    inline ImageSet::ExternalBufferHandle getHandle() const { return handle; }
-    inline int getNumBuffers() const { return (int) buffers.size(); }
-    inline ExternalBuffer getBuffer(int idx) const { return buffers.at(idx); }
-    bool getReady() const { return ready; }
-    void setReady(bool ready_) { ready = ready_; }
-    ImageSet::ImageType getImageType() const { return imageType; }
-};
-
 // Pimpl functions
 
 // ExternalBuffer
@@ -84,36 +64,6 @@ ExternalBuffer::Pimpl::Pimpl(const ExternalBuffer::Pimpl& orig) {
 
 void ExternalBuffer::Pimpl::appendPartDefinition(ExternalBuffer::Part part) {
     parts.push_back(part);
-}
-
-// ExternalBufferSet
-
-ExternalBufferSet::Pimpl::Pimpl(ImageSet::ExternalBufferHandle userProvidedHandle, ImageSet::ImageType imageType_) {
-    static ImageSet::ExternalBufferHandle nextBufferHandle = 1;
-    if (userProvidedHandle != 0) {
-        // Use the user handle that the ExternalBufferSet was constructed with
-        handle = userProvidedHandle;
-    } else {
-        // Generate a unique handle (note: the two modes should not be mixed)
-        handle = nextBufferHandle++;
-    }
-    imageType = imageType_;
-    ready = false;
-}
-
-ExternalBufferSet::Pimpl::Pimpl(const ExternalBufferSet::Pimpl& orig) {
-    handle = orig.handle;
-    buffers = orig.buffers;
-    imageType = orig.imageType;
-    ready = orig.ready;
-}
-
-void ExternalBufferSet::Pimpl::addBuffer(ExternalBuffer buf) {
-    buffers.push_back(buf);
-}
-
-ImageSet::ImageType ExternalBufferSet::getImageType() const {
-    return pimpl->getImageType();
 }
 
 //
@@ -152,51 +102,6 @@ unsigned char* ExternalBuffer::getBufferPtr() const {
 
 size_t ExternalBuffer::getBufferSize() const {
     return pimpl->getBufferSize();
-}
-
-// ExternalBufferSet
-
-ExternalBufferSet::ExternalBufferSet(ImageSet::ExternalBufferHandle handle, ImageSet::ImageType imageType)
-: pimpl(new ExternalBufferSet::Pimpl(handle, imageType)) {
-}
-
-ExternalBufferSet::ExternalBufferSet(const ExternalBufferSet& orig)
-: pimpl(new Pimpl(*(orig.pimpl))) {
-}
-const ExternalBufferSet& ExternalBufferSet::operator=(const ExternalBufferSet& from) {
-    auto old = pimpl;
-    pimpl = new Pimpl(*(from.pimpl));
-    delete old;
-    return *this;
-}
-
-ExternalBufferSet::~ExternalBufferSet() {
-    delete pimpl;
-}
-
-ImageSet::ExternalBufferHandle ExternalBufferSet::getHandle() const {
-    return pimpl->getHandle();
-}
-
-void ExternalBufferSet::addBuffer(ExternalBuffer buf) {
-    pimpl->addBuffer(buf);
-}
-
-int ExternalBufferSet::getNumBuffers() const {
-    return pimpl->getNumBuffers();
-}
-
-ExternalBuffer ExternalBufferSet::getBuffer(int idx) const {
-    return pimpl->getBuffer(idx);
-}
-
-bool ExternalBufferSet::getReady() const {
-    return pimpl->getReady();
-}
-
-void ExternalBufferSet::setReady(bool ready) {
-    //std::cout << "ExternalBufferSet #" << pimpl->getHandle() << " -> ready:=" << ready << std::endl; // DEBUG
-    pimpl->setReady(ready);
 }
 
 } // namespace

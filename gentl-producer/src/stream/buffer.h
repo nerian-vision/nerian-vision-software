@@ -17,7 +17,7 @@
 
 #include <genicam/gentl.h>
 #include <visiontransfer/imageset.h>
-#include <visiontransfer/externalbuffer.h>
+#include <visiontransfer/externalbufferset.h>
 #include "misc/common.h"
 #include "misc/handle.h"
 

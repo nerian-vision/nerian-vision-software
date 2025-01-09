@@ -23,7 +23,7 @@
 
 #include "visiontransfer/internal/alignedallocator.h"
 #include "visiontransfer/exceptions.h"
-#include "visiontransfer/externalbuffer.h"
+#include "visiontransfer/externalbufferset.h"
 
 namespace visiontransfer {
 namespace internal {

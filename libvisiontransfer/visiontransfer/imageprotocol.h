@@ -17,7 +17,7 @@
 
 #include "visiontransfer/common.h"
 #include "visiontransfer/imageset.h"
-#include "visiontransfer/externalbuffer.h"
+#include "visiontransfer/externalbufferset.h"
 
 #include <vector>
 

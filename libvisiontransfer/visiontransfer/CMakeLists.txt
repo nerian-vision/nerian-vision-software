@@ -22,6 +22,7 @@ set(HEADERS
     libraryinfo.h
     types.h
     externalbuffer.h
+    externalbufferset.h
     internal/alignedallocator.h
     internal/bitconversions.h
     internal/conversionhelpers.h
@@ -54,6 +55,7 @@ set(SOURCES
     deviceparameters.cpp
     libraryinfo.cpp
     externalbuffer.cpp
+    externalbufferset.cpp
     internal/bitconversions.cpp
     internal/datablockprotocol.cpp
     internal/datachannel-imu-bno080.cpp

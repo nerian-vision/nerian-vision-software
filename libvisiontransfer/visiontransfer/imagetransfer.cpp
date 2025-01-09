@@ -66,7 +66,7 @@ public:
     std::string statusReport();
 
     void assignExternalBuffers();
-    void signalExternalBufferDone(ImageSet::ExternalBufferHandle handle);
+    void requeueExternalBuffer(ImageSet::ExternalBufferHandle handle);
 
     void setExternalBufferingActive(bool active);
     bool getExternalBufferingActive() const;
@@ -142,17 +142,17 @@ class ImageTransfer::Config::Pimpl {
     public:
         Pimpl(const char* address);
         Pimpl(DeviceInfo& deviceInfo);
-        //
-        inline void setAddress(const char* address_) { address = address_; address_c = address.c_str(); }
-        inline void setService(const char* service_) { service = service_; service_c = service.c_str(); }
-        inline void setProtocolType(ImageProtocol::ProtocolType protType) { protocolType = protType; }
-        inline void setServer(bool server) { isServer = server; }
-        inline void setBufferSize(int bufferSize_) { bufferSize = bufferSize_; }
-        inline void setMaxUdpPacketSize(int maxUdpPacketSize_) { maxUdpPacketSize = maxUdpPacketSize_; }
-        inline void setAutoReconnectDelay(int autoReconnectDelay_) { autoReconnectDelay = autoReconnectDelay_; }
-        inline void addExternalBufferSet(ExternalBufferSet bufset) { externalBufferSets.push_back(bufset); }
+
+        void setAddress(const char* address_) { address = address_; address_c = address.c_str(); }
+        void setService(const char* service_) { service = service_; service_c = service.c_str(); }
+        void setProtocolType(ImageProtocol::ProtocolType protType) { protocolType = protType; }
+        void setServer(bool server) { isServer = server; }
+        void setBufferSize(int bufferSize_) { bufferSize = bufferSize_; }
+        void setMaxUdpPacketSize(int maxUdpPacketSize_) { maxUdpPacketSize = maxUdpPacketSize_; }
+        void setAutoReconnectDelay(int autoReconnectDelay_) { autoReconnectDelay = autoReconnectDelay_; }
+        void addExternalBufferSet(ExternalBufferSet bufset) { externalBufferSets.push_back(bufset); }
         void setExternalBufferingActive(bool active) { externalBufferingActive = active; }
-        //
+
         const char* getAddress() const { return address_c; }
         const char* getService() const { return service_c; }
         ImageProtocol::ProtocolType getProtocolType() const { return protocolType; }
@@ -356,8 +356,8 @@ bool ImageTransfer::getExternalBufferingActive() const {
     return pimpl->getExternalBufferingActive();
 }
 
-void ImageTransfer::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
-    pimpl->signalExternalBufferDone(handle);
+void ImageTransfer::requeueExternalBuffer(ImageSet::ExternalBufferHandle handle) {
+    pimpl->requeueExternalBuffer(handle);
 }
 
 void ImageTransfer::assignExternalBuffers() {
@@ -377,8 +377,9 @@ void ImageTransfer::addExternalBufferSet(const ExternalBufferSet& bufset) {
     pimpl->addExternalBufferSet(bufset);
 }
 
-bool ImageTransfer::retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> handles) {
-    return pimpl->retractExternalBufferSets(handles);
+bool ImageTransfer::retractExternalBufferSets(ImageSet::ExternalBufferHandle* externalBufferHandleArr, int len) {
+    std::vector<ImageSet::ExternalBufferHandle> vec(externalBufferHandleArr, externalBufferHandleArr+len);
+    return pimpl->retractExternalBufferSets(vec);
 }
 
 void ImageTransfer::waitForBufferPool() {
@@ -457,9 +458,7 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
         // Only considering the registered multi-part buffers
         for (auto handle : externalBuffersByImageType[ImageSet::IMAGE_UNDEFINED]) {
             auto& bufset = externalBufferPool[handle];
-            if (!bufset.getReady()) { // eligible for next buffer fill
-                //std::cout << "\033[34mImageProtocol gets wildcard buffer set\033[m #" << handle << std::endl;
-                //assignedBufferHandle = handle;
+            if (!bufset.getBlockedByUser()) { // eligible for next buffer fill
                 // Assign as wildcard
                 protocol->setExternalBufferSet(ImageSet::IMAGE_UNDEFINED, bufset);
                 externalBufferPoolCond.notify_all();
@@ -477,7 +476,7 @@ void ImageTransfer::Pimpl::assignExternalBuffers() {
             bool channelOK = false;
             for (auto handle : externalBuffersByImageType[imageType]) {
                 auto bufset = externalBufferPool[handle];
-                if (!bufset.getReady()) { // eligible for next buffer fill
+                if (!bufset.getBlockedByUser()) { // eligible for next buffer fill
                     // Assign for this channel
                     protocol->setExternalBufferSet(imageType, bufset);
                     channelOK = true;
@@ -823,7 +822,7 @@ bool ImageTransfer::Pimpl::receivePartialImageSet(ImageSet& imageSet,
             unique_lock<mutex> extbufLock(externalBufferPoolMutex);
             for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
                 auto handle = imageSet.getExternalBufferHandle(i);
-                if (handle!=0 && handle!=-1) externalBufferPool[handle].setReady(true); // marked for delivery to user
+                if (handle!=0 && handle!=-1) externalBufferPool[handle].setBlockedByUser(true); // marked for delivery to user
             }
         }
     }
@@ -1144,14 +1143,14 @@ void ImageTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
     tcpReconnectSecondsBetweenRetries = secondsBetweenRetries;
 }
 
-void ImageTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
+void ImageTransfer::Pimpl::requeueExternalBuffer(ImageSet::ExternalBufferHandle handle) {
     if (handle == 0 || handle == -1) return; // No-op, not an image set with external buffering
     unique_lock<mutex> extbufLock(externalBufferPoolMutex);
     if (!externalBufferPool.count(handle)) {
         throw ProtocolException("Invalid external buffer handle");
     }
     // Allow the buffers to be filled again
-    externalBufferPool[handle].setReady(false);
+    externalBufferPool[handle].setBlockedByUser(false);
 }
 
 

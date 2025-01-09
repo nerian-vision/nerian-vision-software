@@ -58,7 +58,7 @@ public:
     bool tryAccept();
     void setConnectionStateChangeCallback(std::function<void(visiontransfer::ConnectionState)> callback);
     void setAutoReconnect(int secondsBetweenRetries);
-    void signalExternalBufferDone(ImageSet::ExternalBufferHandle handle);
+    void requeueExternalBuffer(ImageSet::ExternalBufferHandle handle);
     bool hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const;
     ExternalBufferSet getExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle) const;
     void addExternalBufferSet(const ExternalBufferSet& bufset);
@@ -178,15 +178,15 @@ void AsyncTransfer::setAutoReconnect(int secondsBetweenRetries) {
     pimpl->setAutoReconnect(secondsBetweenRetries);
 }
 
-void AsyncTransfer::signalImageSetDone(ImageSet& imageSet) {
+void AsyncTransfer::requeueExternalBuffersForImageSet(ImageSet& imageSet) {
     for (int i=0; i<imageSet.getNumberOfImages(); ++i) {
         auto handle = imageSet.getExternalBufferHandle(i);
-        pimpl->signalExternalBufferDone(handle);
+        pimpl->requeueExternalBuffer(handle);
     }
 }
 
-void AsyncTransfer::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
-    pimpl->signalExternalBufferDone(handle);
+void AsyncTransfer::requeueExternalBuffer(ImageSet::ExternalBufferHandle handle) {
+    pimpl->requeueExternalBuffer(handle);
 }
 
 bool AsyncTransfer::hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const {
@@ -205,8 +205,9 @@ void AsyncTransfer::retractExternalBufferSet(ImageSet::ExternalBufferHandle exte
     pimpl->retractExternalBufferSets({externalBufferHandle});
 }
 
-void AsyncTransfer::retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles) {
-    pimpl->retractExternalBufferSets(externalBufferHandles);
+void AsyncTransfer::retractExternalBufferSets(ImageSet::ExternalBufferHandle* externalBufferHandleArr, int len) {
+    std::vector<ImageSet::ExternalBufferHandle> vec(externalBufferHandleArr, externalBufferHandleArr+len);
+    pimpl->retractExternalBufferSets(vec);
 }
 
 /******************** Implementation in pimpl class *******************/
@@ -450,7 +451,7 @@ void AsyncTransfer::Pimpl::receiveLoop() {
                     //auto handle = receivedSet.getExternalBufferHandle(0);
                     //if (handle) std::cerr << "Dropping an unclaimed ImageSet, ext buf handle(0) " << receivedSet.getExternalBufferHandle(0) << std::endl;
                     for (int i=0; i<receivedSet.getNumberOfImages(); ++i) {
-                        signalExternalBufferDone(receivedSet.getExternalBufferHandle(i));
+                        requeueExternalBuffer(receivedSet.getExternalBufferHandle(i));
                     }
                 }
                 if (currentSet.getExternalBufferHandle(0) == 0) {
@@ -534,8 +535,8 @@ void AsyncTransfer::Pimpl::setAutoReconnect(int secondsBetweenRetries) {
     imgTrans.setAutoReconnect(secondsBetweenRetries);
 }
 
-void AsyncTransfer::Pimpl::signalExternalBufferDone(ImageSet::ExternalBufferHandle handle) {
-    imgTrans.signalExternalBufferDone(handle);
+void AsyncTransfer::Pimpl::requeueExternalBuffer(ImageSet::ExternalBufferHandle handle) {
+    imgTrans.requeueExternalBuffer(handle);
 }
 
 bool AsyncTransfer::Pimpl::hasExternalBufferHandle(ImageSet::ExternalBufferHandle externalBufferHandle) const {

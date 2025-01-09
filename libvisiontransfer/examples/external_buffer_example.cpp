@@ -15,7 +15,7 @@
 #include <visiontransfer/deviceenumeration.h>
 #include <visiontransfer/asynctransfer.h>
 #include <visiontransfer/imageset.h>
-#include <visiontransfer/externalbuffer.h>
+#include <visiontransfer/externalbufferset.h>
 #include <iostream>
 #include <exception>
 #include <thread>
@@ -118,7 +118,7 @@ int main() {
             // refers to a library buffer), and -1 to signal pool exhaustion
             // (data also pointing to internal buffer and NOT an external one).
             //
-            // You must check this for each image channel.
+            // You must check this for each image channel when using external buffering mode.
 
             // ImageSet processing proper goes here
 
@@ -164,7 +164,7 @@ int main() {
             // Otherwise channels would be marked as exhausted by the receiver thread
             // instead if no buffer sets are available when the next image set arrives.
             // (See above on how to detect this.)
-            asyncTransfer.signalImageSetDone(imageSet);
+            asyncTransfer.requeueExternalBuffersForImageSet(imageSet);
 
         }
     } catch(const std::exception& ex) {

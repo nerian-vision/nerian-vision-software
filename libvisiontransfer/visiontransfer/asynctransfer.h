@@ -201,7 +201,7 @@ public:
      *
      * For default operation (internal buffering), this is a no-op.
      */
-    void signalImageSetDone(ImageSet& imageSet);
+    void requeueExternalBuffersForImageSet(ImageSet& imageSet);
 
     /**
      * \brief Flag the user processing of a single buffer handle as done, allowing buffer reuse.
@@ -216,7 +216,7 @@ public:
      *
      * See signalImageSetDone(ImageSet&)
      */
-    void signalExternalBufferDone(ImageSet::ExternalBufferHandle externalBufferHandle);
+    void requeueExternalBuffer(ImageSet::ExternalBufferHandle externalBufferHandle);
 
     /**
      * \brief Return true iff one of the registered buffers uses the specified handle
@@ -246,12 +246,14 @@ public:
      */
     void retractExternalBufferSet(ImageSet::ExternalBufferHandle externalBufferHandle);
 
-#if VISIONTRANSFER_CPLUSPLUS_VERSION >= 201103L
     /**
      * \brief Retract one or more buffer sets in one operation. May block - see retractExternalBufferSet
      */
-    void retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles);
-#endif
+    void retractExternalBufferSets(std::vector<ImageSet::ExternalBufferHandle> externalBufferHandles) {
+       retractExternalBufferSets(externalBufferHandles.data(), externalBufferHandles.size());
+    }
+
+    void retractExternalBufferSets(ImageSet::ExternalBufferHandle* externalBufferHandleArr, int len);
 
 private:
     // We follow the pimpl idiom
