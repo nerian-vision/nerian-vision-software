@@ -446,30 +446,6 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
     }
 }
 
-int PhysicalDevice::copyImageToBufferMemory(const ImageSet& receivedSet, int id, unsigned char* dst, int dstSize) {
-    return 0;
-    /*
-    int bytesPerPixel = receivedSet.getBytesPerPixel(id);
-    int newStride = receivedSet.getWidth() * bytesPerPixel;
-    int totalSize = receivedSet.getHeight() * newStride;
-
-    if(totalSize > dstSize) {
-        // No more buffer space.
-        return -1;
-    } else {
-        if(newStride == receivedSet.getRowStride(id)) {
-            memcpy(dst, receivedSet.getPixelData(id), totalSize);
-        } else {
-            for(int y = 0; y<receivedSet.getHeight(); y++) {
-                memcpy(&dst[y*newStride], &receivedSet.getPixelData(id)[y*receivedSet.getRowStride(id)], newStride);
-            }
-        }
-
-        return totalSize;
-    }
-    */
-}
-
 void PhysicalDevice::copy3dDataToBuffer(const ImageSet& receivedSet) {
     auto stream = logicalDevices[ID_POINTCLOUD]->getStream();
     if (stream->getFramesToAcquire() == 0) {

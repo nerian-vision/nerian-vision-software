@@ -118,7 +118,6 @@ private:
     // Filtered by ImageType (their single-part role or IMAGE_UNDEFINED for multipart)
     std::map<ImageSet::ImageType, std::set<ImageSet::ExternalBufferHandle> > externalBuffersByImageType;
     std::map<ImageSet::ExternalBufferHandle, long> externalBufferLastWrite;
-    //ImageSet::ExternalBufferHandle assignedBufferHandle; // replaced by accessor in ImageProtocol
 
     // Socket configuration
     void setSocketOptions();

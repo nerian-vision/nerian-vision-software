@@ -185,7 +185,7 @@ GC_ERROR DataStream::announceBuffer(void* pBuffer, size_t iSize, void* pPrivate,
     updateBufferMapping();
 
     std::shared_ptr<Buffer> buffer(new Buffer(this, pPrivate,
-        reinterpret_cast<unsigned char*>(pBuffer), iSize, bufferMapping));
+        reinterpret_cast<unsigned char*>(pBuffer), iSize));
     buffers.push_back(buffer);
     *phBuffer = buffer.get();
     DEBUG_DSTREAM("  resulting handle " << ((ptrdiff_t) (*phBuffer)));
@@ -204,7 +204,7 @@ GC_ERROR DataStream::allocAndAnnounceBuffer(size_t iBufferSize, void* pPrivate, 
     // Make sure consumers who opened the DataStream early get the effects of updated features
     updateBufferMapping();
 
-    std::shared_ptr<Buffer> buffer(new Buffer(this, pPrivate, iBufferSize, bufferMapping));
+    std::shared_ptr<Buffer> buffer(new Buffer(this, pPrivate, iBufferSize));
     buffers.push_back(buffer);
     *phBuffer = buffer.get();
     DEBUG_DSTREAM("  resulting handle " << ((ptrdiff_t) (*phBuffer)));
@@ -289,40 +289,6 @@ GC_ERROR DataStream::revokeBuffer(BUFFER_HANDLE hBuffer, void ** ppBuffer, void 
     // Buffer wasn't in the list
     return GC_ERR_INVALID_HANDLE;
 }
-
-/*
-void DataStream::queueInputBuffer(Buffer* buffer) {
-    // This is the implementation of the DS queueBuffer request:
-    // the buffer is placed in the input pool. The physicalDevice is
-    // notified: if a transfer is already running, the requeue is
-    // relayed (otherwise the PhysicalDevice queues all input pools
-    // lazily when the transfer is instantiated, i.e. with the first
-    // start of acquisition for any of its streams after being idle.
-    if (findBuffer(outputQueue, buffer)) {
-        return GC_ERR_BUSY;
-    }
-    
-    if(!findBuffer(inputPool, buffer)) {
-        inputPool.push_back(buf);
-        return GC_ERR_SUCCESS;
-    }
-
-    if(framesToAcquire != GENTL_INFINITE) {
-        framesToAcquire--;
-    }
-    numCaptured++;
-
-    // Event notification
-    S_EVENT_NEW_BUFFER eventData;
-    eventData.BufferHandle = outputQueue.back().get();
-    eventData.pUserPointer = outputQueue.back()->getPrivateData();
-
-    if(newBufferEvent != nullptr) {
-        DEBUG_DSTREAM("Emitting EVENT_NEW_BUFFER");
-        newBufferEvent->emitEvent(eventData);
-    }
-}
-*/
 
 GC_ERROR DataStream::queueBuffer(BUFFER_HANDLE hBuffer) {
     DEBUG_DSTREAM("\033[33;1mqueueBuffer(),\033[m handle = " << ((ptrdiff_t) hBuffer));
@@ -948,24 +914,5 @@ void DataStream::signalUnderrun() {
     DEBUG_DSTREAM("signalUnderrun() called");
     numUnderrun++;
 }
-
-/*
-
-bool DataStream::isQueuedForInput(Buffer* buffer) {
-    return findBuffer(inputPool, buffer);
-}
-bool DataStream::isQueuedForOutput(Buffer* buffer) {
-    return findBuffer(outputQueue, buffer);
-}
-bool DataStream::queueForInput(Buffer* buffer) {
-}
-bool DataStream::queueForOutput(Buffer* buffer) {
-}
-bool DataStream::unqueueFromInput(Buffer* buffer) {
-}
-bool DataStream::unqueueFromOutput(Buffer* buffer) {
-}
-*/
-
 
 }

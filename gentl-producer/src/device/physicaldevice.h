@@ -188,7 +188,6 @@ private:
     void copyPointsFallback(float* dst, float* src, int numPoints);
     void copyPointsSSE(float* dst, float* src, int numPoints);
     void setTestData(visiontransfer::ImageSet& receivedSet);
-    int copyImageToBufferMemory(const visiontransfer::ImageSet& receivedSet, int id, unsigned char* dst, int dstSize);
     int copy3dDataToBufferMemory(const visiontransfer::ImageSet& receivedSet, unsigned char* dst, int dstSize);
 
     void remoteParameterChangeCallback(const std::string& uid);
