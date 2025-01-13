@@ -210,18 +210,19 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         logicalDevices[ID_DISPARITY].reset(new LogicalDevice(this, baseURL + "/disparity", DataStream::DISPARITY_STREAM));
         logicalDevices[ID_POINTCLOUD].reset(new LogicalDevice(this, baseURL + "/pointcloud", DataStream::POINTCLOUD_STREAM));
 
+#ifndef DELIVER_TEST_DATA
         // Infer initial metadata from nvparam (later overridden by incoming frames)
         bool valid = initializeMetadataFromNvparam();
-
         if(!valid) {
             threadRunning = false;
             return GC_ERR_IO;
-        } else {
-            std::unique_lock<std::mutex> lock(receiveMutex);
-            threadRunning = true;
-            receiveThread = std::thread(std::bind(&PhysicalDevice::deviceReceiveThread, this));
-            return GC_ERR_SUCCESS;
         }
+#endif
+
+        std::unique_lock<std::mutex> lock(receiveMutex);
+        threadRunning = true;
+        receiveThread = std::thread(std::bind(&PhysicalDevice::deviceReceiveThread, this));
+        return GC_ERR_SUCCESS;
     } catch(...) {
         return GC_ERR_IO;
     }
