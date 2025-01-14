@@ -10,6 +10,7 @@ if(GTEST_FOUND)
         test-interface.cpp
         test-device.cpp
         test-stream.cpp
+        test-multipart.cpp
         test-port.cpp
         test-event.cpp
     )

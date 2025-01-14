@@ -66,10 +66,15 @@ TEST_F(InterfaceFixture, DeviceID) {
     size = sizeof(buffer);
     EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, 3, buffer, &size));
     bufferStr = buffer;
-    EXPECT_EQ(bufferStr.substr(bufferStr.length() - 10), string("/disparity"));
+    EXPECT_EQ(bufferStr.substr(bufferStr.length() - 12), string("/third_color"));
 
     size = sizeof(buffer);
     EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, 4, buffer, &size));
+    bufferStr = buffer;
+    EXPECT_EQ(bufferStr.substr(bufferStr.length() - 10), string("/disparity"));
+
+    size = sizeof(buffer);
+    EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, 5, buffer, &size));
     bufferStr = buffer;
     EXPECT_EQ(bufferStr.substr(bufferStr.length() - 11), string("/pointcloud"));
 }

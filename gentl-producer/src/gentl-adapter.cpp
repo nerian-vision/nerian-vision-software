@@ -418,6 +418,7 @@ GC_API DevClose(DEV_HANDLE hDevice) {
     DEBUG1(hDevice);
 
     if(!verifyHandle(hDevice, Handle::TYPE_DEVICE)) {
+        DEBUG_MSG("Cannot close device, invalid handle");
         return setLastError(GC_ERR_INVALID_HANDLE);
     } else {
         DEBUG_MSG("Closing Logical Device");

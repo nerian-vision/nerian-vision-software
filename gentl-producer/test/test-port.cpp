@@ -216,7 +216,7 @@ TEST_F(PortFixture, InterfacePortSelector)  {
     uint32_t selectorMax;
     size = sizeof(selectorMax);
     EXPECT_EQ(GC_ERR_SUCCESS, GCReadPort(hIface, 0xE03E8000, &selectorMax, &size));
-    EXPECT_EQ(selectorMax, 4);
+    EXPECT_EQ(selectorMax, 5);
 }
 
 TEST_F(PortFixture, ReadDevicePortFeature)  {

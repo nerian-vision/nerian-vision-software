@@ -162,6 +162,7 @@ private:
     std::unique_ptr<visiontransfer::AsyncTransfer> transfer; // Object for receiving image data - with background receiver thread
     std::unique_ptr<visiontransfer::DeviceParameters> deviceParameters; // Parameter access for sending software trigger
     bool transferJustDown; // Signal flag that transfer just went offline again
+    bool transferIsUp; // Flags mirrors transfer state (only used for test data mode)
 
     bool udp; // Indicates if UDP or TCP protocol is used
     std::string host; // Remote host name or local interface address
@@ -183,6 +184,7 @@ private:
 
     void deviceReceiveThread();
     void copyRawDataToBuffer(const visiontransfer::ImageSet& receivedSet);
+    int copyImageToBufferMemory(const visiontransfer::ImageSet& receivedSet, int id, unsigned char* dst, int dstSize);
     void copy3dDataToBuffer(const visiontransfer::ImageSet& receivedSet);
     void copyMultipartDataToBuffer(const visiontransfer::ImageSet& receivedSet);
     void copyPointsFallback(float* dst, float* src, int numPoints);

@@ -210,7 +210,22 @@ GC_ERROR PhysicalDevice::open(bool udp, const char* host) {
         logicalDevices[ID_DISPARITY].reset(new LogicalDevice(this, baseURL + "/disparity", DataStream::DISPARITY_STREAM));
         logicalDevices[ID_POINTCLOUD].reset(new LogicalDevice(this, baseURL + "/pointcloud", DataStream::POINTCLOUD_STREAM));
 
-#ifndef DELIVER_TEST_DATA
+#ifdef DELIVER_TEST_DATA
+        // Static metadata for the test image
+        latestMetaData.setWidth(640);
+        latestMetaData.setHeight(480);
+        latestMetaData.setNumberOfImages(2);
+        latestMetaData.setIndexOf(ImageSet::IMAGE_LEFT, 0);
+        latestMetaData.setIndexOf(ImageSet::IMAGE_DISPARITY, 1);
+        latestMetaData.setIndexOf(ImageSet::IMAGE_RIGHT, -1);
+        latestMetaData.setIndexOf(ImageSet::IMAGE_COLOR, -1);
+        latestMetaData.setPixelFormat(0, ImageSet::FORMAT_8_BIT_MONO);
+        latestMetaData.setPixelFormat(1, ImageSet::FORMAT_12_BIT_MONO);
+        latestMetaData.setQMatrix(initialQMatrixData);
+        for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
+            logicalDevices[i]->getStream()->updateBufferMapping();
+        }
+#else
         // Infer initial metadata from nvparam (later overridden by incoming frames)
         bool valid = initializeMetadataFromNvparam();
         if(!valid) {
@@ -345,6 +360,13 @@ void PhysicalDevice::deviceReceiveThread() {
                     }
                 }
 
+#ifdef DELIVER_TEST_DATA
+                if (!transferIsUp) {
+                    DEBUG_PHYS("(No logical devices open, not emitting a test frame.)");
+                    continue;
+                }
+#endif
+
                 // Copy raw and 3D data to buffer
                 copyRawDataToBuffer(receivedSet);
                 if (getComponentEnabledRange() && receivedSet.hasImageType(ImageSet::IMAGE_DISPARITY)) {
@@ -411,13 +433,18 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
 
         ImageSet::ExternalBufferHandle handle = receivedSet.getExternalBufferHandle(i);
         //auto data = receivedSet.getPixelData(i); // also signaling exhausted pool, as nullptr 
+#ifdef DELIVER_TEST_DATA
+        // In DELIVER_TEST_DATA mode, handle is actually always 0, and we fall back on a fifo queue in datastream
+#else
         if (handle == 0 || handle == -1) {
             // Indicates exhausted library buffer pool in visiontransfer background thread
             // (last buffer had already been filled / no old buffers were requeued in time)
-            DEBUG_PHYS("Library buffer pool exhausted for device #" << id << " " << devstr);
+            DEBUG_PHYS("Library buffer pool exhausted for device #" << id);
             logicalDevices[id]->getStream()->emitErrorEvent(GC_ERR_RESOURCE_EXHAUSTED);
             continue;
-        } else {
+        } else
+#endif
+        {
             Buffer* buffer = reinterpret_cast<Buffer*>(handle);
             // Update the logical device pools (the device will find the buffer description in its pool)
             buffer = logicalDevices[id]->getStream()->requestBuffer(buffer);
@@ -425,9 +452,20 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
                 // The device may not be capturing any more frames.
                 // Forcing handle to be ready:=0
                 //DEBUG_PHYS("requestBuffer() for dev " << id << " returned nullptr - requeueing");
-                transfer->requeueExternalBuffer(handle);
+                if (transfer) transfer->requeueExternalBuffer(handle);
                 continue;
             }
+
+#ifdef DELIVER_TEST_DATA
+            // Copying pixel data is now only required in test data mode
+            int copiedBytes = copyImageToBufferMemory(receivedSet, i, buffer->getData(), static_cast<int>(buffer->getSize()));
+            if(copiedBytes < 0) {
+                buffer->setIncomplete(true);
+            } else {
+                buffer->setIncomplete(false);
+            }
+#endif
+
             buffer->setMetaData(receivedSet);
             logicalDevices[id]->getStream()->queueOutputBuffer(buffer);
             //DEBUG_PHYS("Queued a single buffer");
@@ -441,6 +479,28 @@ void PhysicalDevice::copyRawDataToBuffer(const ImageSet& receivedSet) {
     }
 }
 
+// Only used in test data mode now
+int PhysicalDevice::copyImageToBufferMemory(const ImageSet& receivedSet, int id, unsigned char* dst, int dstSize) {
+    int bytesPerPixel = receivedSet.getBytesPerPixel(id);
+    int newStride = receivedSet.getWidth() * bytesPerPixel;
+    int totalSize = receivedSet.getHeight() * newStride;
+
+    if(totalSize > dstSize) {
+        // No more buffer space.
+        return -1;
+    } else {
+        if(newStride == receivedSet.getRowStride(id)) {
+            memcpy(dst, receivedSet.getPixelData(id), totalSize);
+        } else {
+            for(int y = 0; y<receivedSet.getHeight(); y++) {
+                memcpy(&dst[y*newStride], &receivedSet.getPixelData(id)[y*receivedSet.getRowStride(id)], newStride);
+            }
+        }
+
+        return totalSize;
+    }
+}
+
 void PhysicalDevice::copy3dDataToBuffer(const ImageSet& receivedSet) {
     auto stream = logicalDevices[ID_POINTCLOUD]->getStream();
     if (stream->getFramesToAcquire() == 0) {
@@ -449,12 +509,17 @@ void PhysicalDevice::copy3dDataToBuffer(const ImageSet& receivedSet) {
     }
 
     ImageSet::ExternalBufferHandle handle = receivedSet.getExternalBufferHandle(ImageSet::IMAGE_DISPARITY);
+#ifdef DELIVER_TEST_DATA
+    // In DELIVER_TEST_DATA mode, handle is actually always 0, and we fall back on a fifo queue in datastream
+    (void) handle;
+#else
     if (handle == 0 || handle == -1) {
         // Indicates exhausted library buffer pool in visiontransfer background thread
         //DEBUG_PHYS("Library buffer pool exhausted (disparity for range)");
         stream->emitErrorEvent(GC_ERR_RESOURCE_EXHAUSTED);
         return;
     }
+#endif
 
     // Special case - the point cloud has no external buffer support inside the transfer protocol
     Buffer* buffer = stream->requestBuffer(nullptr);
@@ -511,12 +576,16 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         return;
     }
     ImageSet::ExternalBufferHandle handle = receivedSet.getExternalBufferHandle(0); // all identical
+#ifdef DELIVER_TEST_DATA
+    // In DELIVER_TEST_DATA mode, handle is actually always 0, and we fall back on a fifo queue in datastream
+#else
     if (handle == 0 || handle == -1) {
         // Indicates exhausted library buffer pool in visiontransfer background thread
         DEBUG_PHYS("Library buffer pool exhausted (multipart device)");
         stream->emitErrorEvent(GC_ERR_RESOURCE_EXHAUSTED);
         return;
     }
+#endif
     Buffer* buffer = reinterpret_cast<Buffer*>(handle);
     // Update the logical device pools (the device will find the buffer description in its pool)
     buffer = stream->requestBuffer(buffer);
@@ -524,7 +593,7 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
         // The device may not be capturing any more frames.
         // Forcing handle to be ready:=0
         //DEBUG_PHYS("requestBuffer(MULTIPART) returned nullptr - requeueing");
-        transfer->requeueExternalBuffer(handle);
+        if (transfer) transfer->requeueExternalBuffer(handle);
         return;
     }
     auto& bufferMapping = stream->getBufferMapping();
@@ -558,6 +627,24 @@ void PhysicalDevice::copyMultipartDataToBuffer(const ImageSet& receivedSet) {
                 // Disparity or enabled flag disabled since stream was initialized; deliver zeroed-out buffer
                 std::memset(&buffer->getData()[offset], 0, std::min(sz, static_cast<int>(buffer->getSize()) - offset));
             }
+#ifdef DELIVER_TEST_DATA
+        } else {
+            // Copying any pixel data only required in test data mode
+            auto idx = receivedSet.getIndexOf(func);
+            DEBUG_PHYS("Multipart function " << func << " at imageset index " << idx << ", starting at offset " << offset << " available size " << (static_cast<int>(buffer->getSize()) - offset));
+            if (idx != -1) {
+                copiedBytes = copyImageToBufferMemory(receivedSet, idx, &buffer->getData()[offset],
+                    static_cast<int>(buffer->getSize()) - offset);
+                if (copiedBytes < 0) {
+                    DEBUG_PHYS("Buffer incomplete at ImageSet index " << idx);
+                    buffer->setIncomplete(true);
+                    break;
+                }
+            } else {
+                // Channel disabled since stream was initialized; deliver zeroed-out frame
+                std::memset(&buffer->getData()[offset], 0, std::min(sz, static_cast<int>(buffer->getSize()) - offset));
+            }
+#endif
         }
     }
 
@@ -845,6 +932,7 @@ void PhysicalDevice::setIntensitySource(PhysicalDevice::IntensitySource src) {
 }
 
 void PhysicalDevice::updateConnectionState() {
+    DEBUG_PHYS("updateConnectionState()");
     bool isMultipartOpen = false;
     bool grabbing = false;
     for(int i=0; i<NUM_LOGICAL_DEVICES; i++) {
@@ -856,6 +944,16 @@ void PhysicalDevice::updateConnectionState() {
             break;
         }
     }
+#ifdef DELIVER_TEST_DATA
+    (void) isMultipartOpen;
+    if (grabbing) {
+        DEBUG_PHYS("A logical device is open, test data transfer is up");
+        transferIsUp = true;
+    } else {
+        DEBUG_PHYS("Last logical device closed, test data transfer is down");
+        transferIsUp = false;
+    }
+#else
     if (grabbing && (!transfer) && (!transferJustDown)) {
         DEBUG_PHYS("Starting image acquisition from network");
         // Now grabbing: connect and start network transfer
@@ -928,6 +1026,7 @@ void PhysicalDevice::updateConnectionState() {
         // Now idle: flag for the acquisition thread to orderly disconnect
         transferJustDown = true;
     }
+#endif
 }
 
 int PhysicalDevice::getCurrentLogicalDeviceState() {
@@ -1004,6 +1103,7 @@ GC_ERROR PhysicalDevice::tryRequeueBuffer(DataStream* stream, Buffer* buffer) {
         return GC_ERR_SUCCESS;
     } else {
         // If acquisition is not active, we defer the actual operation until the transfer is constructed
+        // (also no-op for DELIVER_TEST_DATA).
         return GC_ERR_SUCCESS;
     }
 }

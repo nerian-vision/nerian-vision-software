@@ -24,6 +24,6 @@
 
 // Conditional compilation flags
 //#define ENABLE_DEBUGGING
-//#define DELIVER_TEST_DATA
+#define DELIVER_TEST_DATA
 
 #endif

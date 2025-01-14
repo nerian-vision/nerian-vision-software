@@ -280,7 +280,9 @@ GC_ERROR Interface::openDevice(const char* sDeviceID, DEVICE_ACCESS_FLAGS iOpenF
         }
     }
 
-    physicalDevice->getLogicalDevice(index)->open();
+    GC_ERROR result = physicalDevice->getLogicalDevice(index)->open();
+    if (result != GC_ERR_SUCCESS) return result; // Failed to open logical device (e.g. mixed single and multipart devices)
+
     *phDevice = reinterpret_cast<DEV_HANDLE>(physicalDevice->getLogicalDevice(index));
 
     return GC_ERR_SUCCESS;

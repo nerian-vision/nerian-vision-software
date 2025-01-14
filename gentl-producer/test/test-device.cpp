@@ -20,14 +20,14 @@ public:
         ASSERT_EQ(GC_ERR_SUCCESS, TLOpenInterface(hSystem, "eth", &hIface));
         EXPECT_EQ(GC_ERR_SUCCESS, IFUpdateDeviceList(hIface, nullptr, 1000));
 
-        // Open first two devices
+        // Open first two single-part devices (not the multi-part at index 0)
         char buffer[100];
         size_t size = sizeof(buffer);
-        EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, 0, buffer, &size));
+        EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, 1, buffer, &size));
         ASSERT_EQ(GC_ERR_SUCCESS, IFOpenDevice(hIface, buffer, DEVICE_ACCESS_READONLY, &hDevice0));
 
         size = sizeof(buffer);
-        EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, 1, buffer, &size));
+        EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, 2, buffer, &size));
         ASSERT_EQ(GC_ERR_SUCCESS, IFOpenDevice(hIface, buffer, DEVICE_ACCESS_READONLY, &hDevice1));
    }
 
@@ -89,21 +89,21 @@ TEST_F(DeviceFixture, OpenMultiple) {
         size = sizeof(accessStatus);
         EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceInfo(hIface, buffer, DEVICE_INFO_ACCESS_STATUS, &type, &accessStatus, &size));
 
-        if(i <= 1) {
+        if(i == 1 || i == 2) { // The device indices we opened
             EXPECT_EQ(accessStatus, DEVICE_ACCESS_STATUS_BUSY);
         } else {
             EXPECT_EQ(accessStatus, DEVICE_ACCESS_STATUS_READWRITE);
         }
     }
 
-    // Try re-open 0 device
+    // Try open 0 device (multipart)
     DEV_HANDLE hDummy;
     size = sizeof(buffer);
     EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, 0, buffer, &size));
     ASSERT_EQ(GC_ERR_RESOURCE_IN_USE, IFOpenDevice(hIface, buffer, DEVICE_ACCESS_READONLY, &hDummy));
 
-    // Open devices 2 to 3
-    for(int i = 2; i<= 4; i++) {
+    // Open devices 3 to 4
+    for(int i = 3; i<= 5; i++) {
         size = sizeof(buffer);
         EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, i, buffer, &size));
         ASSERT_EQ(GC_ERR_SUCCESS, IFOpenDevice(hIface, buffer, DEVICE_ACCESS_READONLY, &hDummy));

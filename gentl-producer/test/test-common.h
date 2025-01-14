@@ -46,6 +46,7 @@ static std::vector<std::string> typeStrings = {
 
 #define TEST_INFO_CALL(f) \
         default:\
+            std::cout << "Unhandled case: " << enumName << std::endl; \
             ASSERT_TRUE(false);\
         }\
         size_t size=1000;\

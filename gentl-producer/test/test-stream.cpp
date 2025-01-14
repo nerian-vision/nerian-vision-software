@@ -11,7 +11,7 @@ using namespace GenTL;
 class StreamFixture: public ::testing::Test {
 public:
    StreamFixture(): hSystem(nullptr), hIface(nullptr), hDevice(nullptr),
-        hStream(nullptr), hBuffer0(nullptr), hBuffer1(nullptr) {
+        hStream(nullptr), hBuffer0(nullptr), hBuffer1(nullptr), hBuffer2(nullptr) {
    }
 
    ~StreamFixture() {
@@ -32,6 +32,7 @@ public:
         ASSERT_EQ(GC_ERR_SUCCESS, DevOpenDataStream(hDevice, "default", &hStream));
         ASSERT_EQ(GC_ERR_SUCCESS, DSAllocAndAnnounceBuffer(hStream, 640*480, nullptr, &hBuffer0));
         ASSERT_EQ(GC_ERR_SUCCESS, DSAllocAndAnnounceBuffer(hStream, 640*480, nullptr, &hBuffer1));
+        ASSERT_EQ(GC_ERR_SUCCESS, DSAllocAndAnnounceBuffer(hStream, 640*480, nullptr, &hBuffer2));
    }
 
    virtual void TearDown( ) {
@@ -41,6 +42,9 @@ public:
         }
         if(hBuffer1 != nullptr) {
             ASSERT_EQ(GC_ERR_SUCCESS, DSRevokeBuffer(hStream, hBuffer1, nullptr, nullptr));
+        }
+        if(hBuffer2 != nullptr) {
+            ASSERT_EQ(GC_ERR_SUCCESS, DSRevokeBuffer(hStream, hBuffer2, nullptr, nullptr));
         }
         ASSERT_EQ(GC_ERR_SUCCESS, DSClose(hStream));
         ASSERT_EQ(GC_ERR_SUCCESS, DevClose(hDevice));
@@ -56,6 +60,7 @@ protected:
     DS_HANDLE hStream;
     BUFFER_HANDLE hBuffer0;
     BUFFER_HANDLE hBuffer1;
+    BUFFER_HANDLE hBuffer2;
 };
 
 
@@ -70,6 +75,7 @@ TEST_F(StreamFixture, BufferAllocation) {
     // First free the default buffers
     ASSERT_EQ(GC_ERR_SUCCESS, DSRevokeBuffer(hStream, hBuffer0, nullptr, nullptr));
     ASSERT_EQ(GC_ERR_SUCCESS, DSRevokeBuffer(hStream, hBuffer1, nullptr, nullptr));
+    ASSERT_EQ(GC_ERR_SUCCESS, DSRevokeBuffer(hStream, hBuffer2, nullptr, nullptr));
 
     // Buffer allocations
     size_t sizeVal = 0;
@@ -84,10 +90,11 @@ TEST_F(StreamFixture, BufferAllocation) {
     EXPECT_EQ(GC_ERR_SUCCESS, DSAnnounceBuffer(hStream, &buffer[0], size, &privateData, &hBuffer0));
 
     EXPECT_EQ(GC_ERR_SUCCESS, DSAllocAndAnnounceBuffer(hStream, size, &privateData, &hBuffer1));
+    EXPECT_EQ(GC_ERR_SUCCESS, DSAllocAndAnnounceBuffer(hStream, size, &privateData, &hBuffer2));
 
     size = sizeof(sizeVal);
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetInfo(hStream, STREAM_INFO_NUM_ANNOUNCED, &type, &sizeVal, &size));
-    EXPECT_EQ(sizeVal, 2);
+    EXPECT_EQ(sizeVal, 3);
 
     void* dataPtr = nullptr;
     void* privatePtr = nullptr;
@@ -99,8 +106,13 @@ TEST_F(StreamFixture, BufferAllocation) {
     ASSERT_EQ(dataPtr, nullptr);
     ASSERT_EQ(privatePtr, &privateData);
 
+    ASSERT_EQ(GC_ERR_SUCCESS, DSRevokeBuffer(hStream, hBuffer2, &dataPtr, &privatePtr));
+    ASSERT_EQ(dataPtr, nullptr);
+    ASSERT_EQ(privatePtr, &privateData);
+
     hBuffer0 = nullptr;
     hBuffer1 = nullptr;
+    hBuffer2 = nullptr;
 }
 
 TEST_F(StreamFixture, BufferQueueing) {
@@ -186,7 +198,7 @@ TEST_F(StreamFixture, ContinuousAcquisition) {
     EXPECT_EQ(sizeVal, 0);
 
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetInfo(hStream, STREAM_INFO_NUM_AWAIT_DELIVERY, &type, &sizeVal, &size));
-    EXPECT_EQ(sizeVal, 2);
+    EXPECT_EQ(sizeVal, 3);
 
     size = sizeof(boolData);
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetInfo(hStream, STREAM_INFO_IS_GRABBING, &type, &boolData, &size));
@@ -208,11 +220,11 @@ TEST_F(StreamFixture, Flushing) {
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetInfo(hStream, STREAM_INFO_NUM_AWAIT_DELIVERY, &type, &sizeVal, &size));
     EXPECT_EQ(sizeVal, 0);
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetInfo(hStream, STREAM_INFO_NUM_QUEUED, &type, &sizeVal, &size));
-    EXPECT_EQ(sizeVal, 2);
+    EXPECT_EQ(sizeVal, 3);
 
     EXPECT_EQ(GC_ERR_SUCCESS, DSFlushQueue(hStream, ACQ_QUEUE_INPUT_TO_OUTPUT));
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetInfo(hStream, STREAM_INFO_NUM_AWAIT_DELIVERY, &type, &sizeVal, &size));
-    EXPECT_EQ(sizeVal, 2);
+    EXPECT_EQ(sizeVal, 3);
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetInfo(hStream, STREAM_INFO_NUM_QUEUED, &type, &sizeVal, &size));
     EXPECT_EQ(sizeVal, 0);
 
@@ -232,7 +244,7 @@ TEST_F(StreamFixture, Flushing) {
     EXPECT_EQ(GC_ERR_SUCCESS, DSFlushQueue(hStream, ACQ_QUEUE_INPUT_TO_OUTPUT));
     EXPECT_EQ(GC_ERR_SUCCESS, DSFlushQueue(hStream, ACQ_QUEUE_UNQUEUED_TO_INPUT));
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetInfo(hStream, STREAM_INFO_NUM_QUEUED, &type, &sizeVal, &size));
-    EXPECT_EQ(sizeVal, 1);
+    EXPECT_EQ(sizeVal, 2);
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetInfo(hStream, STREAM_INFO_NUM_AWAIT_DELIVERY, &type, &sizeVal, &size));
     EXPECT_EQ(sizeVal, 1);
 }
@@ -350,34 +362,6 @@ TEST_F(StreamFixture, BufferTooSmall) {
     size = sizeof(filled);
     EXPECT_EQ(GC_ERR_SUCCESS, DSGetBufferInfo(hStream, hSmallBuffer, BUFFER_INFO_SIZE_FILLED, &type, &filled, &size));
     EXPECT_EQ(0, filled);
-}
-
-TEST_F(StreamFixture, MultiPart) {
-    // First test the non-multipart stream
-    uint32_t numParts = 0;
-    EXPECT_EQ(GC_ERR_SUCCESS, DSGetNumBufferParts(hStream, hBuffer0, &numParts));
-    EXPECT_EQ(1, numParts);
-
-    // Test the multipart stream
-    DEV_HANDLE hDeviceMulti;
-    DS_HANDLE hStreamMulti;
-    BUFFER_HANDLE hBufferMulti;
-
-    char buffer[100];
-    size_t size = sizeof(buffer);
-    EXPECT_EQ(GC_ERR_SUCCESS, IFGetDeviceID(hIface, 0, buffer, &size));
-
-    ASSERT_EQ(GC_ERR_SUCCESS, IFOpenDevice(hIface, buffer, DEVICE_ACCESS_READONLY, &hDeviceMulti));
-    ASSERT_EQ(GC_ERR_SUCCESS, DevOpenDataStream(hDeviceMulti, "default", &hStreamMulti));
-    ASSERT_EQ(GC_ERR_SUCCESS, DSAllocAndAnnounceBuffer(hStreamMulti, 15*640*480, nullptr, &hBufferMulti));
-
-    EXPECT_EQ(GC_ERR_SUCCESS, DSGetNumBufferParts(hStreamMulti, hBufferMulti, &numParts));
-    EXPECT_EQ(3, numParts);
-
-    EXPECT_EQ(GC_ERR_SUCCESS, DSFlushQueue(hStreamMulti, ACQ_QUEUE_ALL_DISCARD));
-    ASSERT_EQ(GC_ERR_SUCCESS, DSRevokeBuffer(hStreamMulti, hBufferMulti, nullptr, nullptr));
-    ASSERT_EQ(GC_ERR_SUCCESS, DSClose(hStreamMulti));
-    ASSERT_EQ(GC_ERR_SUCCESS, DevClose(hDeviceMulti));
 }
 
 TEST_F(StreamFixture, getBufferInfoStacked) {

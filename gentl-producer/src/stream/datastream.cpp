@@ -103,8 +103,14 @@ void DataStream::emitErrorEvent(GC_ERROR error) {
 }
 
 Buffer* DataStream::requestBuffer(Buffer* buffer) {
+    bool deliverTestData = false;
+#ifdef DELIVER_TEST_DATA
+    // Only in test data mode: we have no visiontransfer-manager
+    // buffer handles -> we may deliver from the top of the pool here
+    deliverTestData = (buffer==nullptr);
+#endif
     if(framesToAcquire > 0) {
-        if (streamType == POINTCLOUD_STREAM) {
+        if ((streamType == POINTCLOUD_STREAM) || deliverTestData) {
             // Range buffers are NOT governed by libvisiontransfer - old behavior
             if(inputPool.size() > 0) {
                 return inputPool.front();
@@ -221,6 +227,7 @@ void DataStream::updateBufferMapping() {
         PhysicalDevice::IntensitySource intensitySource = logicalDevice->getPhysicalDevice()->getIntensitySource();
         bool rangeEnabled = logicalDevice->getPhysicalDevice()->getComponentEnabledRange();
         bufferMapping = BufferMapping(metaData, (int) intensitySource, rangeEnabled);
+        //bufferMapping.dumpToStream(debugStreamDataStream);
     }
 }
 
@@ -448,6 +455,7 @@ size_t DataStream::getPayloadSizeForImageType(ImageSet::ImageType typ) {
 
 size_t DataStream::getPayloadSize() {
     int totalSize = 0;
+    std::cout << "getPayloadSize() for streamType " << streamType << std::endl;
     switch(streamType) {
         case IMAGE_LEFT_STREAM:
             totalSize = (int) getPayloadSizeForImageType(ImageSet::IMAGE_LEFT);
@@ -468,10 +476,11 @@ size_t DataStream::getPayloadSize() {
             // multipart: add all image/disparity sizes and finally the point cloud size (if actually enabled)
             totalSize = bufferMapping.getTotalBufferSize();
     }
-    if (totalSize<=0) {
-        // Fallback just in case: report size from first image
-        totalSize = (int) getPayloadSizeForImageType(bufferMapping.getBufferPartImageSetFunction(0));
-    }
+    //if (totalSize<=0) {
+    //    // Fallback just in case: report size from first image
+    //    totalSize = (int) getPayloadSizeForImageType(bufferMapping.getBufferPartImageSetFunction(0));
+    //}
+    std::cout << "getPayloadSize(): " << totalSize << std::endl;
     return totalSize;
 }
 
@@ -703,6 +712,7 @@ GC_ERROR DataStream::getInfo(STREAM_INFO_CMD iInfoCmd, INFO_DATATYPE* piType,
 GC_ERROR DataStream::getNumBufferParts(BUFFER_HANDLE hBuffer, uint32_t *piNumParts) {
     if(streamType == MULTIPART_STREAM) {
         *piNumParts = bufferMapping.getNumBufferParts();
+        std::cout << "Reporting #parts: " << (*piNumParts) << std::endl;
     } else {
         *piNumParts = 1;
     }
