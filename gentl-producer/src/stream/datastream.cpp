@@ -455,7 +455,6 @@ size_t DataStream::getPayloadSizeForImageType(ImageSet::ImageType typ) {
 
 size_t DataStream::getPayloadSize() {
     int totalSize = 0;
-    std::cout << "getPayloadSize() for streamType " << streamType << std::endl;
     switch(streamType) {
         case IMAGE_LEFT_STREAM:
             totalSize = (int) getPayloadSizeForImageType(ImageSet::IMAGE_LEFT);
@@ -480,7 +479,6 @@ size_t DataStream::getPayloadSize() {
     //    // Fallback just in case: report size from first image
     //    totalSize = (int) getPayloadSizeForImageType(bufferMapping.getBufferPartImageSetFunction(0));
     //}
-    std::cout << "getPayloadSize(): " << totalSize << std::endl;
     return totalSize;
 }
 
@@ -712,7 +710,6 @@ GC_ERROR DataStream::getInfo(STREAM_INFO_CMD iInfoCmd, INFO_DATATYPE* piType,
 GC_ERROR DataStream::getNumBufferParts(BUFFER_HANDLE hBuffer, uint32_t *piNumParts) {
     if(streamType == MULTIPART_STREAM) {
         *piNumParts = bufferMapping.getNumBufferParts();
-        std::cout << "Reporting #parts: " << (*piNumParts) << std::endl;
     } else {
         *piNumParts = 1;
     }
