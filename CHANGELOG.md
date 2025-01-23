@@ -1,6 +1,30 @@
 Changelog for Nerian Vision Software Release
 ============================================
 
+1x.x.x (2025-xx-xx)
+-------------------
+* Improvements to device discovery: excluded loop and link-local
+  addresses and instated more lenient timeout procedure
+* GenTL
+    * Optimized to reduce internal copying of image buffers
+    * Network transfers are closed and reconnected based on
+      GenTL acquisition state transitions (no idle streaming)
+    * Behavior change: Multi-part and single-part device modes
+      are now mutually exclusive when opening logical devices
+    * New FPGA subsampling modes exposed as a custom feature
+    * Newly optional post-processing features are hidden if
+      not available in the particular device firmware
+    * Fixed some minor issues with setting camera features
+* API
+    * Replaced the individual four (edge-dependent) P1 and P2
+      parameters with just P1 and P2
+    * C++: added support for receiving image data directly to
+      pre-allocated external buffers outside the library
+      (for special use cases, and used in our GenTL producer)
+    * C++: Optional advanced construction of transfer objects
+    * C++: added new example for external buffer mode
+    * Python: added terminal example with no dependencies
+
 10.8.0 (2024-08-06)
 -------------------
 * Handling for new device behavior which refuses new client
